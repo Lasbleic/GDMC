@@ -40,7 +40,7 @@ pip install pillow
 pip install ftputil
 ```
 
-_Note : (for ~~loosers~~ Windows users, also execute_ `pip install pypiwin32` _)_
+_Note : (for ~~losers~~ Windows users, also execute_ `pip install pypiwin32` _)_
 
 After this step, you should be able to run `python MCEdit/mcedit.py`
 
@@ -65,7 +65,7 @@ In this config:
 Go to the 'Before launch' section, click on the '+' button on the right.
 Then, click on 'Run another configuration', and select 'Publish'.
 
-Explaination :
+Explanation :
 The src folder should actually be in the stock-filters folder of MCEdit, but it's a dirty place to work. 
 There is a script to copy paste src into stock-filters, and this script will be executed by the 'Publish' configuration. So, before executing MCEdit, the filter will be copy-pasted in the right folder.
 To be sure there's no mistake, and to facilitate testing, the previous published we'll be saved.
