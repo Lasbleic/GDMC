@@ -1,4 +1,6 @@
 # Name to display in MCEdit filter menu
+from flat_settlement import FlatSettlement
+
 displayName = "Create a settlement"
 
 # Dictionnary representing different options
@@ -10,3 +12,5 @@ inputs = ()
 
 def perform(level, box, options):
     print("Hello World!")
+    settlement = FlatSettlement(box)
+    settlement.generate(level)
