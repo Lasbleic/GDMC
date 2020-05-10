@@ -140,3 +140,10 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Visu
+/src/visu/stock/*
+!/src/visu/stock/example_50x50/
+
+# Readme
+.Rhistory

@@ -69,3 +69,12 @@ Explanation :
 The src folder should actually be in the stock-filters folder of MCEdit, but it's a dirty place to work. 
 There is a script to copy paste src into stock-filters, and this script will be executed by the 'Publish' configuration. So, before executing MCEdit, the filter will be copy-pasted in the right folder.
 To be sure there's no mistake, and to facilitate testing, the previous published we'll be saved.
+
+
+### Visualization tool
+
+If you intend to use the visualization tool, please run
+
+```
+conda install kivy -c conda-forge
+```
