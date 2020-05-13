@@ -1,5 +1,7 @@
 from __future__ import division, print_function
-from numpy.random import geometric, random, choice
+from numpy.random import random, choice
+
+from generators import CropGenerator
 
 
 class BuildingType:
@@ -7,24 +9,26 @@ class BuildingType:
         self.name = name
         self.generator = generator
 
-    def new_instance(self, x, z):
-        return self.generator(x, z)
+    def new_instance(self, box):
+        return self.generator(box)
 
     def __hash__(self):
         return hash(self.name)
 
 
-# All building types available for generation, with a weight. The normalized weight = frequency of each type
-all_types = dict()
-all_types[BuildingType('house')] = 10
-all_types[BuildingType('crop')] = 6
-all_types[BuildingType('windmill')] = 2
+# All building types available for generation
+house_type = BuildingType('house')
+crop_type = BuildingType('crop', CropGenerator)
+windmill_type = BuildingType('windmill')
+
+# dict to associate weights to types. The normalized weight = frequency of each type
+type_weights = {house_type: 10, crop_type: 6, windmill_type: 2}
 
 
 class BuildingPool:
     def __init__(self, exploitable_surface, type_weight=None):
         if type_weight is None:
-            type_weight = all_types
+            type_weight = type_weights
         self.settlement_size = 0  # type: int
         self.settlement_limit = 0  # type: int
         self.building_types = type_weight  # type: dict

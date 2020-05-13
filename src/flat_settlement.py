@@ -1,4 +1,4 @@
-from building_pool import BuildingPool
+from building_pool import BuildingPool, crop_type
 
 
 class FlatSettlement:
@@ -12,4 +12,7 @@ class FlatSettlement:
         self.building_pool = BuildingPool(surface)
 
     def generate(self, level):
-        pass
+        # todo: replace this
+        crop_town = crop_type.new_instance(self.limits)
+        crop_town.generate(level)
+
