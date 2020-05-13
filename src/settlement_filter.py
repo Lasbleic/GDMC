@@ -3,7 +3,7 @@ from flat_settlement import FlatSettlement
 
 displayName = "Create a settlement"
 
-# Dictionnary representing different options
+# Dictionary representing different options
 inputs = ()
 
 

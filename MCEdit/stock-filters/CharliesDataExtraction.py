@@ -1,39 +1,45 @@
+from __future__ import print_function
 from math import sqrt, tan, sin, cos, pi, ceil, floor, acos, atan, asin, degrees, radians, log, atan2, acos, asin
 from random import *
 from numpy import *
 from pymclevel import alphaMaterials, MCSchematic, MCLevel, BoundingBox
 from mcplatform import *
 from utilityFunctions import setBlock
+from time import time
 
 """
 Trying out a few things we can do with filters, displays some variables on the ground -> data visualisation
 """
 inputs = (
     ("Cellular Automata SG Example", "label"),
-    ("Paint mode", ("height", "steepness", "water type")),
+    ("function", ("height", "steepness", "water type", "builtin height", "surface survey")),
     ("Creator: Charlie", "label"),
 )
+
 
 def perform(level, box, options):
 
     box = flatten_box(box)
-
-    height_map = compute_height_map(level, box)
-    if options["Paint mode"] == "height":
+    print(type(level))  # pymclevel.infiniteworld.MCInfdevOldLevel
+    mode = options["function"]
+    height_map = compute_height_map(level, box, mode != "builtin height")
+    if mode in ["height", "builtin height"]:
         paint_height(height_map, level, box)
-    elif options["Paint mode"] == "water type":
-        print("executing paint mode")
+    elif mode == "water type":
         print("Clay", alphaMaterials.StainedClay)
         paint_water(level, box)
+    elif mode == "surface survey":
+        available_blocks_survey(level, box, height_map)
     else:
         steep_map = compute_steep_map(height_map, box)
         paint_steep(steep_map, height_map, level, box)
 
 
-def compute_height_map(level, box):
+def compute_height_map(level, box, from_sky=True):
     """
     Custom height map, quite slow
     """
+    t0 = time()
     xmin, xmax = box.minx, box.maxx
     zmin, zmax = box.minz, box.maxz
     ground_blocks = [alphaMaterials.Grass.ID, alphaMaterials.Gravel.ID, alphaMaterials.Dirt.ID,
@@ -42,14 +48,21 @@ def compute_height_map(level, box):
     lx, lz = xmax - xmin, zmax - zmin  # length & width
     h = zeros((lx, lz), dtype=int)  # numpy height map
 
-    for x in range(xmin, xmax):
-        for z in range(zmin, zmax):
-            y = 256
-            # for each coord in the box, goes down from height limit until it lands on a 'ground block'
-            while y >= 0 and level.blockAt(x, y, z) not in ground_blocks:
-                y -= 1
-            h[x - xmin, z - zmin] = y
+    if from_sky:
+        for x in range(xmin, xmax):
+            for z in range(zmin, zmax):
+                y = 256
+                # for each coord in the box, goes down from height limit until it lands on a 'ground block'
+                if from_sky:
+                    while y >= 0 and level.blockAt(x, y, z) not in ground_blocks:
+                        y -= 1
+                else:
+                    y = level.heightMapAt(x, z)
+                h[x - xmin, z - zmin] = y
+    else:
+        h = array([[level.heightMapAt(x, z) for z in range(zmin, zmax)] for x in range(xmin, xmax)])
 
+    print('Computed height map in {}s'.format(time() - t0))
     return h
 
 
@@ -174,5 +187,20 @@ def paint_water(level, box):
                 setBlock(level, (alphaMaterials.StainedClay.ID, 3), x, y, z)
 
 
+def available_blocks_survey(level, box, height_map):
+    t0 = time()
+    available_blocks = set()
+    for x in xrange(box.width):
+        for z in xrange(box.length):
+            surface_id = level.blockAt(x+box.minx, height_map[x, z], z+box.minz)
+            surface_data = level.blockDataAt(x+box.minx, height_map[x, z], z+box.minz)
+            # print(surface_id, surface_data, stringid)
+            available_blocks.add((surface_id, surface_data))
+            # break
+        # break
 
+    for bid, data in available_blocks:
+        blockstate = alphaMaterials.blockstate_api.idToBlockstate(bid, data)
+        print(blockstate)
 
+    print('surface survey completed in {}s'.format(time() - t0))

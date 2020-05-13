@@ -14,6 +14,7 @@ class BuildingType:
         return hash(self.name)
 
 
+# All building types available for generation, with a weight. The normalized weight = frequency of each type
 all_types = dict()
 all_types[BuildingType('house')] = 10
 all_types[BuildingType('crop')] = 6
@@ -30,8 +31,8 @@ class BuildingPool:
         self.__init_settlement_size(exploitable_surface)
 
     def __init_settlement_size(self, exploitable_surface):
-        average_parcel_surface = 100
-        min_dens, max_dens = 0.25, 0.75
+        average_parcel_surface = 100  # todo: calibrate this parameter
+        min_dens, max_dens = 0.25, 0.75  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
         self.settlement_limit = int((density * exploitable_surface) / average_parcel_surface)
         # self.settlement_limit = geometric(1 / average_parcel_count)  # yielded values too high
