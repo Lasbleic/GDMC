@@ -13,4 +13,5 @@ inputs = ()
 def perform(level, box, options):
     print("Hello World!")
     settlement = FlatSettlement(box)
+    settlement.init()
     settlement.generate(level)
