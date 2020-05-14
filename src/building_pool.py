@@ -29,12 +29,12 @@ class BuildingPool:
     def __init__(self, exploitable_surface, type_weight=None):
         if type_weight is None:
             type_weight = type_weights
-        self.settlement_size = 0  # type: int
+        self.building_count = 0  # type: int
         self.settlement_limit = 0  # type: int
-        self.building_types = type_weight  # type: dict
-        self.__init_settlement_size(exploitable_surface)
+        self.building_types = type_weight  # type: dict[BuildingType, int]
+        self.__init_building_count(exploitable_surface)
 
-    def __init_settlement_size(self, exploitable_surface):
+    def __init_building_count(self, exploitable_surface):
         average_parcel_surface = 100  # todo: calibrate this parameter
         min_dens, max_dens = 0.25, 0.75  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
@@ -51,8 +51,8 @@ class BuildingPool:
         -------
 
         """
-        if self.settlement_size < self.settlement_limit:
-            self.settlement_size += 1
+        if self.building_count < self.settlement_limit:
+            self.building_count += 1
             norm = sum([v for v in self.building_types.values()])
             prob = [v / norm for v in self.building_types.values()]
             btype = choice(self.building_types.keys(), p=prob)

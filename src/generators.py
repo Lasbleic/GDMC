@@ -3,7 +3,6 @@ from itertools import product
 from numpy.random import choice
 from numpy import ones
 
-from pymclevel import alphaMaterials
 from utilityFunctions import setBlock
 
 
@@ -33,9 +32,9 @@ class CropGenerator(Generator):
         x0, y0, z0 = self.box.origin
         # block states
         crop_ids = [141, 142, 59]
-        prob = ones(len(crop_ids))/len(crop_ids)
+        prob = ones(len(crop_ids))/len(crop_ids)  # uniform across the crops
 
-        water_sources = 1 + (w * l) / 81  # each water source irrigates a 9x9 flat zone
+        water_sources = (1 + (w-1)//9) * (1 + (l-1)//9)  # each water source irrigates a 9x9 flat zone
         for _ in xrange(water_sources):
             xs, zs = x0 + randint(0, w-1), z0 + randint(0, l-1)
             print(l, w)
