@@ -7,15 +7,15 @@ from sys import maxint
 
 class Point2D:
 
-    def __init__(self, x, y):
+    def __init__(self, x, z):
         self.x = x
-        self.y = y
+        self.z = z
 
     def __str__(self):
-        return "(x:" + str(self.x) + "; y:" + str(self.y) + ")"
+        return "(x:" + str(self.x) + "; z:" + str(self.z) + ")"
 
     def __eq__(self, other):
-        return other.x == self.x and other.y == self.y
+        return other.x == self.x and other.z == self.z
 
 
 class RoadNetwork:
@@ -26,16 +26,16 @@ class RoadNetwork:
         self.network = zeros((length, width), dtype=int)
 
     def set_road(self, point):
-        self.set_road(point.x, point.y)
+        self.set_road(point.x, point.z)
 
-    def set_road(self, x, y):
-        self.network[y][x] = 1
+    def set_road(self, x, z):
+        self.network[z][x] = 1
 
     def is_road(self, point):
-        return self.is_road(point.x, point.y)
+        return self.is_road(point.x, point.z)
 
-    def is_road(self, x, y):
-        return self.network[y][x] == 1
+    def is_road(self, x, z):
+        return self.network[z][x] == 1
 
     def create_road(self, path):
         for point in path:
@@ -54,59 +54,59 @@ class RoadNetwork:
     def dijkstra(self, root_point, ending_condition):
 
         def init():
-            x, y = root_point.x, root_point.y
+            x, z = root_point.x, root_point.z
             distance_map = full((self.length, self.width), maxint)
-            distance_map[y][x] = 0
+            distance_map[z][x] = 0
             neighbours = [root_point]
             predecessor_map = full((self.length, self.width), None)
             return distance_map, neighbours, predecessor_map
 
         def closest_neighbor():
-            neighbors_distance = map(lambda neighbor: distance_map[neighbor.y][neighbor.x], neighbors)
+            neighbors_distance = map(lambda neighbor: distance_map[neighbor.z][neighbor.x], neighbors)
             min_distance = min(neighbors_distance)
             return neighbors[neighbors_distance.index(min_distance)]
 
         def cost(src_point, dest_point):
-            if src_point.x == dest_point.x or src_point.y == dest_point.y:
+            if src_point.x == dest_point.x or src_point.z == dest_point.z:
                 return 1
             else:
                 return sqrt(2)
             return 1
 
         def update_distance(updated_point, neighbor, neighbors):
-            new_distance = distance_map[updated_point.y][updated_point.x] + cost(updated_point, neighbor)
-            previous_distance = distance_map[neighbor.y][neighbor.x]
+            new_distance = distance_map[updated_point.z][updated_point.x] + cost(updated_point, neighbor)
+            previous_distance = distance_map[neighbor.z][neighbor.x]
             if previous_distance >= maxint:
                 neighbors += [neighbor]
             if previous_distance > new_distance:
-                distance_map[neighbor.y][neighbor.x] = new_distance
-                predecessor_map[neighbor.y][neighbor.x] = updated_point
+                distance_map[neighbor.z][neighbor.x] = new_distance
+                predecessor_map[neighbor.z][neighbor.x] = updated_point
 
         def update_distances(updated_point, neighbors):
-            x, y = updated_point.x, updated_point.y
+            x, z = updated_point.x, updated_point.z
             if x + 1 < self.width:
-                update_distance(updated_point, Point2D(x + 1, y), neighbors)
-                if y + 1 < self.length:
-                    update_distance(updated_point, Point2D(x + 1, y + 1), neighbors)
-                if y - 1 >= 0:
-                    update_distance(updated_point, Point2D(x + 1, y - 1), neighbors)
+                update_distance(updated_point, Point2D(x + 1, z), neighbors)
+                if z + 1 < self.length:
+                    update_distance(updated_point, Point2D(x + 1, z + 1), neighbors)
+                if z - 1 >= 0:
+                    update_distance(updated_point, Point2D(x + 1, z - 1), neighbors)
             if x - 1 >= 0:
-                update_distance(updated_point, Point2D(x - 1, y), neighbors)
-                if y + 1 < self.length:
-                    update_distance(updated_point, Point2D(x - 1, y + 1), neighbors)
-                if y - 1 >= 0:
-                    update_distance(updated_point, Point2D(x - 1, y - 1), neighbors)
-            if y + 1 < self.length:
-                update_distance(updated_point, Point2D(x, y + 1), neighbors)
-            if y - 1 >= 0:
-                update_distance(updated_point, Point2D(x, y - 1), neighbors)
+                update_distance(updated_point, Point2D(x - 1, z), neighbors)
+                if z + 1 < self.length:
+                    update_distance(updated_point, Point2D(x - 1, z + 1), neighbors)
+                if z - 1 >= 0:
+                    update_distance(updated_point, Point2D(x - 1, z - 1), neighbors)
+            if z + 1 < self.length:
+                update_distance(updated_point, Point2D(x, z + 1), neighbors)
+            if z - 1 >= 0:
+                update_distance(updated_point, Point2D(x, z - 1), neighbors)
 
         def path_to_dest(dest_point):
             current_point = dest_point
             path = []
             while current_point != root_point:
                 path = [current_point] + path
-                current_point = predecessor_map[current_point.y][current_point.x]
+                current_point = predecessor_map[current_point.z][current_point.x]
             return [root_point] + path
 
         distance_map, neighbors, predecessor_map = init()
@@ -119,7 +119,7 @@ class RoadNetwork:
         if not ending_condition(clst_neighbor):
             return [], maxint
         else:
-            return path_to_dest(clst_neighbor), distance_map[clst_neighbor.y][clst_neighbor.x]
+            return path_to_dest(clst_neighbor), distance_map[clst_neighbor.z][clst_neighbor.x]
 
 
 if __name__ == "__main__":
