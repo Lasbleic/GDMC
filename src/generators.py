@@ -37,8 +37,6 @@ class CropGenerator(Generator):
         water_sources = (1 + (w-1)//9) * (1 + (l-1)//9)  # each water source irrigates a 9x9 flat zone
         for _ in xrange(water_sources):
             xs, zs = x0 + randint(0, w-1), z0 + randint(0, l-1)
-            print(l, w)
-            print("new water source @({}, {})".format(xs, zs))
             for xd, zd in product(xrange(max(x0, xs-4), min(x0+w, xs+5)),
                                   xrange(max(z0, zs-4), min(z0+l, zs+5))):
                 if (xd, zd) == (xs, zs):

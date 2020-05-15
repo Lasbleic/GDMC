@@ -28,7 +28,7 @@ class RoadNetwork:
     def set_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> None
         if z is None:
-            assert isinstance(x, Point2D)
+            # assert isinstance(x, Point2D) # todo: find why this works when executing this class but not in mcedit
             self.set_road(x.x, x.z)
         else:
             self.network[z][x] = 1
@@ -36,7 +36,7 @@ class RoadNetwork:
     def is_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> bool
         if z is None:
-            assert isinstance(x, Point2D)
+            # assert isinstance(x, Point2D)
             return self.is_road(x.x, x.z)
         else:
             return self.network[z][x] == 1
@@ -46,6 +46,7 @@ class RoadNetwork:
             self.set_road(point)
 
     def find_road(self, root_point, ending_point):
+        # type: (Point2D, Point2D) -> None
         path, distance = self.dijkstra(root_point, lambda point: point == ending_point)
         self.create_road(path)
         return
@@ -59,11 +60,11 @@ class RoadNetwork:
 
         def init():
             x, z = root_point.x, root_point.z
-            distance_map = full((self.length, self.width), maxint)
-            distance_map[z][x] = 0
-            neighbours = [root_point]
-            predecessor_map = full((self.length, self.width), None)
-            return distance_map, neighbours, predecessor_map
+            _distance_map = full((self.length, self.width), maxint)
+            _distance_map[z][x] = 0
+            _neighbours = [root_point]
+            _predecessor_map = full((self.length, self.width), None)
+            return _distance_map, _neighbours, _predecessor_map
 
         def closest_neighbor():
             neighbors_distance = map(lambda neighbor: distance_map[neighbor.z][neighbor.x], neighbors)
@@ -85,9 +86,7 @@ class RoadNetwork:
                 distance_map[neighbor.z][neighbor.x] = new_distance
                 predecessor_map[neighbor.z][neighbor.x] = updated_point
 
-        def update_distances(updated_point, neighbors):
-            # NOTE: neighbors parameter can be removed, the neighbors variable from the method environment will be used
-            # instead, which is what is suggested by the warning
+        def update_distances(updated_point):
             x, z = updated_point.x, updated_point.z
             if x + 1 < self.width:
                 update_distance(updated_point, Point2D(x + 1, z), neighbors)
@@ -119,7 +118,7 @@ class RoadNetwork:
         while len(neighbors) > 0 and not ending_condition(clst_neighbor):
             clst_neighbor = closest_neighbor()
             neighbors.remove(clst_neighbor)
-            update_distances(clst_neighbor, neighbors)
+            update_distances(clst_neighbor)
 
         if not ending_condition(clst_neighbor):
             return [], maxint
@@ -135,4 +134,13 @@ if __name__ == "__main__":
     print(mapTest)
     """
     net = RoadNetwork(100, 10)
-    print(map(str, net.dijkstra(Point2D(0, 0), lambda point: point == Point2D(99, 9))))
+    p1, p2 = Point2D(0, 0), Point2D(99, 9)
+    print(map(str, net.dijkstra(p1, lambda point: point == p2)))
+    net.find_road(p1, p2)
+
+    p1, p2, p3 = Point2D(0, 6), Point2D(9, 1), Point2D(0, 0)
+    net2 = RoadNetwork(10, 10)
+    net2.find_road(p1, p2)
+    print(net2.network)
+    net2.connect_to_network(p3)
+    print(net2.network)

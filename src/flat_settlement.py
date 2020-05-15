@@ -24,34 +24,37 @@ class FlatSettlement:
         # random draw to decide on what side the border will be. Favors larger sides
         if bernouilli(width / (width + length)):
             # border point along x border
-            x = self.limits.minx if bernouilli() else self.limits.maxx
-            z = self.limits.minz + randint(0, length)
+            x = 0 if bernouilli() else self.limits.width - 1
+            z = randint(0, length - 1)
         else:
             # border point along z border
-            x = self.limits.minx + randint(0, width)
-            z = self.limits.minz if bernouilli() else self.limits.maxz
+            x = randint(0, width - 1)
+            z = 0 if bernouilli() else self.limits.length - 1
         return Point2D(x, z)
 
     def __init_road_network(self):
         out_connections = [self.__random_border_point()]
+        print('First border point @{}'.format(str(out_connections[0])))
         road_count = geometric(.5)
-        min_distance_to_roads = min(self.limits.width, self.limits.length) * 1. / road_count  # todo: calibrate
+        print('New settlement will have {} roads B)'.format(road_count))
+
         for road_id in xrange(road_count):
+            min_distance_to_roads = min(self.limits.width, self.limits.length) * 1. / (road_id+1)  # todo: calibrate
+            print('Generating road #{}'.format(road_id+1))
             # generate new border point far enough from existing points
             while True:
                 new_road_point = self.__random_border_point()
                 distances = [euclidean(road_point, new_road_point) for road_point in out_connections]
-                print(str(new_road_point), distances, min_distance_to_roads)
                 if min(distances) > min_distance_to_roads:
                     out_connections.append(new_road_point)
+                    print('\tSettled on border point @{}'.format(str(new_road_point)))
                     break
 
             # update road network
-            if road_id == 1:
+            if road_id == 0:
                 self.road_network.find_road(out_connections[0], out_connections[1])
             else:
                 self.road_network.connect_to_network(out_connections[road_id])
-            print(self.road_network.network)
 
     def init(self):
         self.__init_road_network()
