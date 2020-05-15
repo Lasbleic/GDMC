@@ -25,17 +25,21 @@ class RoadNetwork:
         self.length = length
         self.network = zeros((length, width), dtype=int)
 
-    def set_road(self, point):
-        self.set_road(point.x, point.z)
+    def set_road(self, x, z=None):
+        # type: (Point2D or int, None or int) -> None
+        if z is None:
+            assert isinstance(x, Point2D)
+            self.set_road(x.x, x.z)
+        else:
+            self.network[z][x] = 1
 
-    def set_road(self, x, z):
-        self.network[z][x] = 1
-
-    def is_road(self, point):
-        return self.is_road(point.x, point.z)
-
-    def is_road(self, x, z):
-        return self.network[z][x] == 1
+    def is_road(self, x, z=None):
+        # type: (Point2D or int, None or int) -> bool
+        if z is None:
+            assert isinstance(x, Point2D)
+            return self.is_road(x.x, x.z)
+        else:
+            return self.network[z][x] == 1
 
     def create_road(self, path):
         for point in path:
@@ -71,18 +75,19 @@ class RoadNetwork:
                 return 1
             else:
                 return sqrt(2)
-            return 1
 
-        def update_distance(updated_point, neighbor, neighbors):
+        def update_distance(updated_point, neighbor, _neighbors):
             new_distance = distance_map[updated_point.z][updated_point.x] + cost(updated_point, neighbor)
             previous_distance = distance_map[neighbor.z][neighbor.x]
             if previous_distance >= maxint:
-                neighbors += [neighbor]
+                _neighbors += [neighbor]
             if previous_distance > new_distance:
                 distance_map[neighbor.z][neighbor.x] = new_distance
                 predecessor_map[neighbor.z][neighbor.x] = updated_point
 
         def update_distances(updated_point, neighbors):
+            # NOTE: neighbors parameter can be removed, the neighbors variable from the method environment will be used
+            # instead, which is what is suggested by the warning
             x, z = updated_point.x, updated_point.z
             if x + 1 < self.width:
                 update_distance(updated_point, Point2D(x + 1, z), neighbors)
@@ -131,4 +136,3 @@ if __name__ == "__main__":
     """
     net = RoadNetwork(100, 10)
     print(map(str, net.dijkstra(Point2D(0, 0), lambda point: point == Point2D(99, 9))))
-
