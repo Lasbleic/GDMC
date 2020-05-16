@@ -4,6 +4,23 @@ from numpy.random import choice
 from numpy import ones
 
 from utilityFunctions import setBlock
+from pymclevel.schematic import StructureNBT
+
+from utils import get_project_path
+
+
+def paste_NBT(level, box, nbt_file_name):
+    _structure = StructureNBT(get_project_path() + '/structures/' + nbt_file_name)
+    _width, _height, _length = _structure.Size
+
+    x0, y0, z0 = box.minx, box.miny, box.minz
+    # iterates over coordinates in the structure, copy to level
+    for xs, ys, zs in product(xrange(_width), xrange(_height), xrange(_length)):
+        xd, yd, zd = x0 + xs, y0 + ys, z0 + zs  # coordinates in the level: translation of the structure
+        block = _structure.Blocks[xs, ys, zs]  # (id, data) tuple
+        print(xs, ys, zs, block)
+        setBlock(level, block, xd, yd, zd)
+
 
 
 class Generator:
@@ -48,3 +65,9 @@ class CropGenerator(Generator):
                     age = randint(0, 7)
                     setBlock(level, (bid, age), xd, y0+1, zd)  # crop
 
+
+class HouseGenerator(Generator):
+    def generate(self, level, height_map=None):
+        if self.box.width >= 7 and self.box.length >= 9:
+            # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
+            paste_NBT(level, self.box, 'house_7x9.nbt')
