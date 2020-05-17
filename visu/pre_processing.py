@@ -10,7 +10,7 @@ Author:
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from os.path import isdir, join, exists
+from os.path import isdir, join, exists, abspath, dirname
 from os import mkdir
 from shutil import rmtree
 
@@ -67,6 +67,8 @@ class MapStock:
         assert (map_size in ACCEPTED_MAP_SIZES)
         self.name = name
         self.map_size = map_size
+        self.directory = join(dirname(abspath(__file__)), "stock",
+                              self.name + "_{}x{}".format(self.map_size, self.map_size))
         self.manage_directory(clean_dir)
 
     def manage_directory(self, clean_dir):
@@ -77,7 +79,6 @@ class MapStock:
                             it exists. That can occur when two MapStock with the same name are created or if a script is
                             launch several times. If None, ask the user during execution
         """
-        self.directory = join("stock", self.name + "_{}x{}".format(self.map_size, self.map_size))
 
         if isdir(self.directory):
 
@@ -93,7 +94,10 @@ class MapStock:
 
             if clean_dir:
                 rmtree(self.directory)
-                mkdir(self.directory)
+                try:
+                    mkdir(self.directory)
+                except:
+                    mkdir(self.directory)
 
         else:
             mkdir(self.directory)
@@ -122,12 +126,13 @@ class MapStock:
         plt.figure(figsize=(figsize, figsize))
 
         # Draw the grid
-        for x in range(N + 1):
+        for x in range(self.map_size + 1):
             plt.axhline(x, lw=lw, color='k', zorder=5)
             plt.axvline(x, lw=lw, color='k', zorder=5)
 
         # Draw the cells
-        plt.imshow(map.matrix, interpolation='none', cmap=map.color_map, extent=[0, N, 0, N], zorder=0)
+        plt.imshow(map.matrix, interpolation='none', cmap=map.color_map, extent=[0, self.map_size, 0, self.map_size],
+                   zorder=0)
 
         # Turn off the axis labels
         plt.axis('off')
@@ -176,12 +181,12 @@ if __name__ == '__main__':
     hm_mat[19, 27:] = 2
     hm_mat[20, 28:] = 1
 
-    hm_cmap = "jet"
+    hm_cmap = "jet"  # Use a predefined continuous coloration
 
     hm_map = Map("heatmap", 50, hm_mat, hm_cmap)
 
     # Create a MapStock and store the maps
-    the_stock = MapStock("example", 50, clean_dir=True)  # Use a predefined continuous coloration
+    the_stock = MapStock("example", 50, clean_dir=True)
     the_stock.add_map(lvl_map)
     the_stock.add_map(hm_map)
 
