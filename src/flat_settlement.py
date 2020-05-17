@@ -2,14 +2,14 @@ from __future__ import division
 from random import randint
 from numpy.random import geometric
 
-from building_pool import BuildingPool, crop_type
+from building_pool import BuildingPool, crop_type, house_type
 from road_network import RoadNetwork, Point2D
 from utils import bernouilli, euclidean
 
 
 class FlatSettlement:
     """
-    Intermediate project: generate a realist village on a flat terrain
+    Intermediate project: generate a realistic village on a flat terrain
     """
 
     def __init__(self, box):
@@ -35,7 +35,7 @@ class FlatSettlement:
     def __init_road_network(self):
         out_connections = [self.__random_border_point()]
         print('First border point @{}'.format(str(out_connections[0])))
-        road_count = geometric(.5)
+        road_count = geometric(.5)  # todo: make this probability dependant of the settlement surface ?
         print('New settlement will have {} roads B)'.format(road_count))
 
         for road_id in xrange(road_count):
@@ -61,6 +61,10 @@ class FlatSettlement:
 
     def generate(self, level):
         # todo: replace this
-        crop_town = crop_type.new_instance(self.limits)
-        crop_town.generate(level)
+        # crop_town = crop_type.new_instance(self.limits)
+        # crop_town.generate(level)
+
+        single_house_town = house_type.new_instance(self.limits)
+        single_house_town.generate(level)
+
 
