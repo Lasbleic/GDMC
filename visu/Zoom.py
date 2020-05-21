@@ -1,8 +1,6 @@
 """
 Class used to zoom in the visualization
 
-Author:
-    * Erwan Duvenay (erwan.duvernay@grenoble-inp.org)
 """
 
 from kivy.uix.scatterlayout import ScatterLayout

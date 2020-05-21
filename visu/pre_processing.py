@@ -3,10 +3,9 @@ Classes for generating and storing maps before using the visualization tool
 
 A script is provided to show an example of the use of the classes and for preparing data for visualization
 
-Author:
-    * Erwan Duvenay (erwan.duvernay@grenoble-inp.org)
 """
 
+from __future__ import division
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -16,12 +15,14 @@ from shutil import rmtree
 
 # Sizes accepted by the visualization tool
 # with the size of the figure which is saved in a .png and the width of the grid lines
-ACCEPTED_MAP_SIZES = {30: (12, 2.5),
-                      50: (50, 2.5),
-                      100: (50, 2.5),
-                      200: (53, 1.7),
-                      256: (68, 1.7),
-                      300: (80, 1.7)}
+ACCEPTED_MAP_SIZES = {30: 0.25,
+                      50: 0.25,
+                      100: 0.20,
+                      200: 0.15,
+                      256: 0.10,
+                      300: 0.07}
+
+
 
 # Word accepted in user input
 VALID_CHOICES = {"yes": 1, "ye": 1, "y": 1, "no": 0, "n": 0, "": 0}
@@ -32,7 +33,7 @@ class Map:
     A Map represents a matrix with colors
     """
 
-    def __init__(self, name, size, matrix, color_map):
+    def __init__(self, name, size, matrix, color_map, extreme_values, categories=None):
         """
         Create a Map with a specific size and coloration
 
@@ -47,6 +48,8 @@ class Map:
         self.size = size
         self.matrix = matrix
         self.color_map = color_map
+        self.extreme_values = extreme_values
+        self.categories = categories
 
 
 class MapStock:
@@ -120,10 +123,10 @@ class MapStock:
         """
 
         # Get predefined parameters
-        figsize, lw = ACCEPTED_MAP_SIZES[self.map_size]
+        lw = ACCEPTED_MAP_SIZES[self.map_size]
 
         # Create a figure
-        plt.figure(figsize=(figsize, figsize))
+        fig = plt.figure()
 
         # Draw the grid
         for x in range(self.map_size + 1):
@@ -131,18 +134,26 @@ class MapStock:
             plt.axvline(x, lw=lw, color='k', zorder=5)
 
         # Draw the cells
-        plt.imshow(map.matrix, interpolation='none', cmap=map.color_map, extent=[0, self.map_size, 0, self.map_size],
-                   zorder=0)
+        im = plt.imshow(map.matrix, interpolation='none', cmap=map.color_map, extent=[0, self.map_size, 0, self.map_size],
+                   zorder=0, vmin=map.extreme_values[0], vmax=map.extreme_values[1])
 
         # Turn off the axis labels
         plt.axis('off')
+
+        cbar = plt.colorbar()
+        if map.categories:
+            n = len(map.categories)
+            cbar.set_ticks([map.extreme_values[1]*i/(2*n) for i in range(1, n*2, 2)])
+            cbar.set_ticklabels(map.categories)
+
+
 
         # Save the figure
         file_path = join(self.directory, map.name + ".png")
         if exists(file_path):
             print("Replacing map...")
-        plt.savefig(file_path, facecolor='k')
-
+        dpi = fig.get_dpi()
+        plt.savefig(file_path, dpi=dpi*9)    # increase dpi factor to improve quality
 
 if __name__ == '__main__':
     N = 50

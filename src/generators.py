@@ -3,8 +3,8 @@ from itertools import product
 from numpy.random import choice
 from numpy import ones
 
-from utilityFunctions import setBlock
-from pymclevel.schematic import StructureNBT
+# from utilityFunctions import setBlock
+# from pymclevel.schematic import StructureNBT
 
 from utils import get_project_path
 

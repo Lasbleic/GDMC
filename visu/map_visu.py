@@ -2,29 +2,14 @@
 """
 The main app
 
-Author:
-    * Erwan Duvenay (erwan.duvernay@grenoble-inp.org)
 """
 
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
 import sys
 from os.path import join, isdir
 from os import listdir
-from random import randint
-from itertools import product
 from kivy.app import App
 from kivy.uix.button import Button
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
-from kivy.core.window import Window
-from kivy.uix.label import Label
-from kivy.graphics import Rectangle, Color
-from kivy.uix.scatterlayout import ScatterLayout
-from kivy.uix.floatlayout import FloatLayout
-from kivy.graphics.instructions import InstructionGroup
-from Zoom import Zoom
 from kivy.core.window import Window
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.stencilview import StencilView
