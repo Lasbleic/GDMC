@@ -15,8 +15,6 @@ from accessibility import accessibility, local_accessibility
 sys.path.insert(1, '../')
 from road_network import Point2D, RoadNetwork
 from building_pool import house_type, crop_type, windmill_type
-sys.path.insert(1, '../../visu')
-from pre_processing import Map, MapStock
 
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
@@ -93,6 +91,8 @@ def fast_random_interest(building_type, scenario, road_network, settlement_seeds
 
 
 if __name__ == '__main__':
+    sys.path.insert(1, '../../visu')
+    from pre_processing import Map, MapStock
 
     # Interest test
 
