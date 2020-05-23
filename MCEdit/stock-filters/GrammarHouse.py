@@ -43,10 +43,8 @@ class HouseSymbol(Symbol):
 
     def generate(self, level, box, palette):
         self.children.append(BaseSymbol())
-        self.children.append(StoreySymbol())
-        # self.children.append(RoofSymbol())
 
-        # make dimensions odd (!= even)
+        # make dimensions uneven
         new_width, new_length = box.width, box.length
         new_width -= 1 - (new_width % 2)
         new_length -= 1 - (new_length % 2)

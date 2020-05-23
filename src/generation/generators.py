@@ -4,9 +4,11 @@ from numpy.random import choice
 from numpy import ones
 
 from utilityFunctions import setBlock
+from pymclevel import BoundingBox, alphaMaterials
 from pymclevel.schematic import StructureNBT
+from pymclevel.block_fill import fillBlocks
 
-from utils import get_project_path
+from utils import get_project_path, bernouilli
 
 
 def paste_NBT(level, box, nbt_file_name):
@@ -22,10 +24,10 @@ def paste_NBT(level, box, nbt_file_name):
         setBlock(level, block, xd, yd, zd)
 
 
-
 class Generator:
     def __init__(self, box):
         self.box = box
+        self.children = []
 
     def generate(self, level, height_map=None):
         """
@@ -39,7 +41,8 @@ class Generator:
         -------
 
         """
-        pass
+        for sub_generator in self.children:
+            sub_generator.generate(level, height_map)
 
 
 class CropGenerator(Generator):

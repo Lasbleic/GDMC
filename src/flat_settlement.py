@@ -54,7 +54,7 @@ class FlatSettlement:
             if road_id == 0:
                 self.road_network.find_road(out_connections[0], out_connections[1])
             else:
-                self.road_network.connect_to_network(out_connections[road_id])
+                self.road_network.connect_to_network(out_connections[-1])
 
     def init(self):
         self.__init_road_network()
