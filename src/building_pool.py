@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 from numpy.random import random, choice
 
-from generators import CropGenerator, HouseGenerator
+from generation import CropGenerator, HouseGenerator, ProcHouseGenerator
 
 
 class BuildingType:
@@ -17,7 +17,7 @@ class BuildingType:
 
 
 # All building types available for generation
-house_type = BuildingType('house', HouseGenerator)
+house_type = BuildingType('house', ProcHouseGenerator)
 crop_type = BuildingType('crop', CropGenerator)
 windmill_type = BuildingType('windmill')
 
