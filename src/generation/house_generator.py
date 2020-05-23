@@ -43,7 +43,7 @@ class _RoomSymbol(Generator):
         if bernouilli(prob):
             self.children.append(_RoomSymbol(upper_box))
         else:
-            self.children.append(_RoofSymbol(upper_box))
+            self.children.append(_RoofSymbol(upper_box, roof_type='gable'))
         # build upper Symbol
         Generator.generate(self, level)
 
@@ -60,9 +60,47 @@ class _RoomSymbol(Generator):
 
 class _RoofSymbol(Generator):
 
+    def __init__(self, box, direction=None, roof_type='flat'):
+        Generator.__init__(self, box)
+        self._direction = direction
+        self._roof_type = roof_type
+
+        if self._direction is None:
+            # sets roof direction randomly, lower roofs are preferred
+            w, l = self.box.width, self.box.length
+            prob = (1. * w**2) / (w**2 + l**2)
+            self._direction = 'North' if bernouilli(prob) else 'East'
+
     def generate(self, level, height_map=None):
         box = self._get_box()
-        fillBlocks(level, box, alphaMaterials['Bricks'])
+        if self._roof_type == 'flat':
+            fillBlocks(level, box, alphaMaterials['Bricks'])
+        elif self._roof_type == 'gable':
+            stair_format = '{} Stairs (Bottom, {})'
+            if self._direction in ['West', 'East']:
+                for index in xrange(box.length / 2):
+                    north_box = BoundingBox((box.minx, box.miny+index, box.maxz-index-1), (box.width, 1, 1))
+                    fillBlocks(level, north_box, alphaMaterials[stair_format.format('Oak Wood', 'North')])
+                    south_box = BoundingBox((box.minx, box.miny+index, box.minz+index), (box.width, 1, 1))
+                    fillBlocks(level, south_box, alphaMaterials[stair_format.format('Oak Wood', 'South')])
+                # build roof ridge
+                if box.length % 2 == 1:
+                    index = box.length / 2
+                    ridge_box = BoundingBox((box.minx, box.miny+index, box.minz+index), (box.width, 1, 1))
+                    fillBlocks(level, ridge_box, alphaMaterials['Oak Wood Slab (Bottom)'])
+            elif self._direction in ['North', 'South']:
+                for index in xrange(box.width / 2):
+                    east_box = BoundingBox((box.minx+index, box.miny+index, box.minz), (1, 1, box.length))
+                    fillBlocks(level, east_box, alphaMaterials[stair_format.format('Oak Wood', 'East')])
+                    west_box = BoundingBox((box.maxx-index-1, box.miny+index, box.minz), (1, 1, box.length))
+                    fillBlocks(level, west_box, alphaMaterials[stair_format.format('Oak Wood', 'West')])
+                # build roof ridge
+                if box.width % 2 == 1:
+                    index = box.width / 2
+                    ridge_box = BoundingBox((box.minx+index, box.miny+index, box.minz), (1, 1, box.length))
+                    fillBlocks(level, ridge_box, alphaMaterials['Oak Wood Slab (Bottom)'])
+            else:
+                raise ValueError('Expected direction str, found {}'.format(self._direction))
 
     def _get_box(self):
         box = self.box
