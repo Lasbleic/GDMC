@@ -4,11 +4,9 @@ from numpy.random import choice
 from numpy import ones
 
 from utilityFunctions import setBlock
-from pymclevel import BoundingBox, alphaMaterials
 from pymclevel.schematic import StructureNBT
-from pymclevel.block_fill import fillBlocks
 
-from utils import get_project_path, bernouilli
+from utils import get_project_path
 
 
 def paste_NBT(level, box, nbt_file_name):
