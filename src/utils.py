@@ -7,7 +7,12 @@ from road_network import Point2D
 
 def bernouilli(p=.5):
     # type: (float) -> bool
-    return random() >= p
+    if p >= 1:
+        return True
+    elif p <= 0:
+        return False
+    else:
+        return random() >= p
 
 
 def euclidean(p1, p2):

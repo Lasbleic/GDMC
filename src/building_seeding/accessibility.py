@@ -13,8 +13,6 @@ import sys
 sys.path.insert(1, '../')
 from road_network import Point2D, RoadNetwork
 from building_pool import house_type, crop_type, windmill_type
-sys.path.insert(1, '../../visu')
-from pre_processing import Map, MapStock
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 
 
@@ -76,6 +74,8 @@ def accessibility(building_type, scenario, road_network, size):
 
 
 if __name__ == '__main__':
+    sys.path.insert(1, '../../visu')
+    from pre_processing import Map, MapStock
 
     # Accessibility test
 
