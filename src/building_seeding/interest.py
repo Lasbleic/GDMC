@@ -37,8 +37,12 @@ def interest(building_type, scenario, road_network, settlement_seeds, size):
     weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
     interest_map = np.zeros(size)
 
+    print("Compute accessibility map")
     accessibility_map = accessibility(building_type, scenario, road_network, size)
+    print("Accessibility map : Done ")
+    print("Compute sociability map")
     sociability_map = sociability(building_type, scenario, settlement_seeds, size)
+    print("Sociability map : Done ")
 
     for x, z, in product(range(size[0]), range(size[1])):
 
@@ -95,10 +99,11 @@ def fast_random_interest(building_type, scenario, road_network, settlement_seeds
 if __name__ == '__main__':
 
     # Interest test
+    print("Initialize test")
 
-    N = 50
+    N = 100
 
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(49, 23)
+    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(199, 23)
     road_net = RoadNetwork(N, N)
     road_net.find_road(p1, p2)
     road_net.find_road(p2, p3)
@@ -121,7 +126,9 @@ if __name__ == '__main__':
     lvl_cmap = matplotlib.colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow"])
     lvl_map = Map("level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
 
+    print("Compute interest map")
     interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
+    print("Interest map : Done")
     interest_cmap = "jet"
     interest_map = Map("interest_map", N, interest_net, interest_cmap, (0, 1))
 
@@ -150,29 +157,31 @@ if __name__ == '__main__':
 
     # Update test
 
-    house_3 = (house_type, (13, 12))
-    lvl_net[13, 12] = 2
-    set_seeds.append(house_3)
-
-    updated_lvl_map = Map("updated_level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
-
-    updated_interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
-    updated_interest_map = Map("updated_interest_map", N, updated_interest_net, interest_cmap, (0, 1))
-
-    the_stock.add_map(updated_lvl_map)
-    the_stock.add_map(updated_interest_map)
+    # house_3 = (house_type, (13, 12))
+    # lvl_net[13, 12] = 2
+    # set_seeds.append(house_3)
+    #
+    # updated_lvl_map = Map("updated_level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
+    #
+    # updated_interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
+    # updated_interest_map = Map("updated_interest_map", N, updated_interest_net, interest_cmap, (0, 1))
+    #
+    # the_stock.add_map(updated_lvl_map)
+    # the_stock.add_map(updated_interest_map)
 
     # Execution time test of decision function
 
     import time
 
+    print("Time test")
+
     start_time = time.time()
-    for i in range(1000):
+    for i in range(100):
         random_interest(interest_net)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     start_time = time.time()
-    for i in range(1000):
+    for i in range(100):
         interest_net = fast_random_interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
     print("--- %s seconds ---" % (time.time() - start_time))
 
