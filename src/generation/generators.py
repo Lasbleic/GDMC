@@ -4,6 +4,8 @@ from numpy.random import choice
 from numpy import ones
 
 from utilityFunctions import setBlock
+
+from generation.gen_utils import TransformBox
 from pymclevel.schematic import StructureNBT
 
 from utils import get_project_path
@@ -23,8 +25,10 @@ def paste_NBT(level, box, nbt_file_name):
 
 
 class Generator:
+    _box = None  # type: TransformBox
+
     def __init__(self, box):
-        self.box = box
+        self._box = box
         self.children = []
 
     def generate(self, level, height_map=None):
@@ -42,12 +46,24 @@ class Generator:
         for sub_generator in self.children:
             sub_generator.generate(level, height_map)
 
+    @property
+    def width(self):
+        return self._box.width
+
+    @property
+    def length(self):
+        return self._box.length
+
+    @property
+    def height(self):
+        return self._box.height
+
 
 class CropGenerator(Generator):
     def generate(self, level, height_map=None):
         # dimensions
-        w, l = self.box.width, self.box.length
-        x0, y0, z0 = self.box.origin
+        w, l = self._box.width, self._box.length
+        x0, y0, z0 = self._box.origin
         # block states
         crop_ids = [141, 142, 59]
         prob = ones(len(crop_ids))/len(crop_ids)  # uniform across the crops
@@ -69,6 +85,6 @@ class CropGenerator(Generator):
 
 class HouseGenerator(Generator):
     def generate(self, level, height_map=None):
-        if self.box.width >= 7 and self.box.length >= 9:
+        if self._box.width >= 7 and self._box.length >= 9:
             # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
-            paste_NBT(level, self.box, 'house_7x9.nbt')
+            paste_NBT(level, self._box, 'house_7x9.nbt')
