@@ -58,6 +58,14 @@ class Generator:
     def height(self):
         return self._box.height
 
+    @property
+    def origin(self):
+        return self._box.origin
+
+    @property
+    def size(self):
+        return self._box.size
+
     def translate(self, dx=0, dy=0, dz=0):
         self._box.translate(dx, dy, dz)
         for gen in self.children:
