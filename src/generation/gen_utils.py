@@ -22,6 +22,36 @@ class TransformBox(BoundingBox):
             b1 = TransformBox((self.origin + (0, 0, dz)), (self.size - (0, 0, dz)))
         return [b0, b1]
 
+    def expand(self, dx_or_dir, dy=None, dz=None, inplace=False):
+        if isinstance(dx_or_dir, Direction):
+            dir = dx_or_dir
+            dpos = (min(dir.x, 0), min(dir.y, 0), min(dir.z, 0))
+            dsize = (abs(dir.x), abs(dir.y), abs(dir.z))
+            expanded_box = TransformBox(self.origin + dpos, self.size + dsize)
+        else:
+            expanded_box = TransformBox(BoundingBox.expand(self, dx_or_dir, dy, dz))
+        return self.copy_from(expanded_box) if inplace else expanded_box
+
+    def enlarge(self, direction, reverse=False, inplace=False):
+        # type: (Direction, bool, bool) -> TransformBox
+        """
+        For example, TransformBox((0, 0, 0), (1, 1, 1)).expand(East) -> TransformBox((-1, 0, 0), (3, 1, 1))
+        """
+        copy_box = TransformBox(self.origin, self.size)
+        dx, dz = 1 - abs(direction.x), 1 - abs(direction.z)
+        if reverse:
+            dx, dz = -dx, -dz
+        copy_box = copy_box.expand(dx, 0, dz)
+        if inplace:
+            self.copy_from(copy_box)
+        else:
+            return copy_box
+
+    def copy_from(self, other):
+        self._origin = other.origin
+        self._size = other.size
+        return self
+
 
 class Direction:
     """
@@ -57,15 +87,33 @@ class Direction:
     def __neg__(self):
         return Direction(-self._dir_x, -self._dir_y, -self._dir_z)
 
+    @property
+    def x(self):
+        return self._dir_x
 
-Direction.East = Direction(1, 0, 0)
-Direction.West = Direction(-1, 0, 0)
-Direction.South = Direction(0, 0, 1)
-Direction.North = Direction(0, 0, -1)
-Direction.Top = Direction(0, 1, 0)
-Direction.Bottom = Direction(0, -1, 0)
+    @property
+    def y(self):
+        return self._dir_y
+
+    @property
+    def z(self):
+        return self._dir_z
+
+
+# Python enum ?
+East = Direction(1, 0, 0)
+West = Direction(-1, 0, 0)
+South = Direction(0, 0, 1)
+North = Direction(0, 0, -1)
+Top = Direction(0, 1, 0)
+Bottom = Direction(0, -1, 0)
+
+
+def cardinal_directions():
+    return iter([East, South, West, North])
+
 
 if __name__ == '__main__':
-    assert -Direction(-3, 0, 0) == Direction.East
-    assert -Direction.North == Direction(0, 0, 1)
-    assert str(-Direction(0, 1, 0)) == str(Direction.Bottom) == 'Bottom direction'
+    assert -Direction(-3, 0, 0) == East
+    assert -North == Direction(0, 0, 1)
+    assert str(-Direction(0, 1, 0)) == str(Bottom) == 'Bottom direction'

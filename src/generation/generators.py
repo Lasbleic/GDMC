@@ -5,7 +5,7 @@ from numpy import ones
 
 from utilityFunctions import setBlock
 
-from generation.gen_utils import TransformBox
+from generation.gen_utils import TransformBox, Direction, Bottom, Top, East, South, West, North
 from pymclevel.schematic import StructureNBT
 
 from utils import get_project_path
@@ -58,6 +58,11 @@ class Generator:
     def height(self):
         return self._box.height
 
+    def translate(self, dx=0, dy=0, dz=0):
+        self._box.translate(dx, dy, dz)
+        for gen in self.children:
+            gen.translate(dx, dy, dz)
+
 
 class CropGenerator(Generator):
     def generate(self, level, height_map=None):
@@ -88,3 +93,38 @@ class HouseGenerator(Generator):
         if self._box.width >= 7 and self._box.length >= 9:
             # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
             paste_NBT(level, self._box, 'house_7x9.nbt')
+
+
+class CardinalGenerator(Generator):
+    """
+    Generator linked to its direct neighbors in each direction (N, E, S, W, top, bottom)
+    """
+    def __init__(self, box):
+        Generator.__init__(self, box)
+        self._neighbors = dict()
+
+    def __getitem__(self, item):
+        if isinstance(item, Direction):
+            if item in self._neighbors:
+                return self._neighbors[item]
+            else:
+                return None
+
+    def __setitem__(self, direction, neighbour):
+        # type: (Direction, CardinalGenerator) -> None
+        """
+        Marks neighbouring relationship between two generators
+        """
+        if isinstance(direction, Direction) and isinstance(neighbour, CardinalGenerator):
+            self._neighbors[direction] = neighbour
+            # Upper floor neighbours are descendants of lower floors. If this method is called with rooms from the upper
+            # floors, then <neighbour> already has a parent: the room underneath -> no new parenting link
+            if neighbour[Bottom] is None:
+                self.children.insert(0, neighbour)
+            neighbour._neighbors[-direction] = self
+            if direction == Top:
+                for direction2 in [East, South, West, North]:
+                    if self[direction2] is not None and self[direction2][Top] is not None:
+                        neighbour[direction2] = self[direction2][Top]
+        else:
+            raise TypeError
