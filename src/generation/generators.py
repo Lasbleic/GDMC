@@ -1,3 +1,4 @@
+from math import floor
 from random import randint
 from itertools import product
 from numpy.random import choice
@@ -5,7 +6,8 @@ from numpy import ones
 
 from utilityFunctions import setBlock
 
-from generation.gen_utils import TransformBox, Direction, Bottom, Top, East, South, West, North
+from generation.gen_utils import *
+from pymclevel import alphaMaterials as Block
 from pymclevel.schematic import StructureNBT
 
 from utils import get_project_path
@@ -28,6 +30,7 @@ class Generator:
     _box = None  # type: TransformBox
 
     def __init__(self, box):
+        # type: (TransformBox) -> Generator
         self._box = box
         self.children = []
 
@@ -58,6 +61,18 @@ class Generator:
     def height(self):
         return self._box.height
 
+    @property
+    def origin(self):
+        return self._box.origin
+
+    @property
+    def size(self):
+        return self._box.size
+
+    @property
+    def surface(self):
+        return self._box.surface
+
     def translate(self, dx=0, dy=0, dz=0):
         self._box.translate(dx, dy, dz)
         for gen in self.children:
@@ -71,13 +86,13 @@ class CropGenerator(Generator):
         x0, y0, z0 = self._box.origin
         # block states
         crop_ids = [141, 142, 59]
-        prob = ones(len(crop_ids))/len(crop_ids)  # uniform across the crops
+        prob = ones(len(crop_ids)) / len(crop_ids)  # uniform across the crops
 
-        water_sources = (1 + (w-1)//9) * (1 + (l-1)//9)  # each water source irrigates a 9x9 flat zone
+        water_sources = (1 + (w - 1) // 9) * (1 + (l - 1) // 9)  # each water source irrigates a 9x9 flat zone
         for _ in xrange(water_sources):
-            xs, zs = x0 + randint(0, w-1), z0 + randint(0, l-1)
-            for xd, zd in product(xrange(max(x0, xs-4), min(x0+w, xs+5)),
-                                  xrange(max(z0, zs-4), min(z0+l, zs+5))):
+            xs, zs = x0 + randint(0, w - 1), z0 + randint(0, l - 1)
+            for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + w, xs + 5)),
+                                  xrange(max(z0, zs - 4), min(z0 + l, zs + 5))):
                 if (xd, zd) == (xs, zs):
                     # water source
                     setBlock(level, (9, 15), xd, y0, zd)
@@ -85,7 +100,7 @@ class CropGenerator(Generator):
                     setBlock(level, (60, 7), xd, y0, zd)  # farmland
                     bid = choice(crop_ids, p=prob)
                     age = randint(0, 7)
-                    setBlock(level, (bid, age), xd, y0+1, zd)  # crop
+                    setBlock(level, (bid, age), xd, y0 + 1, zd)  # crop
 
 
 class HouseGenerator(Generator):
@@ -99,16 +114,27 @@ class CardinalGenerator(Generator):
     """
     Generator linked to its direct neighbors in each direction (N, E, S, W, top, bottom)
     """
+
     def __init__(self, box):
         Generator.__init__(self, box)
         self._neighbors = dict()
 
     def __getitem__(self, item):
-        if isinstance(item, Direction):
-            if item in self._neighbors:
-                return self._neighbors[item]
-            else:
-                return None
+        """
+
+        Returns
+        -------
+        CardinalGenerator
+        """
+        if isinstance(item, Direction) and item in self._neighbors:
+            # find a sub generator by its direction
+            return self._neighbors[item]
+        elif isinstance(item, TransformBox):
+            # find a sub generator by its box
+            for sub_item in self.children:
+                if sub_item.origin == item.origin and item.size == sub_item.size:
+                    return sub_item
+        return None
 
     def __setitem__(self, direction, neighbour):
         # type: (Direction, CardinalGenerator) -> None
@@ -128,3 +154,35 @@ class CardinalGenerator(Generator):
                         neighbour[direction2] = self[direction2][Top]
         else:
             raise TypeError
+
+
+class DoorGenerator(Generator):
+    def __init__(self, box, direction, material='Oak'):
+        # type: (TransformBox, Direction, str) -> DoorGenerator
+        Generator.__init__(self, box)
+        assert 1 <= box.surface <= 2
+        self._direction = direction
+        self._material = material
+
+    def generate(self, level, height_map=None):
+        for x, y, z in self._box.positions:
+            setBlock(level, (self._resource(x, y, z)), x, y, z)
+
+    def _resource(self, x, y, z):
+        if y == self._box.miny:
+            block_name = '{} Door (Lower, Unopened, {})'.format(self._material, -self._direction)
+        elif y == self._box.miny + 1:
+            if self._box.surface == 1:
+                hinge = 'Left'
+            else:
+                mean_x = self._box.minx + 0.5 * self._box.width
+                mean_z = self._box.minz + 0.5 * self._box.length
+                norm_dir = self._direction.rotate()
+                left_x = int(floor(mean_x + 0.5 * norm_dir.x))  # floored because int(negative float) rounds up
+                left_z = int(floor(mean_z + 0.5 * norm_dir.z))
+                hinge = 'Left' if (x == left_x and z == left_z) else 'Right'
+            block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
+        else:
+            block_name = 'Oak Wood Planks'
+        block = Block[block_name]
+        return block.ID, block.blockData
