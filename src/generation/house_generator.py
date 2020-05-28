@@ -1,5 +1,5 @@
 from generation.generators import *
-from generation.gen_utils import *
+from generation.gen_utils import TransformBox, Direction, South, North, West, Top, Bottom, East, cardinal_directions
 from pymclevel import alphaMaterials as Block
 from pymclevel.block_fill import fillBlocks
 from utils import bernouilli
@@ -22,13 +22,8 @@ class ProcHouseGenerator(Generator):
         w1, l1 = randint(max(5, w0//2), w0 - 2), randint(max(5, l0/2), l0 - 2)
         self._layout_width = w1
         self._layout_length = l1
-        main_box = TransformBox(self._box.origin+(0, 1, 0), (w1, h0, l1))
-        main_room = _RoomSymbol(main_box)
-        main_room.set_door(True)
-        self.children.append(main_room)
-        main_room.children.append(
-            _BaseSymbol(TransformBox(main_box.origin-(0, 1, 0), (main_box.width, 1, main_box.length)))
-        )
+        main_box = TransformBox(self._box.origin, (w1, h0, l1))
+        self.children.append(_RoomSymbol(main_box))
 
     def _generate_annex(self):
         height = self.children[0].height - 2  # note: -2 makes annexes on average 2 blocks lower than the main build
@@ -43,16 +38,12 @@ class ProcHouseGenerator(Generator):
 
             if width:
                 if width > 0:
-                    annex_box = TransformBox(self.children[0].origin + (w1, 0, delta), (width, height, length))
+                    annex_box = TransformBox(self._box.origin + (w1, 0, delta), (width, height, length))
                 else:
-                    annex_box = TransformBox(self.children[0].origin + (0, 0, delta), (-width, height, length))
+                    annex_box = TransformBox(self._box.origin + (0, 0, delta), (-width, height, length))
                     self.children[0].translate(dx=-width)
                 direction = Direction(dx=width)
-                annex_room = _RoomSymbol(annex_box)
-                self.children[0][direction] = annex_room
-                annex_room.children.append(
-                    _BaseSymbol(TransformBox(annex_box.origin-(0, 1, 0), (annex_box.width, 1, annex_box.length)))
-                )
+                self.children[0][direction] = _RoomSymbol(annex_box)
                 self._layout_width += abs(width) - 1
 
         except ValueError:
@@ -69,16 +60,12 @@ class ProcHouseGenerator(Generator):
 
             if length:
                 if length > 0:
-                    annex_box = TransformBox(self.children[0].origin + (delta, 0, l1), (width, height, length))
+                    annex_box = TransformBox(self.children[0]._box.origin + (delta, 0, l1), (width, height, length))
                 else:
-                    annex_box = TransformBox(self.children[0].origin + (delta, 0, 0), (width, height, -length))
+                    annex_box = TransformBox(self.children[0]._box.origin + (delta, 0, 0), (width, height, -length))
                     self.children[0].translate(dz=-length)
                 direction = Direction(dz=length)
-                annex_room = _RoomSymbol(annex_box)
-                self.children[0][direction] = annex_room
-                annex_room.children.append(
-                    _BaseSymbol(TransformBox(annex_box.origin-(0, 1, 0), (annex_box.width, 1, annex_box.length)))
-                )
+                self.children[0][direction] = _RoomSymbol(annex_box)
                 self._layout_length += abs(length) - 1
 
         except ValueError:
@@ -93,13 +80,8 @@ class ProcHouseGenerator(Generator):
 
 class _RoomSymbol(CardinalGenerator):
 
-    def __init__(self, box):
-        CardinalGenerator.__init__(self, box)
-        self._has_door = False
-
     def generate(self, level, height_map=None):
-        if len(self.children) > 1:  # if there are annexes
-            self._pass_door()
+        print("Generating Room at", self._get_box().origin, self._get_box().size)
         self._generate_pillars(level)
         self._create_walls(level)
 
@@ -108,8 +90,6 @@ class _RoomSymbol(CardinalGenerator):
 
         if bernouilli(prob):
             upper_room = _RoomSymbol(upper_box)
-            floor_box = TransformBox(self._box.origin + (1, 3, 1), (self.width-2, 1, self.length-2))
-            fillBlocks(level, floor_box, Block['Spruce Wood Planks'])
         else:
             upper_room = _RoofSymbol(upper_box, roof_type='gable')
         self[Top] = upper_room
@@ -146,16 +126,11 @@ class _RoomSymbol(CardinalGenerator):
                     wider_box = wall_box.enlarge(direction)
                     fillBlocks(level, wider_box, Block['Oak Wood Planks'])
                     fillBlocks(level, wall_box, Block['Air'])
-                    fillBlocks(level, TransformBox(wall_box.origin-(0, 1, 0), (wall_box.width, 1, wall_box.length)), Block['Spruce Wood Planks'])
                     continue
 
             # some annexes are only one block wide or long, could generate negative dimensions
             if abs(wall_box.width) * abs(wall_box.length) >= 1:
-                wall = _WallSymbol(wall_box)
-                if self._has_door:
-                    self.set_door(False)
-                    wall.set_door(True)
-                wall.generate(level, height_map=None)
+                _WallSymbol(wall_box).generate(level, height_map=None)
 
     def get_wall_box(self, direction):
         # type: (Direction) -> TransformBox
@@ -170,13 +145,6 @@ class _RoomSymbol(CardinalGenerator):
             return TransformBox(b.origin + (b.width - 1, 0, 1), (1, b.height, b.length - 2))
         else:
             raise ValueError("Not implemented yet, or unexpected direction")
-
-    def set_door(self, has_door):
-        self._has_door = has_door
-
-    def _pass_door(self):
-        self.set_door(False)
-        choice(self.children[:-1]).set_door(True)
 
 
 class _RoofSymbol(CardinalGenerator):
@@ -237,10 +205,6 @@ class _RoofSymbol(CardinalGenerator):
 
 
 class _WallSymbol(Generator):
-    def __init__(self, box, has_door=False):
-        Generator.__init__(self, box)
-        self._has_door = has_door
-
     def generate(self, level, height_map=None):
         assert (self.width == 1 or self.length == 1)
         assert (self.width * self.length >= 1)
@@ -255,43 +219,25 @@ class _WallSymbol(Generator):
             # even wall: split in two
             if self.width == 2:
                 fillBlocks(level, self._box, Block['Oak Wood Planks'])
-                if self._has_door:
-                    build_door_in(level, self._box.expand(0, -1, 0).translate(dy=-1))
-                elif bernouilli(0.5):
+                if bernouilli(0.5):
                     fillBlocks(level, self._box.expand(0, -1, 0), Block['White Stained Glass Pane'])
             elif self.width == 4:
                 fillBlocks(level, self._box, Block['Oak Wood Planks'])
                 box_win = TransformBox(self._box.origin + (1, 0, 0), (2, self.height, 1))
-                self.children.append(_WallSymbol(box_win, has_door=self._has_door))
+                self.children.append(_WallSymbol(box_win))
             else:
                 for half_wall_box in self._box.split(dx=randint(3, self.width - 3)):
                     self.children.append(_WallSymbol(half_wall_box))
-                if self._has_door:
-                    choice(self.children).set_door(True)
         else:
             # uneven wall: derive in column | window | wall
             if self.width == 1:
                 fillBlocks(level, self._box, Block['Oak Wood Planks'])
-                if self._has_door:
-                    build_door_in(level, self._box)
-            elif self.width == 3:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
-                if self._has_door:
-                    build_door_in(level, self._box.expand(-1, 0, 0))
-                else:
-                    fillBlocks(level, self._box.expand(-1, -1, 0), Block['White Stained Glass Pane'])
             else:
                 box_col, box_wal = self._box.split(dx=2)
                 box_win = TransformBox((self._box.origin + (1, 1, 0)), (1, self.height - 2, 1))
                 fillBlocks(level, box_col, Block['Oak Wood Planks'])
+                fillBlocks(level, box_win, Block['White Stained Glass Pane'])
                 self.children.append(_WallSymbol(box_wal))
-                if self._has_door:
-                    if bernouilli(0.3):
-                        build_door_in(level, box_win.translate(dy=-1))
-                    else:
-                        self.children[-1].set_door(True)
-                else:
-                    fillBlocks(level, box_win, Block['White Stained Glass Pane'])
 
     def _generate_zwall(self, level, height_map):
         if self.length % 2 == 0:
@@ -299,48 +245,22 @@ class _WallSymbol(Generator):
             if self.length == 2:
                 block = Block['Oak Wood Planks']
                 fillBlocks(level, self._box, block)
-                if self._has_door:
-                    build_door_in(level, self._box.expand(0, -1, 0).translate(dy=-1))
-                elif bernouilli(0.5):
+                if bernouilli(0.5):
                     fillBlocks(level, self._box.expand(0, -1, 0), Block['White Stained Glass Pane'])
             elif self.length == 4:
                 fillBlocks(level, self._box, Block['Oak Wood Planks'])
                 box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
-                self.children.append(_WallSymbol(box_win, has_door=self._has_door))
+                self.children.append(_WallSymbol(box_win))
             else:
                 for half_wall_box in self._box.split(dz=randint(3, self.length - 3)):
                     self.children.append(_WallSymbol(half_wall_box))
-                if self._has_door:
-                    choice(self.children).set_door(True)
         else:
             # uneven wall: derive in column | window | wall
             if self.length == 1:
                 fillBlocks(level, self._box, Block['Oak Wood Planks'])
-                if self._has_door:
-                    build_door_in(level, self._box)
-            elif self.length == 3:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
-                if self._has_door:
-                    build_door_in(level, self._box.expand(0, 0, -1))
-                else:
-                    fillBlocks(level, self._box.expand(0, -1, -1), Block['White Stained Glass Pane'])
             else:
                 box_col, box_wal = self._box.split(dz=2)
                 box_win = TransformBox((self._box.origin + (0, 1, 1)), (1, self.height - 2, 1))
                 fillBlocks(level, box_col, Block['Oak Wood Planks'])
+                fillBlocks(level, box_win, Block['White Stained Glass Pane'])
                 self.children.append(_WallSymbol(box_wal))
-                if self._has_door:
-                    if bernouilli(0.3):
-                        build_door_in(level, box_win.translate(dy=-1))
-                    else:
-                        self.children[-1].set_door(True)
-                else:
-                    fillBlocks(level, box_win, Block['White Stained Glass Pane'])
-
-    def set_door(self, has_door):
-        self._has_door = has_door
-
-
-class _BaseSymbol(Generator):
-    def generate(self, level, height_map=None):
-        fillBlocks(level, self._box, Block['Cobblestone'])

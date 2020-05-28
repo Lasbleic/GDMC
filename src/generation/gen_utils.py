@@ -1,8 +1,4 @@
-from random import shuffle
-
-from pymclevel import BoundingBox, MCLevel
-from pymclevel import alphaMaterials as Blocks
-from utilityFunctions import setBlock
+from pymclevel import BoundingBox
 
 
 class TransformBox(BoundingBox):
@@ -12,7 +8,6 @@ class TransformBox(BoundingBox):
 
     def translate(self, dx=0, dy=0, dz=0):
         self._origin += (dx, dy, dz)
-        return self
 
     def split(self, dx=None, dy=None, dz=None):
         assert (dx is not None) ^ (dy is not None) ^ (dz is not None)
@@ -115,21 +110,7 @@ Bottom = Direction(0, -1, 0)
 
 
 def cardinal_directions():
-    direction_list = [East, South, West, North]
-    shuffle(direction_list)
-    return iter(direction_list)
-
-
-def build_door_in(level, box, material='Oak'):
-    # type: (MCLevel, TransformBox, str) -> None
-    for x, y, z in box.positions:
-        if y == box.miny:
-            block = Blocks['{} Door (Lower, Unopened, East)'.format(material)]
-            setBlock(level, (block.ID, block.blockData), x, y, z)
-        elif y == box.miny + 1:
-            corner = 'Left' if x+z == box.minx+box.minz else 'Right'
-            block = Blocks['{} Door (Upper, {} Hinge, Unpowered)'.format(material, corner)]
-            setBlock(level, (block.ID, block.blockData), x, y, z)
+    return iter([East, South, West, North])
 
 
 if __name__ == '__main__':
