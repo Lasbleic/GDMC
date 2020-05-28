@@ -1,5 +1,6 @@
 from generation.generators import *
-from pymclevel import MCLevel
+from pymclevel import MCLevel, MCSchematic
+from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
 from utils import bernouilli
 
@@ -245,7 +246,7 @@ class _WallSymbol(Generator):
     def generate(self, level, height_map=None):
         assert (self.width == 1 or self.length == 1)
         assert (self.width * self.length >= 1)
-        if self.width > 1:
+        if self.length == 1:
             self._generate_xwall(level, height_map)
         else:
             self._generate_zwall(level, height_map)
@@ -277,30 +278,49 @@ class _WallSymbol(Generator):
                 self.children.append(_WallSymbol(box_wal))
 
     def _generate_zwall(self, level, height_map):
-        if self.length % 2 == 0:
-            # even wall: split in two
-            if self.length == 2:
-                block = Block['Oak Wood Planks']
-                fillBlocks(level, self._box, block)
-                if bernouilli(0.5):
-                    fillBlocks(level, self._box.expand(0, -1, 0), Block['White Stained Glass Pane'])
-            elif self.length == 4:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
-                box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
-                self.children.append(_WallSymbol(box_win))
-            else:
-                for half_wall_box in self._box.split(dz=randint(3, self.length - 3)):
-                    self.children.append(_WallSymbol(half_wall_box))
-        else:
-            # uneven wall: derive in column | window | wall
-            if self.length == 1:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
-            else:
-                box_col, box_wal = self._box.split(dz=2)
-                box_win = TransformBox((self._box.origin + (0, 1, 1)), (1, self.height - 2, 1))
-                fillBlocks(level, box_col, Block['Oak Wood Planks'])
-                fillBlocks(level, box_win, Block['White Stained Glass Pane'])
-                self.children.append(_WallSymbol(box_wal))
+        """
+        Generates a flipped x_wall in a virtual level and pastes it to level.
+        Kept the version without flip underneath cause I'm too much of a coward to delete it lol
+        Parameters
+        ----------
+        level MCLevel level to generate in
+        height_map
+
+        Returns
+        -------
+        None
+        """
+        tmp_box = TransformBox((0, 0, 0), (self.length, self.height, self.width))  # flip wall box
+        wall_level = MCSchematic(tmp_box.size)  # prepare virtual level to generate rotated wall
+        _WallSymbol(tmp_box).generate(wall_level, height_map)  # generate rotated wall
+        wall_level.rotateLeft()  # flip generated wall
+        tmp_box = TransformBox(tmp_box.origin, self.size)  # flip generation box
+        copyBlocksFrom(level, wall_level, tmp_box, self.origin)  # retrieve wall to real level
+
+        # if self.length % 2 == 0:
+        #     # even wall: split in two
+        #     if self.length == 2:
+        #         block = Block['Oak Wood Planks']
+        #         fillBlocks(level, self._box, block)
+        #         if bernouilli(0.5):
+        #             fillBlocks(level, self._box.expand(0, -1, 0), Block['White Stained Glass Pane'])
+        #     elif self.length == 4:
+        #         fillBlocks(level, self._box, Block['Oak Wood Planks'])
+        #         box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
+        #         self.children.append(_WallSymbol(box_win))
+        #     else:
+        #         for half_wall_box in self._box.split(dz=randint(3, self.length - 3)):
+        #             self.children.append(_WallSymbol(half_wall_box))
+        # else:
+        #     # uneven wall: derive in column | window | wall
+        #     if self.length == 1:
+        #         fillBlocks(level, self._box, Block['Oak Wood Planks'])
+        #     else:
+        #         box_col, box_wal = self._box.split(dz=2)
+        #         box_win = TransformBox((self._box.origin + (0, 1, 1)), (1, self.height - 2, 1))
+        #         fillBlocks(level, box_col, Block['Oak Wood Planks'])
+        #         fillBlocks(level, box_win, Block['White Stained Glass Pane'])
+        #         self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level):
         if not self.children:
@@ -309,7 +329,7 @@ class _WallSymbol(Generator):
             elif self.width > 2:
                 DoorGenerator(self._box.expand(-((self.width-1)/2), 0, 0), door_dir).generate(level)
             else:
-                DoorGenerator(self._box.expand(0, 0, -(self.length-1)/2), door_dir).generate(level)
+                DoorGenerator(self._box.expand(0, 0, -((self.length-1)/2)), door_dir).generate(level)
         elif len(self.children) == 1:
             if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
                 self.children[0].generate_door(door_dir, door_x, door_z, level)
