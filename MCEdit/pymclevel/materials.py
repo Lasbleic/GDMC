@@ -8,6 +8,8 @@ import mclangres
 import json
 import os
 
+from os.path import isdir, join, exists, abspath, dirname
+
 NOTEX = (496, 496)
 
 log = getLogger(__name__)
@@ -66,7 +68,7 @@ class BlockstateAPI(object):
                 b.stringID = "air"
             self.block_map[b.ID] = "minecraft:" + b.stringID
         
-        with open(os.path.join("pymclevel", definition_file)) as def_file:
+        with open(os.path.join(dirname(abspath(__file__)), definition_file)) as def_file:
             self.blockstates = json.load(def_file)
             
         self.material_map[self._mats] = self

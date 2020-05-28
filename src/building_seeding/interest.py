@@ -12,7 +12,6 @@ import sys
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from sociability import sociability, local_sociability
 from accessibility import accessibility, local_accessibility
-sys.path.insert(1, '../')
 from road_network import Point2D, RoadNetwork
 from building_pool import house_type, crop_type, windmill_type
 
@@ -61,17 +60,18 @@ def max_interest(interest_map):
     return (argmax // N, argmax % N)
 
 
-def random_interest(interest_map):
+def random_interest(interest_map, max_iteration=10):
     N = opportunity = interest_map.shape[1]
     size = interest_map.size
     cells = [i for i in range(size)]
-    while cells:
+    while cells and max_iteration:
         random_cell = choice(cells)
         x, z = random_cell // N, random_cell % N
         interest_score = interest_map[x, z]
         if np.random.binomial(1, interest_score):
             return x, z
         cells.remove(random_cell)
+        max_iteration -= 1
     return max_interest(interest_map)
 
 
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     N = 100
 
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(199, 23)
+    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(99, 23)
     road_net = RoadNetwork(N, N)
     road_net.find_road(p1, p2)
     road_net.find_road(p2, p3)
@@ -176,12 +176,12 @@ if __name__ == '__main__':
     print("Time test")
 
     start_time = time.time()
-    for i in range(100):
-        random_interest(interest_net)
+    for i in range(1000):
+        random_interest(interest_net, 10)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     start_time = time.time()
-    for i in range(100):
+    for i in range(1000):
         interest_net = fast_random_interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
     print("--- %s seconds ---" % (time.time() - start_time))
 
