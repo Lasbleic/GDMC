@@ -20,6 +20,7 @@ class BuildingType:
 house_type = BuildingType('house', ProcHouseGenerator)
 crop_type = BuildingType('crop', CropGenerator)
 windmill_type = BuildingType('windmill')
+ghost_type = BuildingType('ghost')
 
 # dict to associate weights to types. The normalized weight = frequency of each type
 type_weights = {house_type: 10, crop_type: 6, windmill_type: 2}

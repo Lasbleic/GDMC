@@ -11,9 +11,7 @@ from itertools import product
 from math_function import attraction_repulsion
 from math import sqrt
 import sys
-sys.path.insert(1, '../')
 from building_pool import house_type, crop_type, windmill_type
-sys.path.insert(1, '../../visu')
 from pre_processing import Map, MapStock
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 

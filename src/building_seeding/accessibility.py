@@ -79,17 +79,22 @@ if __name__ == '__main__':
 
     # Accessibility test
 
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(49, 23)
-    road_net = RoadNetwork(50, 50)
+    N = 130
+    import time
+
+    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(129, 23)
+    road_net = RoadNetwork(N, N)
     road_net.find_road(p1, p2)
     road_net.find_road(p2, p3)
     road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
-    road_map = Map("road_network", 50, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
-
-    access_net = accessibility(house_type, "Flat_scenario", road_net, (50, 50))
+    road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
+    start_time = time.time()
+    print("Compute accessibility...")
+    access_net = accessibility(house_type, "Flat_scenario", road_net, (N, N))
+    print("--- %s seconds ---" % (time.time() - start_time))
     access_cmap = "jet"
-    access_map = Map("accessibility_map", 50, access_net, access_cmap, (-1, 1))
+    access_map = Map("accessibility_map", N, access_net, access_cmap, (-1, 1))
 
-    the_stock = MapStock("interest_test", 50, clean_dir=True)
+    the_stock = MapStock("interest_test", N, clean_dir=True)
     the_stock.add_map(road_map)
     the_stock.add_map(access_map)
