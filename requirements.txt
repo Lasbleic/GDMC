@@ -1,0 +1,8 @@
+numpy~=1.16.6
+matplotlib~=2.2.3
+pygame~=1.9.6
+zlib~=1.2.11
+cython~=0.29.19
+setuptools~=44.0.0
+ftputil~=3.4
+pillow~=6.2.2

@@ -1,3 +1,6 @@
+from random import shuffle
+from numpy import array, argmax
+
 from pymclevel import BoundingBox
 
 
@@ -8,6 +11,7 @@ class TransformBox(BoundingBox):
 
     def translate(self, dx=0, dy=0, dz=0):
         self._origin += (dx, dy, dz)
+        return self
 
     def split(self, dx=None, dy=None, dz=None):
         assert (dx is not None) ^ (dy is not None) ^ (dz is not None)
@@ -52,6 +56,10 @@ class TransformBox(BoundingBox):
         self._size = other.size
         return self
 
+    @property
+    def surface(self):
+        return self.width * self.length
+
 
 class Direction:
     """
@@ -62,7 +70,15 @@ class Direction:
         """
         Given a 3D vector, return the closer cardinal direction
         """
-        assert (dx != 0) ^ (dy != 0) ^ (dz != 0)  # assert only one coordinate is not null
+        assert not (dx == 0 and dy == 0 and dz == 0)  # assert that at least one coordinate is not null
+        # keep only one non null coordinate
+        kept_dir = argmax(abs(array([dx, dy, dz])))
+        if kept_dir == 0:
+            dy = dz = 0
+        elif kept_dir == 1:
+            dx = dz = 0
+        else:
+            dx = dy = 0
 
         # each direction is set to -1 or 1
         self._dir_x = int(dx / abs(dx)) if dx else 0  # 1, 0, or -1
@@ -79,7 +95,7 @@ class Direction:
         return False
 
     def __str__(self):
-        return '{} direction'.format(self._name)
+        return self._name
 
     def __hash__(self):
         return hash(str(self))
@@ -99,6 +115,15 @@ class Direction:
     def z(self):
         return self._dir_z
 
+    def rotate(self):
+        """
+        Rotates direction anti-normally, East.rotate() == South
+        Returns anti-normal rotation of self
+        -------
+
+        """
+        return Direction(dx=-self._dir_z, dz=self._dir_x)
+
 
 # Python enum ?
 East = Direction(1, 0, 0)
@@ -110,7 +135,9 @@ Bottom = Direction(0, -1, 0)
 
 
 def cardinal_directions():
-    return iter([East, South, West, North])
+    directions = [East, South, West, North]
+    shuffle(directions)
+    return iter(directions)
 
 
 if __name__ == '__main__':
