@@ -19,9 +19,9 @@ class Direction(Enum):
 class Parcel:
 
     def __init__(self, building_position, mc_map=None):
-        # type: (Point2D) -> Parcel
+        # type: (Point2D, Map) -> Parcel
         self.__center = building_position
-        shifted_x = max(0,building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
+        shifted_x = max(0, building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
         shifted_z = max(0, building_position.z - (MIN_PARCEL_SIZE - 1) / 2)
         self.origin = Point2D(shifted_x, shifted_z)
         self.width = MIN_PARCEL_SIZE
@@ -32,23 +32,23 @@ class Parcel:
         if self.origin.z > 0:
             self.origin.z -= 1
             self.height += 1
-        # TODO: update obstacle_map
+        self.__map.obstacle_map.map[self.origin.z, self.origin.x:self.origin.x + self.width] = False
 
     def __expand_bottom(self):
-        # TODO: if self.__origin.x < self.__map.height
-        self.height += 1
-        # TODO: update obstacle_map
+        if self.__origin.x < self.__map.height:
+            self.height += 1
+        self.__map.obstacle_map.map[self.origin.z + self.height - 1, self.origin.x:self.origin.x + self.width] = False
 
     def __expand_left(self):
         if self.origin.z > 0:
             self.origin.x -= 1
             self.width += 1
-        # TODO: update obstacle_map
+        self.__map.obstacle_map.map[self.origin.z:self.origin.z + self.height, self.origin.x] = False
 
     def __expand_right(self):
-        # TODO: if self.__origin.x < self.__map.width
-        self.width += 1
-        # TODO: update obstacle_map
+        if self.__origin.x < self.__map.width:
+            self.width += 1
+        self.__map.obstacle_map.map[self.origin.z:self.origin.z + self.height, self.origin.x + self.width - 1] = False
 
     def expand(self, direction):
         # type: (Direction) -> void

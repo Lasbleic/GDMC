@@ -4,16 +4,18 @@ from numpy import full
 from utils import Point2D
 from itertools import product
 from parcel import Parcel
+from maps import Maps
 
 
 class ObstacleMap:
 
-    def __init__(self, bounding_box):
-        # type: (BoundingBox) -> ObstacleMap
-        self.__width = bounding_box.size.x
-        self.__height = bounding_box.size.z
-        self.__map = full((self.__width, self.__height), True)
-        self.__init_map_with_environment(bounding_box)
+    def __init__(self, width, height, mc_map=None):
+        # type: (int, int, Map) -> ObstacleMap
+        self.__width = width
+        self.__height = height
+        self.map = full((self.__width, self.__height), True)
+        self.__all_maps = mc_map
+        self.__init_map_with_environment(mc_map.bounding_box)
 
     def __in_z_limits(self, z):
         return 0 <= z < self.__height
@@ -30,10 +32,10 @@ class ObstacleMap:
         return self.__is_accessible(point.x, point.z)
 
     def __is_accessible(self, x, z):
-        return self.__map[z][x]
+        return self.map[z][x]
 
     def __set_obstacle(self, x, z):
-        self.__map[z][x] = False
+        self.map[z][x] = False
 
     # size must be odd
     def add_parcel_to_obstacle_map(self, parcel):

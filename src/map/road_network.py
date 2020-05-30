@@ -8,11 +8,12 @@ from numpy import zeros, full, empty
 from sys import maxint
 from building_seeding import BUILDING_ENCYCLOPEDIA
 from utils import Point2D
+from maps import Maps
 
 
 class RoadNetwork:
 
-    def __init__(self, width, length):
+    def __init__(self, width, length, mc_map=None):
         self.width = width
         self.length = length
         self.network = zeros((length, width), dtype=int)
@@ -21,6 +22,7 @@ class RoadNetwork:
         self.path_map = empty((self.length, self.width), dtype=object)
         self.lambda_max = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["Accessibility"]["windmill"][2]
         # self.lambda_max = 0
+        self.__all_maps = mc_map
 
     def set_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> None
