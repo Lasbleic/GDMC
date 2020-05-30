@@ -5,7 +5,7 @@ from random import choice
 import time
 from numpy import zeros, full, empty
 from sys import maxint
-from building_encyclopedia import BUILDING_ENCYCLOPEDIA
+from building_seeding import BUILDING_ENCYCLOPEDIA
 
 
 class Point2D:
@@ -31,7 +31,7 @@ class RoadNetwork:
         self.distance_map = full((self.length, self.width), maxint)
         self.path_map = empty((self.length, self.width), dtype=object)
         self.lambda_max = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["Accessibility"]["windmill"][2]
-        self.lambda_max = 0
+        # self.lambda_max = 0
 
     def set_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> None
@@ -63,7 +63,7 @@ class RoadNetwork:
 
     def connect_to_network(self, point_to_connect):
         # type: (Point2D) -> None
-        if self.get_distance(point_to_connect) < maxint:
+        if self.is_accessible(point_to_connect):
             path = self.path_map[point_to_connect.z][point_to_connect.x]
         else:
             path, distance = self.dijkstra(point_to_connect, lambda point: self.is_road(point))
@@ -154,6 +154,9 @@ class RoadNetwork:
             return [], maxint
         else:
             return path_to_dest(clst_neighbor), distance_map[clst_neighbor.z][clst_neighbor.x]
+
+    def is_accessible(self, point):
+        return self.get_distance(point) < maxint
 
 
 if __name__ == "__main__":
