@@ -3,17 +3,20 @@ Village skeleton growth
 """
 
 from building_seeding import BuildingPool, ghost_type, interest, random_interest
+from pymclevel import BoundingBox
+from road_network import RoadNetwork, Point2D
 
 
 class VillageSkeleton:
 
     def __init__(self, scenario, size, road_network, ghost_position):
+        # type: (str, BoundingBox, RoadNetwork, Point2D) -> VillageSkeleton
         self.scenario = scenario
         self.size = size
         self.road_network = road_network
         ghost = (ghost_type, ghost_position)
         self.buildings = [ghost]
-        self.building_iterator = BuildingPool(size[0] * size[1])
+        self.building_iterator = BuildingPool(size.width * size.length)
 
     def grow(self):
         for building_type in self.building_iterator:
