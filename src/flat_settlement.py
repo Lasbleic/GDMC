@@ -3,12 +3,10 @@ from __future__ import division
 import logging
 from random import randint
 
-import numpy
 from numpy.random import geometric, normal
-from building_seeding import BuildingPool, house_type
-from generation.gen_utils import compute_height_map
+from building_seeding import house_type
 from pymclevel import BoundingBox
-from road_network import RoadNetwork, Point2D
+from map.road_network import RoadNetwork, Point2D
 from utils import bernouilli, euclidean
 from village_skeleton import VillageSkeleton
 

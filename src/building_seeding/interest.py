@@ -12,7 +12,7 @@ import sys
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from sociability import sociability, local_sociability
 from accessibility import accessibility, local_accessibility
-from road_network import Point2D, RoadNetwork
+from map.road_network import Point2D, RoadNetwork
 from building_seeding import house_type, windmill_type
 
 

@@ -2,6 +2,7 @@ from __future__ import division, print_function
 
 from utils import Point2D
 from enum import Enum
+from map.maps import Maps
 
 MIN_PARCEL_SIZE = 7
 MAX_PARCEL_AREA = 100

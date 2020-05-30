@@ -4,7 +4,7 @@ Village skeleton growth
 
 from building_seeding import BuildingPool, ghost_type, interest, random_interest
 from pymclevel import BoundingBox
-from road_network import RoadNetwork
+from map.road_network import RoadNetwork
 from utils import Point2D
 
 

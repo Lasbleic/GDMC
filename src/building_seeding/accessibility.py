@@ -10,7 +10,7 @@ import numpy as np
 from itertools import product
 from math_function import balance
 
-from road_network import Point2D, RoadNetwork
+from map.road_network import Point2D, RoadNetwork
 from building_seeding import house_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 

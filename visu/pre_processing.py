@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from os.path import isdir, join, exists, abspath, dirname
 from os import mkdir
 from shutil import rmtree
-from road_network import Point2D, RoadNetwork
+from map.road_network import Point2D, RoadNetwork
 from building_pool import house_type
 from accessibility import accessibility
 
