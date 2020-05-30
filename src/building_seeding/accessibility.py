@@ -9,11 +9,13 @@ import matplotlib
 import numpy as np
 from itertools import product
 from math_function import balance
+
+from road_network import Point2D, RoadNetwork
+from building_seeding import house_type
+from building_encyclopedia import BUILDING_ENCYCLOPEDIA
+
 import sys
 sys.path.insert(1, '../')
-from road_network import Point2D, RoadNetwork
-from building_pool import house_type, crop_type, windmill_type
-from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 
 
 def distance_to_road(x, z, road_network):
@@ -61,11 +63,9 @@ def local_accessibility(x, z, building_type, scenario, road_network):
 
 
 def accessibility(building_type, scenario, road_network, size):
-
     accessibility_map = np.zeros(size)
 
     for x, z, in product(range(size[0]), range(size[1])):
-
         # point_to_connect = Point2D(x, z)
         # path, distance = road_network.dijkstra(point_to_connect, lambda point: road_network.is_road(point))
         accessibility_map[x, z] = local_accessibility(x, z, building_type, scenario, road_network)

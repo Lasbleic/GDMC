@@ -13,7 +13,7 @@ from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from sociability import sociability, local_sociability
 from accessibility import accessibility, local_accessibility
 from road_network import Point2D, RoadNetwork
-from building_pool import house_type, crop_type, windmill_type
+from building_seeding import house_type, windmill_type
 
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):

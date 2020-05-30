@@ -2,8 +2,8 @@
 Village skeleton growth
 """
 
-from building_pool import BuildingPool, house_type, crop_type, windmill_type, ghost_type
-from building_seeding.interest import interest, random_interest
+from building_seeding import BuildingPool, ghost_type, interest, random_interest
+
 
 class VillageSkeleton:
 
@@ -16,9 +16,7 @@ class VillageSkeleton:
         self.building_iterator = BuildingPool(size[0] * size[1])
 
     def grow(self):
-
         for building_type in self.building_iterator:
-
             # Village Element Seeding Process
 
             interest_map = interest(building_type, self.scenario, self.road_network, self.buildings, self.size)
@@ -29,6 +27,3 @@ class VillageSkeleton:
             # Road Creation Process
 
             # self.road_network.update(self.buildings, new_building)
-        
-
-
