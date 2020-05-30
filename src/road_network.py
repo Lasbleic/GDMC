@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import division, print_function
 
 from math import sqrt
@@ -160,6 +161,7 @@ class RoadNetwork:
 
 
 if __name__ == "__main__":
+
     """
     mapTest = zeros((5, 8), dtype=int)
     print(mapTest)
@@ -172,9 +174,10 @@ if __name__ == "__main__":
     print(map(str, net.dijkstra(p1, lambda point: point == p2)))
     net.find_road(p1, p2)"""
 
+    N = 10
     start = time.time()
     p1, p2, p3 = Point2D(0, 6), Point2D(9, 1), Point2D(0, 0)
-    net2 = RoadNetwork(10, 10)
+    net2 = RoadNetwork(N, N)
     net2.find_road(p1, p2)
     print("============ {ROAD FROM (0,6) to (9, 1)}===============")
     print(net2.network)
@@ -186,3 +189,35 @@ if __name__ == "__main__":
 
     end = time.time()
     print(end - start)
+
+
+
+
+    # Save vizus in visu/stock folder
+
+    # Import vizu classes
+    # -> "from pre_processing import Map, MapStock" is sufficient if folder visu is a Source Root
+    import sys
+    sys.path.insert(1, '../../visu')
+    import matplotlib
+    from pre_processing import Map, MapStock
+    import numpy as np
+
+    net2 = RoadNetwork(N, N)
+    net2.find_road(p1, p2)
+    print("============ {ROAD FROM (0,6) to (9, 1)}===============")
+    print(net2.network)
+
+    road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
+    road_map = Map("road_network", N, np.copy(net2.network), road_cmap, (0, 1), ['Grass', 'Road'])
+
+    net2.connect_to_network(p3)
+    print("============ {ROAD FROM (0,0) to Network}===============")
+    print(net2.network)
+
+    road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
+    road_map2 = Map("road_network_2", N, np.copy(net2.network), road_cmap, (0, 1), ['Grass', 'Road'])
+
+    the_stock = MapStock("road_network_test", N, clean_dir=True)
+    the_stock.add_map(road_map)
+    the_stock.add_map(road_map2)

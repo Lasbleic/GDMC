@@ -6,23 +6,32 @@ A script is provided to show an example of the use of the classes and for prepar
 """
 
 from __future__ import division
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from os.path import isdir, join, exists, abspath, dirname
 from os import mkdir
 from shutil import rmtree
+from road_network import Point2D, RoadNetwork
+from building_pool import house_type
+from accessibility import accessibility
 
 # Sizes accepted by the visualization tool
 # with the size of the figure which is saved in a .png and the width of the grid lines
-ACCEPTED_MAP_SIZES = {30: 0.25,
+ACCEPTED_MAP_SIZES = {10: 0.70,
+                      30: 0.25,
                       50: 0.25,
                       100: 0.20,
                       200: 0.15,
                       256: 0.10,
                       300: 0.07}
 
-
+def grid_thickness(map_size):
+    map_size_ref_list = list(ACCEPTED_MAP_SIZES.keys())
+    map_size_ref_list.sort()
+    for map_size_ref in map_size_ref_list:
+        if map_size <= map_size_ref:
+            return ACCEPTED_MAP_SIZES[map_size_ref]
+    return ACCEPTED_MAP_SIZES[300]
 
 # Word accepted in user input
 VALID_CHOICES = {"yes": 1, "ye": 1, "y": 1, "no": 0, "n": 0, "": 0}
@@ -67,7 +76,6 @@ class MapStock:
                             it exists. That can occur when two MapStock with the same name are created or if a script is
                             launch several times. If None, ask the user during execution
         """
-        assert (map_size in ACCEPTED_MAP_SIZES)
         self.name = name
         self.map_size = map_size
         self.directory = join(dirname(abspath(__file__)), "stock",
@@ -123,7 +131,7 @@ class MapStock:
         """
 
         # Get predefined parameters
-        lw = ACCEPTED_MAP_SIZES[self.map_size]
+        lw = grid_thickness(self.map_size)
 
         # Create a figure
         fig = plt.figure()
@@ -156,49 +164,30 @@ class MapStock:
         plt.savefig(file_path, dpi=dpi*9)    # increase dpi factor to improve quality
 
 if __name__ == '__main__':
+
+    # Accessibility example
+
     N = 50
 
-    # A Minecraft map with a path
-    lvl_mat = np.zeros((N, N))
+    p1, p2, p3 = Point2D(0, 38), Point2D(27, 17), Point2D(49, 13)
 
-    lvl_mat[22:24, :24] = 1
-    lvl_mat[16:24, 24:26] = 1
-    lvl_mat[16:18, 24:] = 1
+    # Minecraft Map thanks to a RoadNetwork
 
-    lvl_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])  # Use a list of color
+    road_net = RoadNetwork(N, N)
+    road_net.find_road(p1, p2)
+    road_net.find_road(p2, p3)
+    road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
 
-    lvl_map = Map("level", 50, lvl_mat, lvl_cmap)
+    road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
 
-    # A handmade heatmap representing the accessibility
-    hm_mat = np.zeros((N, N))
-    hm_mat[19, :21] = 1
-    hm_mat[20, :22] = 2
-    hm_mat[21, :23] = 1
-    hm_mat[24, :26] = 1
-    hm_mat[25, :27] = 2
-    hm_mat[26, :28] = 1
+    # Accessibility Map
 
-    hm_mat[13:20, 21] = 1
-    hm_mat[14:21, 22] = 2
-    hm_mat[15:22, 23] = 1
-    hm_mat[18:25, 26] = 1
-    hm_mat[19:26, 27] = 2
-    hm_mat[20:27, 28] = 1
+    access_net = accessibility(house_type, "Flat_scenario", road_net, (N, N))
+    access_cmap = "jet"
+    access_map = Map("accessibility_map", N, access_net, access_cmap, (-1, 1))
 
-    hm_mat[13, 21:] = 1
-    hm_mat[14, 22:] = 2
-    hm_mat[15, 23:] = 1
-    hm_mat[18, 26:] = 1
-    hm_mat[19, 27:] = 2
-    hm_mat[20, 28:] = 1
-
-    hm_cmap = "jet"  # Use a predefined continuous coloration
-
-    hm_map = Map("heatmap", 50, hm_mat, hm_cmap)
-
-    # Create a MapStock and store the maps
-    the_stock = MapStock("example", 50, clean_dir=True)
-    the_stock.add_map(lvl_map)
-    the_stock.add_map(hm_map)
+    the_stock = MapStock("interest_test", N, clean_dir=True)
+    the_stock.add_map(road_map)
+    the_stock.add_map(access_map)
 
     # You can know see them into the stock/example_50x50 directory or through the visualization tool
