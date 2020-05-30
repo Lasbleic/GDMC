@@ -2,7 +2,18 @@ from math import sqrt
 from random import random
 from os.path import realpath
 
-from road_network import Point2D
+
+class Point2D:
+
+    def __init__(self, x, z):
+        self.x = x
+        self.z = z
+
+    def __str__(self):
+        return "(x:" + str(self.x) + "; z:" + str(self.z) + ")"
+
+    def __eq__(self, other):
+        return other.x == self.x and other.z == self.z
 
 
 def bernouilli(p=.5):

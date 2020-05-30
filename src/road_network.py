@@ -7,19 +7,7 @@ import time
 from numpy import zeros, full, empty
 from sys import maxint
 from building_seeding import BUILDING_ENCYCLOPEDIA
-
-
-class Point2D:
-
-    def __init__(self, x, z):
-        self.x = x
-        self.z = z
-
-    def __str__(self):
-        return "(x:" + str(self.x) + "; z:" + str(self.z) + ")"
-
-    def __eq__(self, other):
-        return other.x == self.x and other.z == self.z
+from utils import Point2D
 
 
 class RoadNetwork:
@@ -104,7 +92,7 @@ class RoadNetwork:
         def update_distance(updated_point, neighbor, _neighbors):
             new_distance = distance_map[updated_point.z][updated_point.x] + cost(updated_point, neighbor)
             previous_distance = distance_map[neighbor.z][neighbor.x]
-            if previous_distance >= maxint and new_distance <= max_distance:
+            if previous_distance >= maxint and new_distance <= max_distance and not self.is_road(neighbor):
                 _neighbors += [neighbor]
             if previous_distance > new_distance:
                 distance_map[neighbor.z][neighbor.x] = new_distance
