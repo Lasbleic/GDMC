@@ -114,8 +114,8 @@ class FlatSettlement:
 
             for parcel in expendable_parcels:
                 # direction computation
-                road_dir_x = parcel.entry_x - (parcel.minx + parcel.width // 2)
-                road_dir_z = parcel.entry_z - (parcel.minz + parcel.length // 2)
+                road_dir_x = parcel.entry_x - parcel.mean_x
+                road_dir_z = parcel.entry_z - parcel.mean_z
                 road_dir = Direction(road_dir_x, 0, road_dir_z)
                 lateral_dir = road_dir.rotate() if bernouilli(0.5) else -road_dir.rotate()
 
