@@ -1,19 +1,18 @@
 # coding=utf-8
 from __future__ import division, print_function
 
-from math import sqrt
 from random import choice
 import time
 from numpy import zeros, full, empty
 from sys import maxint
 from building_seeding import BUILDING_ENCYCLOPEDIA
 from utils import Point2D
-from maps import Maps
 
 
 class RoadNetwork:
 
     def __init__(self, width, length, mc_map=None):
+        # type: (int, int, Maps) -> RoadNetwork
         self.width = width
         self.length = length
         self.network = zeros((length, width), dtype=int)
@@ -186,23 +185,23 @@ if __name__ == "__main__":
     # -> "from pre_processing import Map, MapStock" is sufficient if folder visu is a Source Root
     import sys
     sys.path.insert(1, '../../visu')
-    import matplotlib
     from pre_processing import Map, MapStock
     import numpy as np
+    from matplotlib import colors
 
     net2 = RoadNetwork(N, N)
     net2.find_road(p1, p2)
     print("============ {ROAD FROM (0,6) to (9, 1)}===============")
     print(net2.network)
 
-    road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
+    road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
     road_map = Map("road_network", N, np.copy(net2.network), road_cmap, (0, 1), ['Grass', 'Road'])
 
     net2.connect_to_network(p3)
     print("============ {ROAD FROM (0,0) to Network}===============")
     print(net2.network)
 
-    road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
+    road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
     road_map2 = Map("road_network_2", N, np.copy(net2.network), road_cmap, (0, 1), ['Grass', 'Road'])
 
     the_stock = MapStock("road_network_test", N, clean_dir=True)

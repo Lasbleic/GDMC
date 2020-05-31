@@ -52,6 +52,7 @@ if __name__ == '__main__':
             y_range = np.append(y_range, y)
 
         plt.plot(x_range, y_range)
-        plt.title(function.__name__ + "\nlambda_0 : {} ; lambda_min : {} ; lambda_max : {}".format(lbd_0, lbd_min, lbda_max))
+        title = "\nlambda_0 : {} ; lambda_min : {} ; lambda_max : {}".format(lbd_0, lbd_min, lbda_max)
+        plt.title(function.__name__ + title)
 
         plt.show()

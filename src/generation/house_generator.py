@@ -1,3 +1,4 @@
+from generation.gen_utils import North, South, West, East
 from generation.generators import *
 from pymclevel import MCLevel, MCSchematic
 from pymclevel.block_copy import copyBlocksFrom
@@ -195,13 +196,13 @@ class _RoofSymbol(CardinalGenerator):
 
         if self._direction is None:
             # sets roof direction randomly, lower roofs are preferred
-            w, l = self._box.width, self._box.length
-            if w < 5:
+            width, length = self._box.width, self._box.length
+            if width < 5:
                 self._direction = East
-            elif l < 5:
+            elif length < 5:
                 self._direction = South
             else:
-                prob = (1. * w ** 2) / (w ** 2 + l ** 2)
+                prob = (1. * width ** 2) / (width ** 2 + length ** 2)
                 self._direction = South if (bernouilli(prob)) else East
 
     def generate(self, level, height_map=None):
@@ -247,12 +248,12 @@ class _WallSymbol(Generator):
         assert (self.width == 1 or self.length == 1)
         assert (self.width * self.length >= 1)
         if self.length == 1:
-            self._generate_xwall(level, height_map)
+            self._generate_xwall(level)
         else:
             self._generate_zwall(level, height_map)
         Generator.generate(self, level, height_map)
 
-    def _generate_xwall(self, level, height_map):
+    def _generate_xwall(self, level):
         if self.width % 2 == 0:
             # even wall: split in two
             if self.width == 2:

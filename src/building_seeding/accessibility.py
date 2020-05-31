@@ -5,13 +5,11 @@ Function used to compute accessibility
 
 from __future__ import division
 
-import matplotlib
-import numpy as np
 from itertools import product
 from math_function import balance
 
-from utils import Point2D
-from map.road_network import *
+from matplotlib import colors
+from map import RoadNetwork
 from building_seeding import house_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 
@@ -49,8 +47,7 @@ if __name__ == '__main__':
     road_net.find_road(p1, p2)
     road_net.find_road(p2, p3)
 
-
-    road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
+    road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
     road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
     start_time = time.time()
     print("Compute accessibility...")

@@ -5,7 +5,7 @@ Function used to compute sociability
 
 from __future__ import division
 
-import matplotlib
+from matplotlib import colors
 import numpy as np
 from itertools import product
 from math_function import attraction_repulsion
@@ -17,7 +17,8 @@ from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 
 def local_sociability(x, z, building_type, scenario, settlement_seeds):
 
-    sociability = 0
+    _sociability = 0
+    social_score = -1
 
     for settlement_seed in settlement_seeds:
 
@@ -29,15 +30,15 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds):
         social_score = attraction_repulsion(distance_to_building, lambda_min, lambda_0, lambda_max)
 
         if social_score == -1:
-            sociability = -1
+            _sociability = -1
             break
 
-        sociability += social_score
+        _sociability += social_score
 
     if social_score != -1:
-        sociability /= len(settlement_seeds)
+        _sociability /= len(settlement_seeds)
 
-    return sociability
+    return _sociability
 
 
 def sociability(building_type, scenario, settlement_seeds, size):
@@ -72,7 +73,7 @@ if __name__ == '__main__':
     building_net[37, 18] = 2
     set_seeds.append(mill_1)
 
-    building_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'darkorange', "yellow"])
+    building_cmap = colors.ListedColormap(['forestgreen', 'darkorange', "yellow"])
     building_map = Map("building_map", N, building_net, building_cmap, (0, 2), ['Grass', 'House', "Windmill"])
 
     social_net = sociability(house_type, "Flat_scenario", set_seeds, (N, N))

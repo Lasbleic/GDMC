@@ -4,17 +4,13 @@ Function used to compute interests
 """
 
 from __future__ import division
-import matplotlib
-import numpy as np
+
 from itertools import product
-from random import choice
-import sys
-from building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from sociability import sociability, local_sociability
+
 from accessibility import accessibility, local_accessibility
-from utils import Point2D
-from map.road_network import *
 from building_seeding import house_type, windmill_type
+from map.road_network import *
+from sociability import sociability, local_sociability
 
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
@@ -33,7 +29,7 @@ def local_interest(x, z, building_type, scenario, road_network, settlement_seeds
 
 def interest(building_type, scenario, road_network, settlement_seeds, size):
     weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
-    interest_map = np.zeros(size)
+    _interest_map = np.zeros(size)
 
     print("Compute accessibility map")
     accessibility_map = accessibility(building_type, scenario, road_network, size)
@@ -50,41 +46,42 @@ def interest(building_type, scenario, road_network, settlement_seeds, size):
             interest_score = max(0, weighting_factors[0] * accessibility_map[x][z] + weighting_factors[1] *
                                  sociability_map[x][z])
 
-        interest_map[x][z] = interest_score
+        _interest_map[x][z] = interest_score
 
-    return interest_map
-
-
-def max_interest(interest_map):
-    N = interest_map.shape[1]
-    argmax = np.argmax(interest_map)
-    return (argmax // N, argmax % N)
+    return _interest_map
 
 
-def random_interest(interest_map, max_iteration=10):
-    N = opportunity = interest_map.shape[1]
-    size = interest_map.size
-    cells = [i for i in range(size)]
+def max_interest(_interest_map):
+    width = _interest_map.shape[1]
+    argmax = np.argmax(_interest_map)
+    return argmax // width, argmax % width
+
+
+def random_interest(_interest_map, max_iteration=10):
+    width = _interest_map.shape[1]
+    # opportunity = width
+    size = _interest_map.size
+    cells = list(range(size))
     while cells and max_iteration:
         random_cell = choice(cells)
-        x, z = random_cell // N, random_cell % N
-        interest_score = interest_map[x, z]
+        x, z = random_cell // width, random_cell % width
+        interest_score = _interest_map[x, z]
         if np.random.binomial(1, interest_score):
             return x, z
         cells.remove(random_cell)
         max_iteration -= 1
-    return max_interest(interest_map)
+    return max_interest(_interest_map)
 
 
 def fast_random_interest(building_type, scenario, road_network, settlement_seeds, sizes):
-    N = sizes[1]
+    width = sizes[1]
     size = sizes[0] * sizes[1]
-    cells = [i for i in range(size)]
+    cells = list(range(size))
     max_local_interest = 0
     argmax_coord = (0, 0)
     while cells:
         random_cell = choice(cells)
-        x, z = random_cell // N, random_cell % N
+        x, z = random_cell // width, random_cell % width
         local_interest_score = local_interest(x, z, building_type, scenario, road_network, settlement_seeds)
         if np.random.binomial(1, local_interest_score):
             return x, z
@@ -124,7 +121,7 @@ if __name__ == '__main__':
     lvl_net[37, 18] = 3
     set_seeds.append(mill_1)
 
-    lvl_cmap = matplotlib.colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow"])
+    lvl_cmap = colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow"])
     lvl_map = Map("level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
 
     print("Compute interest map")
@@ -144,7 +141,8 @@ if __name__ == '__main__':
     # print(max_coord)
     # max_lvl_net[max_coord[0], max_coord[1]] = 4
     # max_lvl_cmap = matplotlib.colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow",  "red"])
-    # max_lvl_map = Map("choice (max)", N, max_lvl_net, max_lvl_cmap, (0, 4), ["Grass", "Road", "House", "Windmill", "max choice"])
+    # max_lvl_map = Map("choice (max)", N, max_lvl_net, max_lvl_cmap, (0, 4),
+    #                   ["Grass", "Road", "House", "Windmill", "max choice"])
     # the_stock.add_map(max_lvl_map)
 
     # for i in range(3):

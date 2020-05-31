@@ -13,8 +13,7 @@ from os import mkdir
 from shutil import rmtree
 from map.road_network import *
 from utils import Point2D
-from building_pool import house_type
-from accessibility import accessibility
+from building_seeding import house_type, accessibility
 
 # Sizes accepted by the visualization tool
 # with the size of the figure which is saved in a .png and the width of the grid lines

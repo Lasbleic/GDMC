@@ -6,14 +6,14 @@ from numpy import ones
 
 from utilityFunctions import setBlock
 
-from generation.gen_utils import *
+from gen_utils import TransformBox, Direction, cardinal_directions, Bottom, Top
 from pymclevel import alphaMaterials as Block
 from pymclevel.schematic import StructureNBT
 
 from utils import get_project_path
 
 
-def paste_NBT(level, box, nbt_file_name):
+def paste_nbt(level, box, nbt_file_name):
     _structure = StructureNBT(get_project_path() + '/structures/' + nbt_file_name)
     _width, _height, _length = _structure.Size
 
@@ -82,17 +82,17 @@ class Generator:
 class CropGenerator(Generator):
     def generate(self, level, height_map=None):
         # dimensions
-        w, l = self._box.width, self._box.length
+        width, length = self._box.width, self._box.length
         x0, y0, z0 = self._box.origin
         # block states
         crop_ids = [141, 142, 59]
         prob = ones(len(crop_ids)) / len(crop_ids)  # uniform across the crops
 
-        water_sources = (1 + (w - 1) // 9) * (1 + (l - 1) // 9)  # each water source irrigates a 9x9 flat zone
+        water_sources = (1 + (width - 1) // 9) * (1 + (length - 1) // 9)  # each water source irrigates a 9x9 flat zone
         for _ in xrange(water_sources):
-            xs, zs = x0 + randint(0, w - 1), z0 + randint(0, l - 1)
-            for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + w, xs + 5)),
-                                  xrange(max(z0, zs - 4), min(z0 + l, zs + 5))):
+            xs, zs = x0 + randint(0, width - 1), z0 + randint(0, length - 1)
+            for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + width, xs + 5)),
+                                  xrange(max(z0, zs - 4), min(z0 + length, zs + 5))):
                 if (xd, zd) == (xs, zs):
                     # water source
                     setBlock(level, (9, 15), xd, y0, zd)
@@ -107,7 +107,7 @@ class HouseGenerator(Generator):
     def generate(self, level, height_map=None):
         if self._box.width >= 7 and self._box.length >= 9:
             # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
-            paste_NBT(level, self._box, 'house_7x9.nbt')
+            paste_nbt(level, self._box, 'house_7x9.nbt')
 
 
 class CardinalGenerator(Generator):
@@ -120,12 +120,7 @@ class CardinalGenerator(Generator):
         self._neighbors = dict()
 
     def __getitem__(self, item):
-        """
-
-        Returns
-        -------
-        CardinalGenerator
-        """
+        # type: (object) -> CardinalGenerator
         if isinstance(item, Direction) and item in self._neighbors:
             # find a sub generator by its direction
             return self._neighbors[item]
@@ -149,7 +144,7 @@ class CardinalGenerator(Generator):
                 self.children.insert(0, neighbour)
             neighbour._neighbors[-direction] = self
             if direction == Top:
-                for direction2 in [East, South, West, North]:
+                for direction2 in cardinal_directions():
                     if self[direction2] is not None and self[direction2][Top] is not None:
                         neighbour[direction2] = self[direction2][Top]
         else:

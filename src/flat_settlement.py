@@ -7,9 +7,8 @@ from typing import List
 from numpy.random import geometric, normal
 from building_seeding import house_type
 from generation.parcel import Parcel
-from generation import Direction
-from map import ObstacleMap
-from pymclevel import BoundingBox
+from generation import Direction, TransformBox
+from map.maps import Maps
 from map.road_network import RoadNetwork, Point2D
 from utils import bernouilli, euclidean
 from village_skeleton import VillageSkeleton
@@ -22,11 +21,13 @@ class FlatSettlement:
     """
     Intermediate project: generate a realistic village on a flat terrain
     """
-
-    def __init__(self, box):
-        # type: (BoundingBox) -> FlatSettlement
-        self.limits = box
-        self._road_network = None  # type: RoadNetwork
+    def __init__(self, maps):
+        # type: (Maps) -> FlatSettlement
+        self._maps = maps  # type: Maps
+        self.__origin = maps.box.origin
+        self.limits = TransformBox(maps.box)  # type: TransformBox
+        self.limits.translate(dx=-self.__origin.x, dz=-self.__origin.z)  # use coordinates relative to BuildingBox
+        self._road_network = maps.road_network  # type: RoadNetwork
         self._center = None  # type: Point2D
         self._village_skeleton = None  # type: VillageSkeleton
         self._parcels = []  # type: List[Parcel]
@@ -48,9 +49,9 @@ class FlatSettlement:
     def init_road_network(self):
         self._road_network = RoadNetwork(self.limits.width, self.limits.length)
         out_connections = [self.__random_border_point()]
-        max_road_count = min(self.limits.width, self.limits.length) // mean_road_covered_surface
+        max_road_count = max(1, min(self.limits.width, self.limits.length) // mean_road_covered_surface)
         logging.debug('Max road count: {}'.format(max_road_count))
-        road_count = min(geometric(min(1, 1./max_road_count)), max_road_count*3//2)
+        road_count = min(geometric(1./max_road_count), max_road_count*3//2)
         logging.debug('New settlement will have {} roads B)'.format(road_count))
         logging.debug('First border point @{}'.format(str(out_connections[0])))
 
@@ -80,11 +81,11 @@ class FlatSettlement:
         while True:
             mean_x = (self.limits.minx + self.limits.maxx) / 2
             dx = normal(mean_x, self.limits.width / 6)
-            dx = int(min(self.limits.maxx, max(self.limits.minx, dx)))
+            dx = int(min(self.limits.maxx-1, max(self.limits.minx, dx)))
 
             mean_z = (self.limits.minz + self.limits.maxz) / 2
             dz = normal(mean_z, self.limits.width / 6)
-            dz = int(min(self.limits.maxz, max(self.limits.minz, dz)))
+            dz = int(min(self.limits.maxz-1, max(self.limits.minz, dz)))
 
             random_center = Point2D(dx, dz)
             distance = self._road_network.get_distance(random_center)
@@ -94,26 +95,19 @@ class FlatSettlement:
                 break
 
     def build_skeleton(self):
-        self._village_skeleton = VillageSkeleton('Flat scenario', self.limits, self._road_network, self.town_center)
+        size = self._road_network.network.shape
+        self._village_skeleton = VillageSkeleton('Flat_scenario', size, self._road_network, self.town_center)
         self._village_skeleton.grow(self._parcels)
 
-    def define_parcels(self, obstacle_map):
-        # type: (ObstacleMap) -> None
+    def define_parcels(self):
         """
-        Parcel extension from initialized parcels
-        Parameters
-        ----------
-        parcels initially min size parcels. Supposed to have an entry point
-        obstacle_map denotes road points and parcel points, ie points where parcels can't extend
-
-        Returns
-        -------
-        None parcels are expended in place
+        Parcel extension from initialized parcels. Parcels are expended in place
         """
         def expendable_filter(_parcel):
             _parcel.is_expendable(obstacle_map)
 
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
+        obstacle_map = self._road_network
 
         while expendable_parcels:
             # extend expendables parcels while there still are some
@@ -123,10 +117,9 @@ class FlatSettlement:
                 road_dir_x = parcel.entry_x - (parcel.minx + parcel.width // 2)
                 road_dir_z = parcel.entry_z - (parcel.minz + parcel.length // 2)
                 road_dir = Direction(road_dir_x, 0, road_dir_z)
-                lateral_dirs = [road_dir.rotate(), -road_dir.rotate()]
-                shuffle(lateral_dirs)
+                lateral_dir = road_dir.rotate() if bernouilli(0.5) else -road_dir.rotate()
 
-                priority_directions = [road_dir, lateral_dirs[0], lateral_dirs[1], -road_dir]
+                priority_directions = [road_dir, lateral_dir, -lateral_dir, -road_dir]
                 for direction in priority_directions:
                     if parcel.is_expendable(obstacle_map, direction):
                         parcel.expand(direction)
@@ -134,7 +127,11 @@ class FlatSettlement:
 
             filter(expendable_filter, expendable_parcels)
 
+        # translate all parcels to absolute coordinates
+        map(lambda _parcel: _parcel.translate_to_absolute_coords(self.__origin), self._parcels)
+
     def generate(self, level):
+        height_map = self._maps.height_map
         # todo: replace this
         # crop_town = crop_type.new_instance(self.limits)
         # crop_town.generate(level)

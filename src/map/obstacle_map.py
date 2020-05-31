@@ -3,19 +3,18 @@ from pymclevel import BoundingBox
 from numpy import full
 from utils import Point2D
 from itertools import product
-from parcel import Parcel
-from maps import *
+from generation import Parcel
 
 
 class ObstacleMap:
 
     def __init__(self, width, height, mc_map=None):
-        # type: (int, int, Map) -> ObstacleMap
+        # type: (int, int, Maps) -> ObstacleMap
         self.__width = width
         self.__height = height
         self.map = full((self.__width, self.__height), True)
         self.__all_maps = mc_map
-        self.__init_map_with_environment(mc_map.bounding_box)
+        self.__init_map_with_environment(mc_map.box)
 
     def __in_z_limits(self, z):
         return 0 <= z < self.__height

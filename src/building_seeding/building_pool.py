@@ -1,7 +1,8 @@
 from __future__ import division, print_function
 from numpy.random import random, choice
+from typing import Dict
 
-from generation import CropGenerator, HouseGenerator, ProcHouseGenerator
+from generation import CropGenerator, ProcHouseGenerator
 
 
 class BuildingType:
@@ -32,7 +33,7 @@ class BuildingPool:
             type_weight = type_weights
         self.building_count = 0  # type: int
         self.settlement_limit = 0  # type: int
-        self.building_types = type_weight  # type: dict[BuildingType, int]
+        self.building_types = type_weight  # type: Dict[BuildingType, int]
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
