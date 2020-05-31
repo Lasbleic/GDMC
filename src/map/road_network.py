@@ -180,9 +180,6 @@ if __name__ == "__main__":
     end = time.time()
     print(end - start)
 
-
-
-
     # Save vizus in visu/stock folder
 
     # Import vizu classes

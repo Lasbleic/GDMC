@@ -1,10 +1,14 @@
 from __future__ import division
 
 import logging
-from random import randint
+from random import randint, shuffle
+from typing import List
 
 from numpy.random import geometric, normal
 from building_seeding import house_type
+from generation.parcel import Parcel
+from generation import Direction
+from map import ObstacleMap
 from pymclevel import BoundingBox
 from map.road_network import RoadNetwork, Point2D
 from utils import bernouilli, euclidean
@@ -25,6 +29,7 @@ class FlatSettlement:
         self._road_network = None  # type: RoadNetwork
         self._center = None  # type: Point2D
         self._village_skeleton = None  # type: VillageSkeleton
+        self._parcels = []  # type: List[Parcel]
 
     def __random_border_point(self):
         # type: () -> Point2D
@@ -90,10 +95,44 @@ class FlatSettlement:
 
     def build_skeleton(self):
         self._village_skeleton = VillageSkeleton('Flat scenario', self.limits, self._road_network, self.town_center)
-        self._village_skeleton.grow()
+        self._village_skeleton.grow(self._parcels)
 
-    def define_parcels(self):
-        pass
+    def define_parcels(self, obstacle_map):
+        # type: (ObstacleMap) -> None
+        """
+        Parcel extension from initialized parcels
+        Parameters
+        ----------
+        parcels initially min size parcels. Supposed to have an entry point
+        obstacle_map denotes road points and parcel points, ie points where parcels can't extend
+
+        Returns
+        -------
+        None parcels are expended in place
+        """
+        def expendable_filter(_parcel):
+            _parcel.is_expendable(obstacle_map)
+
+        expendable_parcels = self._parcels[:]  # type: List[Parcel]
+
+        while expendable_parcels:
+            # extend expendables parcels while there still are some
+
+            for parcel in expendable_parcels:
+                # direction computation
+                road_dir_x = parcel.entry_x - (parcel.minx + parcel.width // 2)
+                road_dir_z = parcel.entry_z - (parcel.minz + parcel.length // 2)
+                road_dir = Direction(road_dir_x, 0, road_dir_z)
+                lateral_dirs = [road_dir.rotate(), -road_dir.rotate()]
+                shuffle(lateral_dirs)
+
+                priority_directions = [road_dir, lateral_dirs[0], lateral_dirs[1], -road_dir]
+                for direction in priority_directions:
+                    if parcel.is_expendable(obstacle_map, direction):
+                        parcel.expand(direction)
+                        break
+
+            filter(expendable_filter, expendable_parcels)
 
     def generate(self, level):
         # todo: replace this

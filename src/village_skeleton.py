@@ -19,7 +19,7 @@ class VillageSkeleton:
         self.buildings = [ghost]
         self.building_iterator = BuildingPool(size.width * size.length)
 
-    def grow(self):
+    def grow(self, parcels_list):
         for building_type in self.building_iterator:
             # Village Element Seeding Process
 
@@ -29,5 +29,5 @@ class VillageSkeleton:
             self.buildings.append(new_building)
 
             # Road Creation Process
-
+            # todo: add Parcel to parcels_list (belonging to flat_settlement)
             # self.road_network.update(self.buildings, new_building)

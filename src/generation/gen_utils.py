@@ -1,5 +1,6 @@
 from random import shuffle
 from time import time
+from typing import Iterable
 
 from numpy import array, argmax, zeros
 
@@ -128,16 +129,17 @@ class Direction:
 
 
 # Python enum ?
-East = Direction(1, 0, 0)
-West = Direction(-1, 0, 0)
-South = Direction(0, 0, 1)
-North = Direction(0, 0, -1)
-Top = Direction(0, 1, 0)
-Bottom = Direction(0, -1, 0)
+Direction.East = Direction(1, 0, 0)
+Direction.West = Direction(-1, 0, 0)
+Direction.South = Direction(0, 0, 1)
+Direction.North = Direction(0, 0, -1)
+Direction.Top = Direction(0, 1, 0)
+Direction.Bottom = Direction(0, -1, 0)
 
 
 def cardinal_directions():
-    directions = [East, South, West, North]
+    # type: () -> Iterable[Direction]
+    directions = [Direction.East, Direction.South, Direction.West, Direction.North]
     shuffle(directions)
     return iter(directions)
 
@@ -174,6 +176,6 @@ def compute_height_map(level, box, from_sky=True):
 
 
 if __name__ == '__main__':
-    assert -Direction(-3, 0, 0) == East
-    assert -North == Direction(0, 0, 1)
-    assert str(-Direction(0, 1, 0)) == str(Bottom) == 'Bottom direction'
+    assert -Direction(-3, 0, 0) == Direction.East
+    assert -Direction.North == Direction(0, 0, 1)
+    assert str(-Direction(0, 1, 0)) == str(Direction.Bottom) == 'Bottom direction'
