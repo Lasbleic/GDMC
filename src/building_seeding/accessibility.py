@@ -9,11 +9,13 @@ import matplotlib
 import numpy as np
 from itertools import product
 from math_function import balance
-import sys
-sys.path.insert(1, '../')
-from road_network import Point2D, RoadNetwork
-from building_pool import house_type, crop_type, windmill_type
+
+from utils import Point2D
+from map.road_network import *
+from building_seeding import house_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
+
+import sys
 
 
 def local_accessibility(x, z, building_type, scenario, road_network):
@@ -23,11 +25,9 @@ def local_accessibility(x, z, building_type, scenario, road_network):
 
 
 def accessibility(building_type, scenario, road_network, size):
-
     accessibility_map = np.zeros(size)
 
     for x, z, in product(range(size[0]), range(size[1])):
-
         # point_to_connect = Point2D(x, z)
         # path, distance = road_network.dijkstra(point_to_connect, lambda point: road_network.is_road(point))
         accessibility_map[x, z] = local_accessibility(x, z, building_type, scenario, road_network)
@@ -41,11 +41,13 @@ if __name__ == '__main__':
 
     # Accessibility test
 
-    N = 50
+    N = 100
     import time
 
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(49, 23)
+    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(99, 23)
     road_net = RoadNetwork(N, N)
+    road_net.find_road(p1, p2)
+    road_net.find_road(p2, p3)
 
 
     road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])

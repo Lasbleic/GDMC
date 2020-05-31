@@ -1,10 +1,17 @@
 from __future__ import division
-from random import randint
-from numpy.random import geometric
 
-from building_pool import BuildingPool, crop_type, house_type
-from road_network import RoadNetwork, Point2D
+import logging
+from random import randint
+
+from numpy.random import geometric, normal
+from building_seeding import house_type
+from pymclevel import BoundingBox
+from map.road_network import RoadNetwork, Point2D
 from utils import bernouilli, euclidean
+from village_skeleton import VillageSkeleton
+
+mean_road_covered_surface = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
+settlement_access_dist = 12  # maximum distance from settlement center to road net
 
 
 class FlatSettlement:
@@ -13,10 +20,11 @@ class FlatSettlement:
     """
 
     def __init__(self, box):
+        # type: (BoundingBox) -> FlatSettlement
         self.limits = box
-        self.road_network = RoadNetwork(box.width, box.length)
-        surface = box.width * box.length
-        self.building_pool = BuildingPool(surface)
+        self._road_network = None  # type: RoadNetwork
+        self._center = None  # type: Point2D
+        self._village_skeleton = None  # type: VillageSkeleton
 
     def __random_border_point(self):
         # type: () -> Point2D
@@ -32,32 +40,60 @@ class FlatSettlement:
             z = 0 if bernouilli() else self.limits.length - 1
         return Point2D(x, z)
 
-    def __init_road_network(self):
+    def init_road_network(self):
+        self._road_network = RoadNetwork(self.limits.width, self.limits.length)
         out_connections = [self.__random_border_point()]
-        print('First border point @{}'.format(str(out_connections[0])))
-        road_count = geometric(.5)  # todo: make this probability dependant of the settlement surface ?
-        print('New settlement will have {} roads B)'.format(road_count))
+        max_road_count = min(self.limits.width, self.limits.length) // mean_road_covered_surface
+        logging.debug('Max road count: {}'.format(max_road_count))
+        road_count = min(geometric(min(1, 1./max_road_count)), max_road_count*3//2)
+        logging.debug('New settlement will have {} roads B)'.format(road_count))
+        logging.debug('First border point @{}'.format(str(out_connections[0])))
 
         for road_id in xrange(road_count):
-            min_distance_to_roads = min(self.limits.width, self.limits.length) * 1. / (road_id+1)  # todo: calibrate
-            print('Generating road #{}'.format(road_id+1))
+            min_distance_to_roads = min(self.limits.width, self.limits.length) / (road_id+1)
+            logging.debug('Generating road #{}'.format(road_id+1))
             # generate new border point far enough from existing points
             while True:
                 new_road_point = self.__random_border_point()
                 distances = [euclidean(road_point, new_road_point) for road_point in out_connections]
-                if min(distances) > min_distance_to_roads:
+                distance_to_roads = min(distances)
+                log_args = (str(new_road_point), distance_to_roads, min_distance_to_roads)
+                if distance_to_roads >= min_distance_to_roads:
                     out_connections.append(new_road_point)
-                    print('\tSettled on border point @{}'.format(str(new_road_point)))
+                    logging.debug('\tSettled on border point {} at {}m >= {}m'.format(*log_args))
                     break
-
+                else:
+                    logging.debug('\tDismissed point {} at {}m < {}m'.format(*log_args))
+                    min_distance_to_roads *= 0.9
             # update road network
             if road_id == 0:
-                self.road_network.find_road(out_connections[0], out_connections[1])
+                self._road_network.find_road(out_connections[0], out_connections[1])
             else:
-                self.road_network.connect_to_network(out_connections[-1])
+                self._road_network.connect_to_network(out_connections[-1])
 
-    def init(self):
-        self.__init_road_network()
+    def init_town_center(self):
+        while True:
+            mean_x = (self.limits.minx + self.limits.maxx) / 2
+            dx = normal(mean_x, self.limits.width / 6)
+            dx = int(min(self.limits.maxx, max(self.limits.minx, dx)))
+
+            mean_z = (self.limits.minz + self.limits.maxz) / 2
+            dz = normal(mean_z, self.limits.width / 6)
+            dz = int(min(self.limits.maxz, max(self.limits.minz, dz)))
+
+            random_center = Point2D(dx, dz)
+            distance = self._road_network.get_distance(random_center)
+            if distance <= settlement_access_dist:
+                self._center = random_center
+                logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
+                break
+
+    def build_skeleton(self):
+        self._village_skeleton = VillageSkeleton('Flat scenario', self.limits, self._road_network, self.town_center)
+        self._village_skeleton.grow()
+
+    def define_parcels(self):
+        pass
 
     def generate(self, level):
         # todo: replace this
@@ -67,4 +103,9 @@ class FlatSettlement:
         single_house_town = house_type.new_instance(self.limits)
         single_house_town.generate(level)
 
+        # for parcel in self._village_skeleton.buildings:
+        #     parcel.generator.generate(level, compute_height_map(level, self.limits))
 
+    @property
+    def town_center(self):
+        return self._center

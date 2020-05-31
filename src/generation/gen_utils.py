@@ -1,7 +1,9 @@
 from random import shuffle
-from numpy import array, argmax
+from time import time
 
-from pymclevel import BoundingBox
+from numpy import array, argmax, zeros
+
+from pymclevel import BoundingBox, alphaMaterials as Block
 
 
 class TransformBox(BoundingBox):
@@ -138,6 +140,37 @@ def cardinal_directions():
     directions = [East, South, West, North]
     shuffle(directions)
     return iter(directions)
+
+
+def compute_height_map(level, box, from_sky=True):
+    """
+    Custom height map, quite slow
+    """
+    t0 = time()
+    xmin, xmax = box.minx, box.maxx
+    zmin, zmax = box.minz, box.maxz
+    ground_blocks = [Block.Grass.ID, Block.Gravel.ID, Block.Dirt.ID,
+                     Block.Sand.ID, Block.Stone.ID, Block.Clay.ID]
+
+    lx, lz = xmax - xmin, zmax - zmin  # length & width
+    h = zeros((lx, lz), dtype=int)  # numpy height map
+
+    if from_sky:
+        for x in range(xmin, xmax):
+            for z in range(zmin, zmax):
+                y = 256
+                # for each coord in the box, goes down from height limit until it lands on a 'ground block'
+                if from_sky:
+                    while y >= 0 and level.blockAt(x, y, z) not in ground_blocks:
+                        y -= 1
+                else:
+                    y = level.heightMapAt(x, z)
+                h[x - xmin, z - zmin] = y
+    else:
+        h = array([[level.heightMapAt(x, z) for z in range(zmin, zmax)] for x in range(xmin, xmax)])
+
+    print('Computed height map in {}s'.format(time() - t0))
+    return h
 
 
 if __name__ == '__main__':
