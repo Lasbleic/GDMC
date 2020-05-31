@@ -32,7 +32,7 @@ class RoadNetwork:
         self.distance_map = full((self.length, self.width), maxint)
         self.path_map = empty((self.length, self.width), dtype=object)
         self.lambda_max = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["Accessibility"]["windmill"][2]
-        self.lambda_max = 0
+        self.lambda_max = 25
 
     def set_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> None

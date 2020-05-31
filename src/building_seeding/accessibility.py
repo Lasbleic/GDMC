@@ -16,47 +16,9 @@ from building_pool import house_type, crop_type, windmill_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 
 
-def distance_to_road(x, z, road_network):
-    net = road_network.network
-    l = road_network.length
-    w = road_network.width
-
-    if net[x, z]:
-        d = 0
-
-    else:
-        d = -1
-        for i in range(1, max(l, w)):
-
-            for z_bis in range(-i, i + 1):
-
-                if -1 < x + i < l and -1 < z + z_bis < w and net[x + i, z + z_bis]:
-                    d = i
-                    break
-
-                if -1 < x - i < l and -1 < z + z_bis < w and net[x - i, z + z_bis]:
-                    d = i
-                    break
-
-            for x_bis in range(-i, i + 1):
-
-                if -1 < x + x_bis < l and -1 < z + i < w and net[x + x_bis, z + i]:
-                    d = i
-                    break
-
-                if -1 < x + x_bis < l and -1 < z - i < w and net[x + x_bis, z - i]:
-                    d = i
-                    break
-
-            if d != -1:
-                break
-
-    return d
-
-
 def local_accessibility(x, z, building_type, scenario, road_network):
     lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Accessibility"][building_type.name]
-    distance = distance_to_road(x, z, road_network)
+    distance = road_network.distance_map[x, z]
     return balance(distance, lambda_min, lambda_0, lambda_max)
 
 
@@ -79,13 +41,13 @@ if __name__ == '__main__':
 
     # Accessibility test
 
-    N = 130
+    N = 50
     import time
 
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(129, 23)
+    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(49, 23)
     road_net = RoadNetwork(N, N)
-    road_net.find_road(p1, p2)
-    road_net.find_road(p2, p3)
+
+
     road_cmap = matplotlib.colors.ListedColormap(['forestgreen', 'beige'])
     road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
     start_time = time.time()
