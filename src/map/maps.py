@@ -13,9 +13,17 @@ class Maps:
 
     def __init__(self, level, bounding_box):
         # type: (MCLevel, TransformBox) -> Maps
-        self.width = bounding_box.size.x
-        self.height = bounding_box.size.z
+        self.__width = bounding_box.size.x
+        self.__length = bounding_box.size.z
         self.box = bounding_box
-        self.obstacle_map = ObstacleMap(self.width, self.height, self)
+        self.obstacle_map = ObstacleMap(self.__width, self.__length, self)
         self.height_map = compute_height_map(level, bounding_box, False)
-        self.road_network = RoadNetwork(self.width, self.height, self)
+        self.road_network = RoadNetwork(self.__width, self.__length, self)
+
+    @property
+    def width(self):
+        return self.__width
+
+    @property
+    def length(self):
+        return self.__length
