@@ -95,9 +95,8 @@ class FlatSettlement:
                 break
 
     def build_skeleton(self):
-        size = self._road_network.network.shape
-        self._village_skeleton = VillageSkeleton('Flat_scenario', size, self._road_network, self.town_center)
-        self._village_skeleton.grow(self._parcels)
+        self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
+        self._village_skeleton.grow()
 
     def define_parcels(self):
         """

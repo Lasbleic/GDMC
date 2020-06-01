@@ -19,8 +19,8 @@ class Direction(Enum):
 
 class Parcel:
 
-    def __init__(self, building_position, mc_map=None):
-        # type: (Point2D, Maps) -> Parcel
+    def __init__(self, building_position, building_type, mc_map=None):
+        # type: (Point2D, BuildingType, Maps) -> Parcel
         self.__box = TransformBox((0, 0, 0), (0, 0, 0))  # type: TransformBox  # todo: use this instead of Point2D style
         self.__center = building_position
         shifted_x = max(0, building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
@@ -28,6 +28,7 @@ class Parcel:
         self.__origin = Point2D(shifted_x, shifted_z)
         self.width = MIN_PARCEL_SIZE
         self.length = MIN_PARCEL_SIZE
+        self.building_type = building_type
         self.__map = mc_map
         self.__entry_point = Point2D(0, 0)  # type: Point2D  # todo: compute this, input parameter
 
@@ -98,3 +99,11 @@ class Parcel:
     @property
     def minz(self):
         return self.__origin.z
+
+    @property
+    def center(self):
+        return self.__center
+
+    @property
+    def entry_point(self):
+        return self.__entry_point
