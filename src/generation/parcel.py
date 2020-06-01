@@ -78,5 +78,21 @@ class Parcel:
         return self.__box.minx
 
     @property
+    def maxx(self):
+        return self.__box.maxx
+
+    @property
     def minz(self):
         return self.__box.minz
+
+    @property
+    def maxz(self):
+        return self.__box.maxz
+
+    @property
+    def generator(self):
+        return self.__building_type.new_instance(self.__box)
+
+    @property
+    def height_map(self):
+        return self.__map.height_map[self.minx:self.maxx, self.minz:self.maxz]
