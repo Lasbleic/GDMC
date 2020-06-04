@@ -12,13 +12,18 @@ MIN_RATIO_SIDE = 7 / 11
 
 class Parcel:
 
-    def __init__(self, building_type, building_position, mc_map=None):
-        # type: (BuildingType, Point2D, Maps) -> Parcel
-        self.__center = building_position
+    def __init__(self, building_position, building_type, mc_map=None):
+        # type: (Point2D, BuildingType, Maps) -> Parcel
         self.__box = TransformBox((0, 0, 0), (0, 0, 0))  # type: TransformBox
-        self.__map = mc_map  # type: Maps
-        self.__entry_point = Point2D(0, 0)  # type: Point2D  # todo: compute this, input parameter
+        self.__center = building_position
+        shifted_x = max(0, building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
+        shifted_z = max(0, building_position.z - (MIN_PARCEL_SIZE - 1) / 2)
+        self.__origin = Point2D(shifted_x, shifted_z)
+        self.width = MIN_PARCEL_SIZE
+        self.length = MIN_PARCEL_SIZE
         self.__building_type = building_type
+        self.__map = mc_map # type: Maps
+        self.__entry_point = Point2D(0, 0)  # type: Point2D  # todo: compute this, input parameter
 
         # build parcel box
         shifted_x = max(0, building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
@@ -96,3 +101,15 @@ class Parcel:
     @property
     def height_map(self):
         return self.__map.height_map[self.minx:self.maxx, self.minz:self.maxz]
+
+    @property
+    def center(self):
+        return self.__center
+
+    @property
+    def entry_point(self):
+        return self.__entry_point
+
+    @property
+    def building_type(self):
+        return self.__building_type

@@ -7,11 +7,12 @@ from __future__ import division
 
 from itertools import product
 from math_function import balance
-
+import numpy as np
 from matplotlib import colors
 from map import RoadNetwork
 from building_seeding import house_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
+from utils import Point2D
 
 import sys
 

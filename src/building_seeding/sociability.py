@@ -13,7 +13,8 @@ from math import sqrt
 from building_seeding import house_type, windmill_type
 from pre_processing import Map, MapStock
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
-
+from parcel import Parcel
+from utils import Point2D
 
 def local_sociability(x, z, building_type, scenario, settlement_seeds):
 
@@ -22,8 +23,8 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds):
 
     for settlement_seed in settlement_seeds:
 
-        neighbor_type, neighbor_position = settlement_seed
-        distance_to_building = sqrt((neighbor_position[0] - x) ** 2 + (neighbor_position[1] - z) ** 2)
+        neighbor_type, neighbor_position = settlement_seed.building_type, settlement_seed.center
+        distance_to_building = sqrt((neighbor_position.x - x) ** 2 + (neighbor_position.z - z) ** 2)
         lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][
             building_type.name + "-" + neighbor_type.name]
 
@@ -61,15 +62,15 @@ if __name__ == '__main__':
     building_net = np.zeros((N, N))
     set_seeds = []
 
-    house_1 = (house_type, (15, 31))
+    house_1 = Parcel(Point2D(15, 31), house_type)
     building_net[15, 31] = 1
     set_seeds.append(house_1)
 
-    house_2 = (house_type, (26, 6))
+    house_2 = Parcel(Point2D(26, 6), house_type)
     building_net[26, 6] = 1
     set_seeds.append(house_2)
 
-    mill_1 = (windmill_type, (37, 18))
+    mill_1 = Parcel(Point2D(37, 18), windmill_type)
     building_net[37, 18] = 2
     set_seeds.append(mill_1)
 

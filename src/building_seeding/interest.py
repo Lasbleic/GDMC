@@ -11,7 +11,7 @@ from accessibility import accessibility, local_accessibility
 from building_seeding import house_type, windmill_type
 from map.road_network import *
 from sociability import sociability, local_sociability
-
+from parcel import Parcel
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
     weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
@@ -109,15 +109,15 @@ if __name__ == '__main__':
 
     set_seeds = []
 
-    house_1 = (house_type, (5, 31))
+    house_1 = Parcel((5, 31), house_type)
     lvl_net[5, 31] = 2
     set_seeds.append(house_1)
 
-    house_2 = (house_type, (16, 6))
+    house_2 = Parcel((16, 6), house_type)
     lvl_net[16, 6] = 2
     set_seeds.append(house_2)
 
-    mill_1 = (windmill_type, (37, 18))
+    mill_1 = Parcel((37, 18), windmill_type)
     lvl_net[37, 18] = 3
     set_seeds.append(mill_1)
 
