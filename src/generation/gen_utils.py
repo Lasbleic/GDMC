@@ -108,6 +108,9 @@ class Direction:
     def __neg__(self):
         return Direction(-self._dir_x, -self._dir_y, -self._dir_z)
 
+    def __abs__(self):
+        return Direction(abs(self._dir_x), abs(self._dir_y), abs(self._dir_z))
+
     @property
     def x(self):
         return self._dir_x

@@ -211,36 +211,67 @@ class _RoofSymbol(CardinalGenerator):
         if self._roof_type == 'flat':
             fillBlocks(level, box, Block['Bricks'])
         elif self._roof_type == 'gable':
+            box.expand(1, 1, 1, inplace=True)
             stair_format = '{} Stairs (Bottom, {})'
+            stair_revers = '{} Stairs (Top, {})'
             if self._direction in [West, East]:
                 for index in xrange(box.length / 2):
                     north_box = TransformBox((box.minx, box.miny + index, box.maxz - index - 1), (box.width, 1, 1))
-                    fillBlocks(level, north_box, Block[stair_format.format(material, 'North')])
+                    fillBlocks(level, north_box, Block[stair_format.format(material, 'North')], [Block['Air']])
                     south_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-                    fillBlocks(level, south_box, Block[stair_format.format(material, 'South')])
+                    fillBlocks(level, south_box, Block[stair_format.format(material, 'South')], [Block['Air']])
+                    if index != 0:
+                        for x, z in product([self._box.minx, self._box.maxx-1], [north_box.minz, south_box.maxz]):
+                            col_box = TransformBox((x, box.miny+1, z), (1, index, 1))
+                            fillBlocks(level, col_box, Block['Bone Block (Upright)'], [Block['Air']])
+                        fillBlocks(level, north_box.translate(dy=-1), Block[stair_revers.format(material, 'South')], [Block['Air']])
+                        fillBlocks(level, south_box.translate(dy=-1), Block[stair_revers.format(material, 'North')], [Block['Air']])
                 # build roof ridge
                 if box.length % 2 == 1:
                     index = box.length / 2
                     ridge_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-                    fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)])
+                    fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)], [Block['Air']])
+                    fillBlocks(level, ridge_box.translate(dy=-1), Block['Oak Wood (East/West)'], [Block['Air']])
             elif self._direction in [North, South]:
                 for index in xrange(box.width / 2):
                     east_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
-                    fillBlocks(level, east_box, Block[stair_format.format(material, 'East')])
+                    fillBlocks(level, east_box, Block[stair_format.format(material, 'East')], [Block['Air']])
                     west_box = TransformBox((box.maxx - index - 1, box.miny + index, box.minz), (1, 1, box.length))
-                    fillBlocks(level, west_box, Block[stair_format.format(material, 'West')])
+                    fillBlocks(level, west_box, Block[stair_format.format(material, 'West')], [Block['Air']])
+                    if index != 0:
+                        for x, z in product([east_box.minx, west_box.minx], [self._box.minz, self._box.maxz-1]):
+                            col_box = TransformBox((x, box.miny+1, z), (1, index, 1))
+                            fillBlocks(level, col_box, Block['Bone Block (Upright)'], [Block['Air']])
+                        fillBlocks(level, east_box.translate(dy=-1), Block[stair_revers.format(material, 'West')], [Block['Air']])
+                        fillBlocks(level, west_box.translate(dy=-1), Block[stair_revers.format(material, 'East')], [Block['Air']])
                 # build roof ridge
                 if box.width % 2 == 1:
                     index = box.width / 2
                     ridge_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
-                    fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)])
+                    fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)], [Block['Air']])
+                    fillBlocks(level, ridge_box.translate(dy=-1), Block['Oak Wood (North/South)'], [Block['Air']])
             else:
                 raise ValueError('Expected direction str, found {}'.format(self._direction))
+            self.__gen_gable_cross(level)
 
     def _get_box(self):
         box = self._box
-        new_size = (box.width, 1, box.length)
+        height = 1 if self._direction is None else (box.width + 1) // 2 if self._direction in [North, South] else (box.length + 1) // 2
+        new_size = (box.width, height, box.length)
         return TransformBox(box.origin, new_size)
+
+    def __gen_gable_cross(self, level):
+        for direction in cardinal_directions():
+            if self[direction] is not None and isinstance(self[direction], _RoofSymbol):
+                neighbour = self[direction]  # type: _RoofSymbol
+                if abs(self._direction) == abs(direction) and abs(neighbour._direction.rotate()) == abs(direction):
+                    box0 = self._box
+                    box1 = neighbour._box
+                    if direction in [North, South]:
+                        box2 = TransformBox((box0.minx, box0.miny, box1.minz), (box0.width, box0.height, box1.length))
+                    else:
+                        box2 = TransformBox((box1.minx, box1.miny, box0.minz), (box1.width, box1.height, box0.length))
+                    _RoofSymbol(box2, self._direction, self._roof_type).generate(level)
 
 
 class _WallSymbol(Generator):
