@@ -1,9 +1,9 @@
 from __future__ import division, print_function
 
 from building_seeding import BuildingType
-from map.maps import Maps
-from utils import Point2D
+from utils import Point2D, bernouilli
 from gen_utils import Direction, TransformBox, cardinal_directions
+import map
 
 MIN_PARCEL_SIZE = 7
 MAX_PARCEL_AREA = 100
@@ -13,26 +13,52 @@ MIN_RATIO_SIDE = 7 / 11
 class Parcel:
 
     def __init__(self, building_position, building_type, mc_map=None):
-        # type: (Point2D, BuildingType, Maps) -> Parcel
-        self.__box = TransformBox((0, 0, 0), (0, 0, 0))  # type: TransformBox
+        # type: (Point2D, BuildingType, map.Maps) -> Parcel
         self.__center = building_position
-        shifted_x = max(0, building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
-        shifted_z = max(0, building_position.z - (MIN_PARCEL_SIZE - 1) / 2)
-        self.__origin = Point2D(shifted_x, shifted_z)
-        self.width = MIN_PARCEL_SIZE
-        self.length = MIN_PARCEL_SIZE
         self.__building_type = building_type
-        self.__map = mc_map # type: Maps
-        self.__entry_point = Point2D(0, 0)  # type: Point2D  # todo: compute this, input parameter
+        self.__map = mc_map  # type: map.Maps
+        self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
+        self.__box = TransformBox((building_position.x, 0, building_position.z), (1, 1, 1))  # type: TransformBox
+        if mc_map is not None:
+            self.__compute_entry_point()
+            self.__initialize_limits()
 
+    def __compute_entry_point(self):
+        road_net = self.__map.road_network
+        # todo: gerer le cas des parcelles trop eloignees du reseau
+        if road_net.is_accessible(self.__center):
+            nearest_road_point = road_net.path_map[self.__center.z][self.__center.x][0]
+            distance_threshold = MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH // 2
+            if road_net.get_distance(self.__center) <= distance_threshold:
+                # beyond this distance, no need to build a new road, parcel is considered accessible
+                self.__entry_point = nearest_road_point
+                return
+            # compute the local direction of the road
+            target_road_pt = road_net.path_map[self.__center.z][self.__center.x][distance_threshold]
+        else:
+            target_road_pt = Point2D(self.__map.width//2, self.__map.length//2)
+
+        local_road_x = target_road_pt.x - self.__center.x
+        local_road_z = target_road_pt.z - self.__center.z
+        local_road_dir = Direction(dx=local_road_x, dz=local_road_z)
+
+        # compute the secondary local direction of the road (orthogonal to the main one)
+        # this direction determines what side of the parcel will be along the road
+        resid_road_x = local_road_x if local_road_dir.z else 0  # note: resid for residual
+        resid_road_z = local_road_z if local_road_dir.x else 0
+        if resid_road_z * resid_road_x != 0:
+            resid_road_dir = Direction(dx=resid_road_x, dz=resid_road_z)
+        else:
+            resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
+        self.__entry_point = self.__center + resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
+
+    def __initialize_limits(self):
         # build parcel box
-        shifted_x = max(0, building_position.x - (MIN_PARCEL_SIZE - 1) / 2)
-        shifted_z = max(0, building_position.z - (MIN_PARCEL_SIZE - 1) / 2)
-        origin = (shifted_x, mc_map.height_map[shifted_x, shifted_z], shifted_z)
+        shifted_x = min(max(0, self.__center.x - (MIN_PARCEL_SIZE - 1) // 2), self.__map.width - MIN_PARCEL_SIZE)  # type: int
+        shifted_z = min(max(0, self.__center.z - (MIN_PARCEL_SIZE - 1) // 2), self.__map.length - MIN_PARCEL_SIZE)  # type: int
+        origin = (shifted_x, self.__map.height_map[shifted_x, shifted_z], shifted_z)
         size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
         self.__box = TransformBox(origin, size)
-
-        # todo: build entrance
 
     def expand(self, direction):
         # type: (Direction) -> None
@@ -43,16 +69,18 @@ class Parcel:
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
+        if self.__map is None:
+            return False
         if direction is None:
             for direction in cardinal_directions():
-                if not self.is_expendable(direction):
-                    return False
-            return True
+                if self.is_expendable(direction):
+                    return True
+            return False
         else:
             expanded = self.__box.expand(direction)
             obstacle = self.__map.obstacle_map
             # todo: add possibility to truncate road leading to this parcel
-            no_obstacle = obstacle[expanded.minx:expanded.maxx, expanded.minz:expanded.maxz].all()
+            no_obstacle = obstacle.map[expanded.minz:expanded.maxz, expanded.minx:expanded.maxx].all()
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1/MIN_RATIO_SIDE
             max_x, max_z = self.__map.width, self.__map.length
@@ -113,3 +141,11 @@ class Parcel:
     @property
     def building_type(self):
         return self.__building_type
+
+    @property
+    def width(self):
+        return self.__box.width
+
+    @property
+    def length(self):
+        return self.__box.length
