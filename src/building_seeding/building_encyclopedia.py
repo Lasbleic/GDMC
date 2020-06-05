@@ -9,14 +9,14 @@ BUILDING_ENCYCLOPEDIA = {
 
         "Sociability": {
             "house-house": (5, 7, 100),
-            "house-crop": (57, 30, 100),
+            "house-crop": (20, 25, 100),
             "house-windmill": (15, 20, 100),
             "house-ghost": (1, 2, 100),
-            "crop-crop": (20, 30, 100),
+            "crop-crop": (10, 20, 100),
             "crop-house": (20, 30, 100),
             "crop-windmill": (25, 35, 100),
             "crop-ghost": (1, 2, 100),
-            "windmill-windmill": (20, 20, 100),
+            "windmill-windmill": (20, 30, 100),
             "windmill-house": (25, 35, 100),
             "windmill-crop": (25, 35, 100),
             "windmill-ghost": (1, 2, 100),

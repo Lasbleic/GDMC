@@ -1,12 +1,12 @@
 from random import shuffle
 from time import time
 
-from enum import Enum
 from typing import Iterable
 
 from numpy import array, argmax, zeros
 
 from pymclevel import BoundingBox, alphaMaterials as Block
+from utils import Point2D
 
 
 class TransformBox(BoundingBox):
@@ -119,6 +119,10 @@ class Direction:
     @property
     def z(self):
         return self._dir_z
+
+    @property
+    def asPoint2D(self):
+        return Point2D(self._dir_x, self._dir_z)
 
     def rotate(self):
         """

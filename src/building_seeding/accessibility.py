@@ -19,7 +19,7 @@ import sys
 
 def local_accessibility(x, z, building_type, scenario, road_network):
     lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Accessibility"][building_type.name]
-    distance = road_network.distance_map[x, z]
+    distance = road_network.distance_map[z, x]
     return balance(distance, lambda_min, lambda_0, lambda_max)
 
 

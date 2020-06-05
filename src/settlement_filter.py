@@ -23,7 +23,7 @@ logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%
 def perform(level, box, options):
     # type: (MCLevel, BoundingBox, dict) -> None
     t0 = time()
-    print("Hello World!")
+    print("Hello Settlers!")
     box = TransformBox(box)
     maps = Maps(level, box)
     settlement = FlatSettlement(maps)

@@ -10,6 +10,7 @@ from utils import Point2D
 
 
 class RoadNetwork:
+    MAX_ROAD_LENGTH = 5
 
     def __init__(self, width, length, mc_map=None):
         # type: (int, int, Maps) -> RoadNetwork

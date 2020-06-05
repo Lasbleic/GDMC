@@ -20,7 +20,7 @@ class BuildingType:
 # All building types available for generation
 house_type = BuildingType('house', ProcHouseGenerator)
 crop_type = BuildingType('crop', CropGenerator)
-windmill_type = BuildingType('windmill')
+windmill_type = BuildingType('windmill', CropGenerator)
 ghost_type = BuildingType('ghost')
 
 # dict to associate weights to types. The normalized weight = frequency of each type

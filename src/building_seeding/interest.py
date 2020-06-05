@@ -11,7 +11,8 @@ from accessibility import accessibility, local_accessibility
 from building_seeding import house_type, windmill_type
 from map.road_network import *
 from sociability import sociability, local_sociability
-from parcel import Parcel
+import numpy as np
+
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
     weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
@@ -54,7 +55,7 @@ def interest(building_type, scenario, road_network, settlement_seeds, size):
 def max_interest(_interest_map):
     width = _interest_map.shape[1]
     argmax = np.argmax(_interest_map)
-    return argmax // width, argmax % width
+    return Point2D(argmax // width, argmax % width)
 
 
 def random_interest(_interest_map, max_iteration=10):
@@ -67,7 +68,7 @@ def random_interest(_interest_map, max_iteration=10):
         x, z = random_cell // width, random_cell % width
         interest_score = _interest_map[x, z]
         if np.random.binomial(1, interest_score):
-            return x, z
+            return Point2D(x, z)
         cells.remove(random_cell)
         max_iteration -= 1
     return max_interest(_interest_map)
@@ -93,46 +94,47 @@ def fast_random_interest(building_type, scenario, road_network, settlement_seeds
 
 
 if __name__ == '__main__':
-    sys.path.insert(1, '../../visu')
-    from pre_processing import Map, MapStock
-
-    # Interest test
-    print("Initialize test")
-
-    N = 100
-
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(99, 23)
-    road_net = RoadNetwork(N, N)
-    road_net.find_road(p1, p2)
-    road_net.find_road(p2, p3)
-    lvl_net = np.copy(road_net.network)
-
-    set_seeds = []
-
-    house_1 = Parcel((5, 31), house_type)
-    lvl_net[5, 31] = 2
-    set_seeds.append(house_1)
-
-    house_2 = Parcel((16, 6), house_type)
-    lvl_net[16, 6] = 2
-    set_seeds.append(house_2)
-
-    mill_1 = Parcel((37, 18), windmill_type)
-    lvl_net[37, 18] = 3
-    set_seeds.append(mill_1)
-
-    lvl_cmap = colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow"])
-    lvl_map = Map("level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
-
-    print("Compute interest map")
-    interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
-    print("Interest map : Done")
-    interest_cmap = "jet"
-    interest_map = Map("interest_map", N, interest_net, interest_cmap, (0, 1))
-
-    the_stock = MapStock("interest_test", N, clean_dir=True)
-    the_stock.add_map(lvl_map)
-    the_stock.add_map(interest_map)
+    # note Charlie: commented this because the import of Parcel causes a circular import
+    # sys.path.insert(1, '../../visu')
+    # from pre_processing import Map, MapStock
+    #
+    # # Interest test
+    # print("Initialize test")
+    #
+    # N = 100
+    #
+    # p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(99, 23)
+    # road_net = RoadNetwork(N, N)
+    # road_net.find_road(p1, p2)
+    # road_net.find_road(p2, p3)
+    # lvl_net = np.copy(road_net.network)
+    #
+    # set_seeds = []
+    #
+    # house_1 = Parcel((5, 31), house_type)
+    # lvl_net[5, 31] = 2
+    # set_seeds.append(house_1)
+    #
+    # house_2 = Parcel((16, 6), house_type)
+    # lvl_net[16, 6] = 2
+    # set_seeds.append(house_2)
+    #
+    # mill_1 = Parcel((37, 18), windmill_type)
+    # lvl_net[37, 18] = 3
+    # set_seeds.append(mill_1)
+    #
+    # lvl_cmap = colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow"])
+    # lvl_map = Map("level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
+    #
+    # print("Compute interest map")
+    # interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
+    # print("Interest map : Done")
+    # interest_cmap = "jet"
+    # interest_map = Map("interest_map", N, interest_net, interest_cmap, (0, 1))
+    #
+    # the_stock = MapStock("interest_test", N, clean_dir=True)
+    # the_stock.add_map(lvl_map)
+    # the_stock.add_map(interest_map)
 
     # Show selected position
 

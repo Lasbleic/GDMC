@@ -1,15 +1,15 @@
 from __future__ import division
 
 import logging
-from random import randint, shuffle
-from typing import List, Tuple
+from random import randint
 
 from numpy.random import geometric, normal
-from building_seeding import house_type, BuildingType
-from generation.parcel import Parcel
+from typing import List
+
 from generation import Direction, TransformBox
+from generation.parcel import Parcel
 from map.maps import Maps
-from map.road_network import RoadNetwork, Point2D
+from map.road_network import RoadNetwork
 from utils import bernouilli, euclidean, Point2D
 from village_skeleton import VillageSkeleton
 
@@ -47,7 +47,6 @@ class FlatSettlement:
         return Point2D(x, z)
 
     def init_road_network(self):
-        self._road_network = RoadNetwork(self.limits.width, self.limits.length)
         out_connections = [self.__random_border_point()]
         max_road_count = max(1, min(self.limits.width, self.limits.length) // mean_road_covered_surface)
         logging.debug('Max road count: {}'.format(max_road_count))
@@ -103,6 +102,8 @@ class FlatSettlement:
         Parcel extension from initialized parcels. Parcels are expended in place
         """
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
+        # most parcels should initially be expendable, except the ghost one
+        expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
 
         while expendable_parcels:
             # extend expendables parcels while there still are some
@@ -120,7 +121,7 @@ class FlatSettlement:
                         parcel.expand(direction)
                         break
 
-            filter(Parcel.is_expendable, expendable_parcels)
+            expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
 
         # translate all parcels to absolute coordinates
         map(lambda _parcel: _parcel.translate_to_absolute_coords(self.__origin), self._parcels)
@@ -131,11 +132,11 @@ class FlatSettlement:
         # crop_town = crop_type.new_instance(self.limits)
         # crop_town.generate(level)
 
-        single_house_town = house_type.new_instance(self.limits)
-        single_house_town.generate(level)
+        # single_house_town = house_type.new_instance(self.limits)
+        # single_house_town.generate(level)
 
-        # for parcel in self._village_skeleton.buildings:  # type: Parcel
-        #     parcel.generator.generate(level, parcel.height_map)
+        for parcel in self._parcels:  # type: Parcel
+            parcel.generator.generate(level, parcel.height_map)
 
     @property
     def town_center(self):
