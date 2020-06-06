@@ -10,7 +10,7 @@ from gen_utils import TransformBox, Direction, cardinal_directions, Bottom, Top
 from pymclevel import alphaMaterials as Block
 from pymclevel.schematic import StructureNBT
 
-from utils import get_project_path
+from utils import get_project_path, Point2D
 
 
 def paste_nbt(level, box, nbt_file_name):
@@ -29,9 +29,10 @@ def paste_nbt(level, box, nbt_file_name):
 class Generator:
     _box = None  # type: TransformBox
 
-    def __init__(self, box):
-        # type: (TransformBox) -> Generator
+    def __init__(self, box, entry_point=None):
+        # type: (TransformBox, Point2D) -> Generator
         self._box = box
+        self._entry_point = entry_point if entry_point is not None else Point2D(0, 0)
         self.children = []
 
     def generate(self, level, height_map=None):

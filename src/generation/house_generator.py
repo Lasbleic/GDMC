@@ -81,7 +81,7 @@ class ProcHouseGenerator(Generator):
         self.children[0].translate(dx, 0, dz)
 
     def _generate_door(self, level):
-        door_x, door_z = self._box.maxx, self._box.maxz  # todo: use parcel entrance instead
+        door_x, door_z = self._entry_point.x, self._entry_point.z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
         door_direction = Direction(dx=door_x-mean_x, dz=door_z-mean_z)
         self.children[0].generate_door(door_direction, door_x, door_z, level)
