@@ -206,59 +206,75 @@ class _RoofSymbol(CardinalGenerator):
                 self._direction = South if (bernouilli(prob)) else East
 
     def generate(self, level, height_map=None):
-        material = 'Stone Brick'
-        box = self._get_box()
         if self._roof_type == 'flat':
+            box = self.flat_box
             fillBlocks(level, box, Block['Bricks'])
         elif self._roof_type == 'gable':
-            box.expand(1, 1, 1, inplace=True)
-            stair_format = '{} Stairs (Bottom, {})'
-            stair_revers = '{} Stairs (Top, {})'
             if self._direction in [West, East]:
-                for index in xrange(box.length / 2):
-                    north_box = TransformBox((box.minx, box.miny + index, box.maxz - index - 1), (box.width, 1, 1))
-                    fillBlocks(level, north_box, Block[stair_format.format(material, 'North')], [Block['Air']])
-                    south_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-                    fillBlocks(level, south_box, Block[stair_format.format(material, 'South')], [Block['Air']])
-                    if index != 0:
-                        for x, z in product([self._box.minx, self._box.maxx-1], [north_box.minz, south_box.maxz]):
-                            col_box = TransformBox((x, box.miny+1, z), (1, index, 1))
-                            fillBlocks(level, col_box, Block['Bone Block (Upright)'], [Block['Air']])
-                        fillBlocks(level, north_box.translate(dy=-1), Block[stair_revers.format(material, 'South')], [Block['Air']])
-                        fillBlocks(level, south_box.translate(dy=-1), Block[stair_revers.format(material, 'North')], [Block['Air']])
-                # build roof ridge
-                if box.length % 2 == 1:
-                    index = box.length / 2
-                    ridge_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-                    fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)], [Block['Air']])
-                    fillBlocks(level, ridge_box.translate(dy=-1), Block['Oak Wood (East/West)'], [Block['Air']])
+                self.__gen_gable_x(level)
             elif self._direction in [North, South]:
-                for index in xrange(box.width / 2):
-                    east_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
-                    fillBlocks(level, east_box, Block[stair_format.format(material, 'East')], [Block['Air']])
-                    west_box = TransformBox((box.maxx - index - 1, box.miny + index, box.minz), (1, 1, box.length))
-                    fillBlocks(level, west_box, Block[stair_format.format(material, 'West')], [Block['Air']])
-                    if index != 0:
-                        for x, z in product([east_box.minx, west_box.minx], [self._box.minz, self._box.maxz-1]):
-                            col_box = TransformBox((x, box.miny+1, z), (1, index, 1))
-                            fillBlocks(level, col_box, Block['Bone Block (Upright)'], [Block['Air']])
-                        fillBlocks(level, east_box.translate(dy=-1), Block[stair_revers.format(material, 'West')], [Block['Air']])
-                        fillBlocks(level, west_box.translate(dy=-1), Block[stair_revers.format(material, 'East')], [Block['Air']])
-                # build roof ridge
-                if box.width % 2 == 1:
-                    index = box.width / 2
-                    ridge_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
-                    fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)], [Block['Air']])
-                    fillBlocks(level, ridge_box.translate(dy=-1), Block['Oak Wood (North/South)'], [Block['Air']])
+                self.__gen_gable_z(level)
             else:
                 raise ValueError('Expected direction str, found {}'.format(self._direction))
             self.__gen_gable_cross(level)
 
-    def _get_box(self):
+    @property
+    def flat_box(self):
         box = self._box
         height = 1 if self._direction is None else (box.width + 1) // 2 if self._direction in [North, South] else (box.length + 1) // 2
         new_size = (box.width, height, box.length)
         return TransformBox(box.origin, new_size)
+
+    @property
+    def gable_box(self):
+        box = self.flat_box
+        box.expand(1, 0, 1, inplace=True)
+        box.expand(Bottom, inplace=True)
+        for _ in xrange(max(box.width, box.length) // 2):
+            box.expand(Top, inplace=True)
+        return box
+
+    def __gen_gable_x(self, level):
+        material = 'Stone Brick'
+        box = self.gable_box
+        stair_format = '{} Stairs (Bottom, {})'
+        stair_revers = '{} Stairs (Top, {})'
+        for index in xrange(box.length / 2):
+            attic_box = TransformBox((box.minx + 1, box.miny + index, box.minz + index + 1),
+                                     (box.width - 2, 1, box.length - 2*(index+1)))
+            north_box = TransformBox((box.minx, box.miny + index, box.maxz - index - 1), (box.width, 1, 1))
+            south_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
+            fillBlocks(level, north_box, Block[stair_format.format(material, 'North')], [Block['Air']])
+            fillBlocks(level, south_box, Block[stair_format.format(material, 'South')], [Block['Air']])
+            if index != 0:
+                fillBlocks(level, attic_box, Block['Bone Block (Upright)'])
+                attic_box.expand(-1, 0, 0, inplace=True)
+                fillBlocks(level, attic_box, Block['Air'])
+                fillBlocks(level, north_box.translate(dy=-1), Block[stair_revers.format(material, 'South')], [Block['Air']])
+                fillBlocks(level, south_box.translate(dy=-1), Block[stair_revers.format(material, 'North')], [Block['Air']])
+            else:
+                fillBlocks(level, attic_box, Block['Oak Wood (North/South)'])
+                attic_box.expand(-1, 0, 0, inplace=True)
+                fillBlocks(level, attic_box, Block['Spruce Wood Planks'])
+        # build roof ridge
+        if box.length % 2 == 1:
+            index = box.length / 2
+            ridge_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
+            fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)], [Block['Air']])
+            fillBlocks(level, ridge_box.translate(dy=-1), Block['Oak Wood (East/West)'], [Block['Air']])
+
+    def __gen_gable_z(self, level):
+        real_box = self.gable_box
+        # prepare virtual level to generate rotated roof & copy surrounding blocks
+        roof_level = MCSchematic(real_box.size)
+        copyBlocksFrom(roof_level, level, real_box, (0, 0, 0))
+        for _ in xrange(3):
+            roof_level.rotateLeft()
+
+        virt_box = TransformBox((1, 1, 1), (self.length, self.height, self.width))  # flip roof source box
+        _RoofSymbol(virt_box, self._direction.rotate(), self._roof_type).generate(roof_level)
+        roof_level.rotateLeft()  # rotate generated roof
+        copyBlocksFrom(level, roof_level, TransformBox((0, 0, 0), real_box.size), real_box.origin)
 
     def __gen_gable_cross(self, level):
         for direction in cardinal_directions():
@@ -312,7 +328,6 @@ class _WallSymbol(Generator):
     def _generate_zwall(self, level, height_map):
         """
         Generates a flipped x_wall in a virtual level and pastes it to level.
-        Kept the version without flip underneath cause I'm too much of a coward to delete it lol
         Parameters
         ----------
         level MCLevel level to generate in
@@ -328,31 +343,6 @@ class _WallSymbol(Generator):
         wall_level.rotateLeft()  # flip generated wall
         tmp_box = TransformBox(tmp_box.origin, self.size)  # flip generation box
         copyBlocksFrom(level, wall_level, tmp_box, self.origin)  # retrieve wall to real level
-
-        # if self.length % 2 == 0:
-        #     # even wall: split in two
-        #     if self.length == 2:
-        #         block = Block['Oak Wood Planks']
-        #         fillBlocks(level, self._box, block)
-        #         if bernouilli(0.5):
-        #             fillBlocks(level, self._box.expand(0, -1, 0), Block['White Stained Glass Pane'])
-        #     elif self.length == 4:
-        #         fillBlocks(level, self._box, Block['Oak Wood Planks'])
-        #         box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
-        #         self.children.append(_WallSymbol(box_win))
-        #     else:
-        #         for half_wall_box in self._box.split(dz=randint(3, self.length - 3)):
-        #             self.children.append(_WallSymbol(half_wall_box))
-        # else:
-        #     # uneven wall: derive in column | window | wall
-        #     if self.length == 1:
-        #         fillBlocks(level, self._box, Block['Oak Wood Planks'])
-        #     else:
-        #         box_col, box_wal = self._box.split(dz=2)
-        #         box_win = TransformBox((self._box.origin + (0, 1, 1)), (1, self.height - 2, 1))
-        #         fillBlocks(level, box_col, Block['Oak Wood Planks'])
-        #         fillBlocks(level, box_win, Block['White Stained Glass Pane'])
-        #         self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level):
         if not self.children:
