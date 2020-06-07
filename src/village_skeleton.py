@@ -37,6 +37,7 @@ class VillageSkeleton:
             self.maps.road_network.connect_to_network(new_parcel.entry_point)
 
 
+
 if __name__ == '__main__':
 
     from gen_utils import TransformBox
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     import numpy as np
     from matplotlib import colors
 
-    N = 100
+    N = 200
 
     my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
     my_maps = Maps(None, my_bounding_box)
@@ -81,15 +82,18 @@ if __name__ == '__main__':
               "crop": 3,
               "windmill": 4}
 
-    minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange'])
+    minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red'])
 
     for parcel in my_flat_settlement._parcels:
         xmin, xmax = parcel.minx, parcel.maxx
         zmin, zmax = parcel.minz, parcel.maxz
 
-        minecraft_net[xmin:xmax, zmin:zmax] = COLORS[parcel.building_type.name]
+        minecraft_net[zmin:zmax, xmin:xmax] = COLORS[parcel.building_type.name]
 
-    minecraft_map = Map("minecraft_map", N, minecraft_net, minecraft_cmap, (0, 4), ['Grass', 'Road', 'House', 'Crop', 'Windmill'])
+    village_center = my_flat_settlement._village_skeleton.ghost.center
+    minecraft_net[village_center.z, village_center.x] = 5
+
+    minecraft_map = Map("minecraft_map", N, minecraft_net, minecraft_cmap, (0, 5), ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter'])
 
     the_stock = MapStock("road_network_test", N, clean_dir=True)
     the_stock.add_map(road_map)
