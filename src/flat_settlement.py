@@ -1,6 +1,7 @@
 from __future__ import division
 
 import logging
+from itertools import product
 from random import randint
 
 from numpy.random import geometric, normal
@@ -13,8 +14,8 @@ from map.road_network import RoadNetwork
 from utils import bernouilli, euclidean, Point2D
 from village_skeleton import VillageSkeleton
 
-mean_road_covered_surface = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
-settlement_access_dist = 12  # maximum distance from settlement center to road net
+MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
+SETTLEMENT_ACCESS_DIST = 12  # maximum distance from settlement center to road net
 
 
 class FlatSettlement:
@@ -48,7 +49,7 @@ class FlatSettlement:
 
     def init_road_network(self):
         out_connections = [self.__random_border_point()]
-        max_road_count = max(1, min(self.limits.width, self.limits.length) // mean_road_covered_surface)
+        max_road_count = max(1, min(self.limits.width, self.limits.length) // MEAN_ROAD_COVERED_SURFACE)
         logging.debug('Max road count: {}'.format(max_road_count))
         road_count = min(geometric(1./max_road_count), max_road_count*3//2)
         logging.debug('New settlement will have {} roads B)'.format(road_count))
@@ -88,7 +89,7 @@ class FlatSettlement:
 
             random_center = Point2D(dx, dz)
             distance = self._road_network.get_distance(random_center)
-            if distance <= settlement_access_dist:
+            if distance <= SETTLEMENT_ACCESS_DIST:
                 self._center = random_center
                 logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
                 break
@@ -101,6 +102,15 @@ class FlatSettlement:
         """
         Parcel extension from initialized parcels. Parcels are expended in place
         """
+        obs, net = self._maps.obstacle_map, self._maps.road_network
+        obs.map[:] = False
+        for parcel in self._parcels:
+            obs.add_parcel_to_obstacle_map(parcel)
+        for x, z in product(xrange(net.width), xrange(net.length)):
+            if net.is_road(x, z):
+                fake_parcel = Parcel(Point2D(x, z))
+                fake_parcel.__box = TransformBox((x-2, 0, x-2), (5, 1, 5))
+                obs.add_parcel_to_obstacle_map(fake_parcel)
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
         # most parcels should initially be expendable, except the ghost one
         expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
