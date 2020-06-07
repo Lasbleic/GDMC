@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from building_seeding import BuildingType
+from building_seeding import BuildingType, ghost_type
 from utils import Point2D, bernouilli
 from gen_utils import Direction, TransformBox, cardinal_directions
 import map
@@ -12,7 +12,7 @@ MIN_RATIO_SIDE = 7 / 11
 
 class Parcel:
 
-    def __init__(self, building_position, building_type, mc_map=None):
+    def __init__(self, building_position, building_type=ghost_type, mc_map=None):
         # type: (Point2D, BuildingType, map.Maps) -> Parcel
         self.__center = building_position
         self.__building_type = building_type
@@ -70,7 +70,7 @@ class Parcel:
         self.__box.expand(direction, inplace=True)
         # mark parcel points on obstacle map
         print(self.__box.maxx, self.__box.maxz)
-        self.__map.obstacle_map.map[self.__box.minx:self.__box.maxx, self.__box.minz:self.__box.maxz] = False
+        self.__map.obstacle_map.add_parcel_to_obstacle_map(self)
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
@@ -157,3 +157,7 @@ class Parcel:
     @property
     def length(self):
         return self.__box.length
+
+    @property
+    def bounds(self):
+        return self.__box

@@ -39,6 +39,7 @@ class ObstacleMap:
     # size must be odd
     def add_parcel_to_obstacle_map(self, parcel):
         # type: (generation.Parcel) -> None
+        parcel = parcel.bounds.expand(2, 0, 2)
         for x, z in product(range(parcel.minx, parcel.maxx), range(parcel.minz, parcel.maxz)):
             if self.__in_x_limits(x) and self.__in_z_limits(z):
                 self.__set_obstacle(x, z)
