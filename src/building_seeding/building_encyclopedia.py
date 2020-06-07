@@ -8,27 +8,27 @@ BUILDING_ENCYCLOPEDIA = {
     "Flat_scenario": {
 
         "Sociability": {
-            "house-house": (5, 7, 100),
+            "house-house": (7, 10, 100),
             "house-crop": (20, 25, 100),
-            "house-windmill": (15, 20, 100),
+            "house-windmill": (20, 25, 100),
             "house-ghost": (1, 2, 100),
-            "crop-crop": (10, 20, 100),
-            "crop-house": (20, 30, 100),
-            "crop-windmill": (25, 35, 100),
-            "crop-ghost": (1, 2, 100),
-            "windmill-windmill": (20, 30, 100),
-            "windmill-house": (25, 35, 100),
-            "windmill-crop": (25, 35, 100),
-            "windmill-ghost": (1, 2, 100),
+            "crop-crop": (7, 10, 100),
+            "crop-house": (20, 25, 100),
+            "crop-windmill": (7, 10, 100),
+            "crop-ghost": (20, 25, 100),
+            "windmill-windmill": (7, 10, 100),
+            "windmill-house": (20, 25, 100),
+            "windmill-crop": (7, 10, 100),
+            "windmill-ghost": (20, 25, 100),
             "ghost-house": (1, 2, 100),
-            "ghost-crop": (1, 2, 100),
-            "ghost-windmill": (1, 2, 100)
+            "ghost-crop": (20, 25, 100),
+            "ghost-windmill": (20, 25, 100)
         },
 
         "Accessibility": {
-            "house": (5, 10, 25),
-            "crop": (5, 10, 25),
-            "windmill": (10, 15, 35)
+            "house": (7, 10, 25),
+            "crop": (15, 20, 25),
+            "windmill": (12, 20, 25)
         },
 
         "Weighting_factors": {
