@@ -11,9 +11,7 @@ import matplotlib.pyplot as plt
 from os.path import isdir, join, exists, abspath, dirname
 from os import mkdir
 from shutil import rmtree
-from map.road_network import *
-from utils import Point2D
-from building_seeding import house_type, accessibility
+
 
 # Sizes accepted by the visualization tool
 # with the size of the figure which is saved in a .png and the width of the grid lines
@@ -164,6 +162,11 @@ class MapStock:
         plt.savefig(file_path, dpi=dpi*9)    # increase dpi factor to improve quality
 
 if __name__ == '__main__':
+
+
+    from map.road_network import *
+    from utils import Point2D
+    from building_seeding import house_type, accessibility
 
     # Accessibility example
 

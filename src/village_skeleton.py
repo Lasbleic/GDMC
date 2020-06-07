@@ -52,7 +52,7 @@ if __name__ == '__main__':
     import numpy as np
     from matplotlib import colors
 
-    N = 200
+    N = 100
 
     my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
     my_maps = Maps(None, my_bounding_box)
