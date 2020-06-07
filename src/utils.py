@@ -19,6 +19,10 @@ class Point2D:
         assert isinstance(other, Point2D)
         return Point2D(self.x + other.x, self.z + other.z)
 
+    def __sub__(self, other):
+        assert isinstance(other, Point2D)
+        return Point2D(self.x - other.x, self.z - other.z)
+
     def __mul__(self, other):
         assert type(other) == int or type(other) == float
         return Point2D(self.x * other, self.z * other)

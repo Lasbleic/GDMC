@@ -61,6 +61,25 @@ class TransformBox(BoundingBox):
         self._size = other.size
         return self
 
+    def __sub__(self, other):
+        # type: (TransformBox) -> TransformBox
+        """
+        exclusion operator, only works if self is an extension of other in a single direction
+        should work well with self.expand(Direction), eg box.expand(South) - box -> southern extension of box
+        todo: test this
+        """
+        same_coords = [self.minx == other.minx, self.maxx == other.maxx, self.minz == other.minz,
+                       self.maxz == other.maxz]
+        assert sum(same_coords) == 3  # only one of the 4 bool should be False
+        if not same_coords[0]:  # supposedly self.minx < other.minx
+            return self.split(dx=1)[0]
+        elif not same_coords[1]:  # supposedly self.minx < other.minx
+            return self.split(dx=self.width-1)[1]
+        elif not same_coords[2]:  # supposedly self.minx < other.minx
+            return self.split(dz=1)[0]
+        else:  # supposedly self.minx < other.minx
+            return self.split(dz=self.length-1)[1]
+
     @property
     def surface(self):
         return self.width * self.length

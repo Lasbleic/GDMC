@@ -31,10 +31,10 @@ class ObstacleMap:
         return self.__is_accessible(point.x, point.z)
 
     def __is_accessible(self, x, z):
-        return self.map[z][x]
+        return self.map[x, z]
 
     def __set_obstacle(self, x, z):
-        self.map[z][x] = False
+        self.map[x, z] = False
 
     # size must be odd
     def add_parcel_to_obstacle_map(self, parcel):

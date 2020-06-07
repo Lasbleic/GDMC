@@ -6,7 +6,7 @@ from gen_utils import Direction, TransformBox, cardinal_directions
 import map
 
 MIN_PARCEL_SIZE = 7
-MAX_PARCEL_AREA = 100
+MAX_PARCEL_AREA = 150
 MIN_RATIO_SIDE = 7 / 11
 
 
@@ -20,8 +20,8 @@ class Parcel:
         self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
         self.__box = TransformBox((building_position.x, 0, building_position.z), (1, 1, 1))  # type: TransformBox
         if mc_map is not None:
-            self.__compute_entry_point()
             self.__initialize_limits()
+            self.__compute_entry_point()
 
     def __compute_entry_point(self):
         road_net = self.__map.road_network
@@ -51,21 +51,26 @@ class Parcel:
         else:
             resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
         self.__entry_point = self.__center + resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
+        if self.entry_x >= self.__map.width or self.entry_z >= self.__map.length:
+            self.__entry_point = self.__center - resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
 
     def __initialize_limits(self):
         # build parcel box
-        shifted_x = min(max(0, self.__center.x - (MIN_PARCEL_SIZE - 1) // 2), self.__map.width - MIN_PARCEL_SIZE)  # type: int
-        shifted_z = min(max(0, self.__center.z - (MIN_PARCEL_SIZE - 1) // 2), self.__map.length - MIN_PARCEL_SIZE)  # type: int
+        shifted_x = min(max(0, self.__center.x - MIN_PARCEL_SIZE // 2), self.__map.width - MIN_PARCEL_SIZE)  # type: int
+        shifted_z = min(max(0, self.__center.z - MIN_PARCEL_SIZE // 2), self.__map.length - MIN_PARCEL_SIZE)  # type: int
         origin = (shifted_x, self.__map.height_map[shifted_x, shifted_z], shifted_z)
         size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
         self.__box = TransformBox(origin, size)
+        # in case when the parcel hits the limits, does not change anything otherwise
+        self.__center = Point2D(shifted_x + MIN_PARCEL_SIZE // 2, shifted_z + MIN_PARCEL_SIZE // 2)
 
     def expand(self, direction):
         # type: (Direction) -> None
         assert self.is_expendable(direction)  # trust the user
-        self.__box.expand(direction)
+        self.__box.expand(direction, inplace=True)
         # mark parcel points on obstacle map
-        self.__map.obstacle_map.map[self.__box.minz:self.__box.maxz, self.__box.minx + self.__box.maxx] = False
+        print(self.__box.maxx, self.__box.maxz)
+        self.__map.obstacle_map.map[self.__box.minx:self.__box.maxx, self.__box.minz:self.__box.maxz] = False
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
@@ -79,8 +84,11 @@ class Parcel:
         else:
             expanded = self.__box.expand(direction)
             obstacle = self.__map.obstacle_map
-            # todo: add possibility to truncate road leading to this parcel
-            no_obstacle = obstacle.map[expanded.minz:expanded.maxz, expanded.minx:expanded.maxx].all()
+            extension = expanded - self.__box
+            try:
+                no_obstacle = obstacle.map[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
+            except IndexError:
+                return False
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1/MIN_RATIO_SIDE
             max_x, max_z = self.__map.width, self.__map.length
