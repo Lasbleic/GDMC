@@ -4,7 +4,7 @@ Village skeleton growth
 
 from typing import List
 from building_seeding import BuildingPool, ghost_type, interest, random_interest
-from generation import Parcel
+from generation.parcel import Parcel
 from utils import Point2D
 import map.maps
 
@@ -37,15 +37,61 @@ class VillageSkeleton:
             self.maps.road_network.connect_to_network(new_parcel.entry_point)
 
 
-# if __name__ == '__main__':
-#     from gen_utils import TransformBox
-#     from maps import Maps
-#     from flat_settlement import FlatSettlement
-#     from map.road_network import RoadNetwork
-#
-#     my_bounding_box = TransformBox((0, 0, 0), (100, 0, 100))
-#     my_maps = Maps(None, my_bounding_box)
-#     my_flat_settlement = FlatSettlement(my_maps)
-#     print(my_flat_settlement._road_network.network)
-#     my_flat_settlement.init_road_network()
-#     print(my_flat_settlement._road_network.network)
+if __name__ == '__main__':
+
+    from gen_utils import TransformBox
+    from maps import Maps
+    from flat_settlement import FlatSettlement
+    from map.road_network import RoadNetwork
+
+    import sys
+
+    sys.path.insert(1, '../../visu')
+    from pre_processing import Map, MapStock
+    import numpy as np
+    from matplotlib import colors
+
+    N = 100
+
+    my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
+    my_maps = Maps(None, my_bounding_box)
+
+    print("Creating Flat map")
+    my_flat_settlement = FlatSettlement(my_maps)
+
+    road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
+    road_map = Map("road_network", N, np.copy(my_flat_settlement._road_network.network), road_cmap, (0, 1), ['Grass', 'Road'])
+
+    print("Initializing road network")
+    my_flat_settlement.init_road_network()
+
+    road_map2 = Map("road_network_2", N, np.copy(my_flat_settlement._road_network.network), road_cmap, (0, 1), ['Grass', 'Road'])
+
+    print("Initializing town center")
+    my_flat_settlement.init_town_center()
+
+    print("Building skeleton")
+    my_flat_settlement.build_skeleton()
+
+    print("Parcel list has length:", len(my_flat_settlement._parcels))
+
+    minecraft_net = np.copy(my_flat_settlement._road_network.network)
+
+    COLORS = {"house": 2,
+              "crop": 3,
+              "windmill": 4}
+
+    minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange'])
+
+    for parcel in my_flat_settlement._parcels:
+        xmin, xmax = parcel.minx, parcel.maxx
+        zmin, zmax = parcel.minz, parcel.maxz
+
+        minecraft_net[xmin:xmax, zmin:zmax] = COLORS[parcel.building_type.name]
+
+    minecraft_map = Map("minecraft_map", N, minecraft_net, minecraft_cmap, (0, 4), ['Grass', 'Road', 'House', 'Crop', 'Windmill'])
+
+    the_stock = MapStock("road_network_test", N, clean_dir=True)
+    the_stock.add_map(road_map)
+    the_stock.add_map(road_map2)
+    the_stock.add_map(minecraft_map)
