@@ -56,9 +56,9 @@ def interest(building_type, scenario, road_network, settlement_seeds, size, parc
 
 
 def max_interest(_interest_map):
-    width = _interest_map.shape[1]
+    width, length = _interest_map.shape[0], _interest_map.shape[1]
     argmax = np.argmax(_interest_map)
-    return Point2D(argmax % width, argmax // width)
+    return Point2D(argmax // width, argmax % length)
 
 
 def random_interest(_interest_map, max_iteration=10):
@@ -71,7 +71,7 @@ def random_interest(_interest_map, max_iteration=10):
         x, z = random_cell // width, random_cell % width
         interest_score = _interest_map[x, z]
         if np.random.binomial(1, interest_score):
-            return Point2D(z, x)
+            return Point2D(x, z)
         cells.remove(random_cell)
         max_iteration -= 1
     return max_interest(_interest_map)

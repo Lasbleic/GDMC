@@ -27,14 +27,14 @@ class Parcel:
         road_net = self.__map.road_network
         # todo: gerer le cas des parcelles trop eloignees du reseau
         if road_net.is_accessible(self.__center):
-            nearest_road_point = road_net.path_map[self.__center.z][self.__center.x][0]
+            nearest_road_point = road_net.path_map[self.__center.x][self.__center.z][0]
             distance_threshold = MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH // 2
             if road_net.get_distance(self.__center) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 self.__entry_point = nearest_road_point
                 return
             # compute the local direction of the road
-            target_road_pt = road_net.path_map[self.__center.z][self.__center.x][distance_threshold]
+            target_road_pt = road_net.path_map[self.__center.x][self.__center.z][distance_threshold]
         else:
             target_road_pt = Point2D(self.__map.width//2, self.__map.length//2)
 

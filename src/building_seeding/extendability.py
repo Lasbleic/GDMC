@@ -20,10 +20,10 @@ def extendability(size, parcel_size):
     map_width = size[0]
     map_length = size[1]
 
-    extendability_map[0:shift,0:map_width] = -1
-    extendability_map[map_length-shift:map_length, 0:map_width] = -1
-    extendability_map[0:map_length, 0:shift] = -1
-    extendability_map[0:map_length, map_width-shift:map_width] = -1
+    extendability_map[0:shift, 0:map_length] = -1
+    extendability_map[map_width-shift:map_width, 0:map_length] = -1
+    extendability_map[0:map_width, 0:shift] = -1
+    extendability_map[0:map_width, map_length-shift:map_length] = -1
 
     return extendability_map
 

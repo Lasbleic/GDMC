@@ -54,11 +54,11 @@ class VillageSkeleton:
             xmin, xmax = parcel.minx, parcel.maxx
             zmin, zmax = parcel.minz, parcel.maxz
 
-            minecraft_map[zmin:zmax, xmin:xmax] = COLORS[parcel.building_type.name]
-            # minecraft_map[parcel.center.z, parcel.center.x] = COLORS[parcel.building_type.name]
+            minecraft_map[xmin:xmax, zmin:zmax] = COLORS[parcel.building_type.name]
+            # minecraft_map[parcel.center.x, parcel.center.z] = COLORS[parcel.building_type.name]
 
         village_center = self.ghost.center
-        minecraft_map[village_center.z, village_center.x] = 5
+        minecraft_map[village_center.x, village_center.z] = 5
 
         minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red'])
 
