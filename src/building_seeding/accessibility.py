@@ -9,8 +9,8 @@ from itertools import product
 from math_function import balance
 import numpy as np
 from matplotlib import colors
-from map import RoadNetwork
-from building_seeding import house_type
+from map.road_network import RoadNetwork
+from building_seeding.building_pool import house_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from utils import Point2D
 
@@ -19,7 +19,7 @@ import sys
 
 def local_accessibility(x, z, building_type, scenario, road_network):
     lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Accessibility"][building_type.name]
-    distance = road_network.distance_map[z, x]
+    distance = road_network.distance_map[x, z]
     return balance(distance, lambda_min, lambda_0, lambda_max)
 
 
@@ -40,23 +40,27 @@ if __name__ == '__main__':
 
     # Accessibility test
 
-    N = 100
+    N = 10
     import time
 
-    p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(99, 23)
+    p1, p2, p3 = Point2D(0, 8), Point2D(6, 1), Point2D(99, 23)
     road_net = RoadNetwork(N, N)
     road_net.find_road(p1, p2)
-    road_net.find_road(p2, p3)
 
-    road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
-    road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
-    start_time = time.time()
-    print("Compute accessibility...")
-    access_net = accessibility(house_type, "Flat_scenario", road_net, (N, N))
-    print("--- %s seconds ---" % (time.time() - start_time))
-    access_cmap = "jet"
-    access_map = Map("accessibility_map", N, access_net, access_cmap, (-1, 1))
+    print(road_net.network)
+    print(road_net.distance_map)
 
-    the_stock = MapStock("interest_test", N, clean_dir=True)
-    the_stock.add_map(road_map)
-    the_stock.add_map(access_map)
+    # road_net.find_road(p2, p3)
+    #
+    # road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
+    # road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
+    # start_time = time.time()
+    # print("Compute accessibility...")
+    # access_net = accessibility(house_type, "Flat_scenario", road_net, (N, N))
+    # print("--- %s seconds ---" % (time.time() - start_time))
+    # access_cmap = "jet"
+    # access_map = Map("accessibility_map", N, access_net, access_cmap, (-1, 1))
+    #
+    # the_stock = MapStock("interest_test", N, clean_dir=True)
+    # the_stock.add_map(road_map)
+    # the_stock.add_map(access_map)

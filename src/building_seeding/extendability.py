@@ -7,7 +7,7 @@ from __future__ import division
 
 
 import numpy as np
-from matplotlib import colors
+
 import sys
 
 
@@ -31,6 +31,7 @@ def extendability(size, parcel_size):
 if __name__ == '__main__':
     sys.path.insert(1, '../../visu')
     from pre_processing import Map, MapStock
+    from matplotlib import colors
 
 
     N = 100

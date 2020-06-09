@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from building_seeding import BuildingType, ghost_type
+from building_seeding.building_pool import BuildingType, ghost_type
 from utils import Point2D, bernouilli
 from gen_utils import Direction, TransformBox, cardinal_directions
 import map
@@ -8,7 +8,7 @@ import map
 MIN_PARCEL_SIZE = 7
 MAX_PARCEL_AREA = 150
 MIN_RATIO_SIDE = 7 / 11
-
+ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH) // 2
 
 class Parcel:
 
@@ -50,9 +50,9 @@ class Parcel:
             resid_road_dir = Direction(dx=resid_road_x, dz=resid_road_z)
         else:
             resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
-        self.__entry_point = self.__center + resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
+        self.__entry_point = self.__center + resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
         if self.entry_x >= self.__map.width or self.entry_z >= self.__map.length:
-            self.__entry_point = self.__center - resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
+            self.__entry_point = self.__center - resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
 
     def __initialize_limits(self):
         # build parcel box

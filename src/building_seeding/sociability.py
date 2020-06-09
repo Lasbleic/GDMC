@@ -10,7 +10,7 @@ import numpy as np
 from itertools import product
 from math_function import attraction_repulsion
 from math import sqrt
-from building_seeding import house_type, windmill_type
+from building_seeding.building_pool import house_type, windmill_type
 from pre_processing import Map, MapStock
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from parcel import Parcel
@@ -24,7 +24,7 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds):
     for settlement_seed in settlement_seeds:
 
         neighbor_type, neighbor_position = settlement_seed.building_type, settlement_seed.center
-        distance_to_building = sqrt((neighbor_position.x - x) ** 2 + (neighbor_position.z - z) ** 2)
+        distance_to_building = sqrt((neighbor_position.z - x) ** 2 + (neighbor_position.x - z) ** 2)
         lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][
             building_type.name + "-" + neighbor_type.name]
 

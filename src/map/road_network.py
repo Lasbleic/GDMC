@@ -5,7 +5,7 @@ from random import choice
 import time
 from numpy import zeros, full, empty
 from sys import maxint
-from building_seeding import BUILDING_ENCYCLOPEDIA
+from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from utils import Point2D
 
 
