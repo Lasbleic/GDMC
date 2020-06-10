@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from building_seeding import BuildingType, ghost_type
+from building_seeding.building_pool import BuildingType, ghost_type
 from utils import Point2D, bernouilli
 from gen_utils import Direction, TransformBox, cardinal_directions
 import map
@@ -8,7 +8,7 @@ import map
 MIN_PARCEL_SIZE = 7
 MAX_PARCEL_AREA = 150
 MIN_RATIO_SIDE = 7 / 11
-
+ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH) // 2
 
 class Parcel:
 
@@ -27,14 +27,14 @@ class Parcel:
         road_net = self.__map.road_network
         # todo: gerer le cas des parcelles trop eloignees du reseau
         if road_net.is_accessible(self.__center):
-            nearest_road_point = road_net.path_map[self.__center.z][self.__center.x][0]
+            nearest_road_point = road_net.path_map[self.__center.x][self.__center.z][0]
             distance_threshold = MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH // 2
             if road_net.get_distance(self.__center) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 self.__entry_point = nearest_road_point
                 return
             # compute the local direction of the road
-            target_road_pt = road_net.path_map[self.__center.z][self.__center.x][distance_threshold]
+            target_road_pt = road_net.path_map[self.__center.x][self.__center.z][distance_threshold]
         else:
             target_road_pt = Point2D(self.__map.width//2, self.__map.length//2)
 
@@ -50,9 +50,9 @@ class Parcel:
             resid_road_dir = Direction(dx=resid_road_x, dz=resid_road_z)
         else:
             resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
-        self.__entry_point = self.__center + resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
+        self.__entry_point = self.__center + resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
         if self.entry_x >= self.__map.width or self.entry_z >= self.__map.length:
-            self.__entry_point = self.__center - resid_road_dir.asPoint2D * map.RoadNetwork.MAX_ROAD_LENGTH
+            self.__entry_point = self.__center - resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
 
     def __initialize_limits(self):
         # build parcel box

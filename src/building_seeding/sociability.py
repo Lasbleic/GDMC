@@ -10,7 +10,7 @@ import numpy as np
 from itertools import product
 from math_function import attraction_repulsion
 from math import sqrt
-from building_seeding import house_type, windmill_type
+from building_seeding.building_pool import house_type, windmill_type
 from pre_processing import Map, MapStock
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from parcel import Parcel

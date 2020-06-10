@@ -5,7 +5,7 @@ from random import choice
 import time
 from numpy import zeros, full, empty
 from sys import maxint
-from building_seeding import BUILDING_ENCYCLOPEDIA
+from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from utils import Point2D
 
 
@@ -16,10 +16,10 @@ class RoadNetwork:
         # type: (int, int, Maps) -> RoadNetwork
         self.width = width
         self.length = length
-        self.network = zeros((length, width), dtype=int)
+        self.network = zeros((width, length), dtype=int)
         # Representing the distance from the network + the path to the network
-        self.distance_map = full((self.length, self.width), maxint)
-        self.path_map = empty((self.length, self.width), dtype=object)
+        self.distance_map = full((width, length), maxint)
+        self.path_map = empty((width, length), dtype=object)
         self.lambda_max = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["Accessibility"]["windmill"][2]
         # self.lambda_max = 0
         self.__all_maps = mc_map
@@ -31,7 +31,7 @@ class RoadNetwork:
             self.set_road(x.x, x.z)
         else:
             self.update_distance_map(x, z)
-            self.network[z][x] = 1
+            self.network[x][z] = 1
 
     def is_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> bool
@@ -39,7 +39,7 @@ class RoadNetwork:
             # assert isinstance(x, Point2D)
             return self.is_road(x.x, x.z)
         else:
-            return self.network[z][x] == 1
+            return self.network[x][z] == 1
 
     def create_road(self, path):
         # type: ([Point2D]) -> None
@@ -55,7 +55,7 @@ class RoadNetwork:
     def connect_to_network(self, point_to_connect):
         # type: (Point2D) -> None
         if self.is_accessible(point_to_connect):
-            path = self.path_map[point_to_connect.z][point_to_connect.x]
+            path = self.path_map[point_to_connect.x][point_to_connect.z]
         else:
             path, distance = self.dijkstra(point_to_connect, lambda point: self.is_road(point))
         self.create_road(path)
@@ -67,7 +67,7 @@ class RoadNetwork:
             # assert isinstance(x, Point2D)
             return self.get_distance(x.x, x.z)
         else:
-            return self.distance_map[z][x]
+            return self.distance_map[x][z]
 
     def update_distance_map(self, x, z):
         self.dijkstra(Point2D(x, z), lambda _: False, self.lambda_max, True)
@@ -76,14 +76,14 @@ class RoadNetwork:
 
         def init():
             x, z = root_point.x, root_point.z
-            _distance_map = full((self.length, self.width), maxint)
-            _distance_map[z][x] = 0
+            _distance_map = full((self.width, self.length), maxint)
+            _distance_map[x][z] = 0
             _neighbours = [root_point]
-            _predecessor_map = full((self.length, self.width), None)
+            _predecessor_map = full((self.width, self.length), None)
             return _distance_map, _neighbours, _predecessor_map
 
         def closest_neighbor():
-            neighbors_distance = map(lambda neighbor: distance_map[neighbor.z][neighbor.x], neighbors)
+            neighbors_distance = map(lambda neighbor: distance_map[neighbor.x][neighbor.z], neighbors)
             min_distance = min(neighbors_distance)
             closest_neighbors = [neighbors[i] for i, dist in enumerate(neighbors_distance) if dist == min_distance]
             return choice(closest_neighbors)
@@ -92,13 +92,13 @@ class RoadNetwork:
             return 1
 
         def update_distance(updated_point, neighbor, _neighbors):
-            new_distance = distance_map[updated_point.z][updated_point.x] + cost(updated_point, neighbor)
-            previous_distance = distance_map[neighbor.z][neighbor.x]
+            new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbor)
+            previous_distance = distance_map[neighbor.x][neighbor.z]
             if previous_distance >= maxint and new_distance <= max_distance and not self.is_road(neighbor):
                 _neighbors += [neighbor]
             if previous_distance > new_distance:
-                distance_map[neighbor.z][neighbor.x] = new_distance
-                predecessor_map[neighbor.z][neighbor.x] = updated_point
+                distance_map[neighbor.x][neighbor.z] = new_distance
+                predecessor_map[neighbor.x][neighbor.z] = updated_point
 
         def update_distances(updated_point):
             x, z = updated_point.x, updated_point.z
@@ -124,13 +124,13 @@ class RoadNetwork:
             path = []
             while current_point != root_point:
                 path = [current_point] + path
-                current_point = predecessor_map[current_point.z][current_point.x]
+                current_point = predecessor_map[current_point.x][current_point.z]
             return [root_point] + path
 
         def update_distance_map_at(point):
-            if self.get_distance(point) >= distance_map[point.z][point.x]:
-                self.distance_map[point.z][point.x] = distance_map[point.z][point.x]
-                self.path_map[point.z][point.x] = path_to_dest(point)
+            if self.get_distance(point) >= distance_map[point.x][point.z]:
+                self.distance_map[point.x][point.z] = distance_map[point.x][point.z]
+                self.path_map[point.x][point.z] = path_to_dest(point)
 
         distance_map, neighbors, predecessor_map = init()
         clst_neighbor = root_point
@@ -144,7 +144,7 @@ class RoadNetwork:
         if not ending_condition(clst_neighbor):
             return [], maxint
         else:
-            return path_to_dest(clst_neighbor), distance_map[clst_neighbor.z][clst_neighbor.x]
+            return path_to_dest(clst_neighbor), distance_map[clst_neighbor.x][clst_neighbor.z]
 
     def is_accessible(self, point):
         return self.get_distance(point) < maxint

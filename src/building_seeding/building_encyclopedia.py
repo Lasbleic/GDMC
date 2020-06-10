@@ -32,9 +32,9 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Weighting_factors": {
-            "house": (0.5, 0.5),
-            "crop": (0.5, 0.5),
-            "windmill": (0.5, 0.5)
+            "house": (0.25, 0.75),
+            "crop": (0.25, 0.75),
+            "windmill": (0.25, 0.75)
 
         }
     }

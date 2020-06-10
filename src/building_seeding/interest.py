@@ -8,10 +8,14 @@ from __future__ import division
 from itertools import product
 
 from accessibility import accessibility, local_accessibility
-from building_seeding import house_type, windmill_type
+from building_seeding.building_pool import house_type, windmill_type
 from map.road_network import *
 from sociability import sociability, local_sociability
+from extendability import extendability
 import numpy as np
+import sys
+sys.path.insert(1, '../../visu')
+from pre_processing import Map, MapStock
 
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
@@ -28,20 +32,19 @@ def local_interest(x, z, building_type, scenario, road_network, settlement_seeds
     return interest_score
 
 
-def interest(building_type, scenario, road_network, settlement_seeds, size):
+def interest(building_type, scenario, road_network, settlement_seeds, size, parcel_size):
     weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
     _interest_map = np.zeros(size)
 
     print("Compute accessibility map")
     accessibility_map = accessibility(building_type, scenario, road_network, size)
-    print("Accessibility map : Done ")
     print("Compute sociability map")
     sociability_map = sociability(building_type, scenario, settlement_seeds, size)
-    print("Sociability map : Done ")
+    extendability_map = extendability(size, parcel_size)
 
     for x, z, in product(range(size[0]), range(size[1])):
 
-        if accessibility_map[x][z] == -1 or sociability_map[x][z] == -1:
+        if accessibility_map[x][z] == -1 or sociability_map[x][z] == -1 or extendability_map[x][z] == -1:
             interest_score = 0
         else:
             interest_score = max(0, weighting_factors[0] * accessibility_map[x][z] + weighting_factors[1] *
@@ -49,13 +52,13 @@ def interest(building_type, scenario, road_network, settlement_seeds, size):
 
         _interest_map[x][z] = interest_score
 
-    return _interest_map
+    return _interest_map, accessibility_map, sociability_map
 
 
 def max_interest(_interest_map):
-    width = _interest_map.shape[1]
+    width, length = _interest_map.shape[0], _interest_map.shape[1]
     argmax = np.argmax(_interest_map)
-    return Point2D(argmax // width, argmax % width)
+    return Point2D(argmax // width, argmax % length)
 
 
 def random_interest(_interest_map, max_iteration=10):
@@ -95,8 +98,6 @@ def fast_random_interest(building_type, scenario, road_network, settlement_seeds
 
 if __name__ == '__main__':
     # note Charlie: commented this because the import of Parcel causes a circular import
-    # sys.path.insert(1, '../../visu')
-    # from pre_processing import Map, MapStock
     #
     # # Interest test
     # print("Initialize test")

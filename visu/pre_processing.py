@@ -11,9 +11,7 @@ import matplotlib.pyplot as plt
 from os.path import isdir, join, exists, abspath, dirname
 from os import mkdir
 from shutil import rmtree
-from map.road_network import *
-from utils import Point2D
-from building_seeding import house_type, accessibility
+
 
 # Sizes accepted by the visualization tool
 # with the size of the figure which is saved in a .png and the width of the grid lines
@@ -24,6 +22,7 @@ ACCEPTED_MAP_SIZES = {10: 0.70,
                       200: 0.15,
                       256: 0.10,
                       300: 0.07}
+
 
 def grid_thickness(map_size):
     map_size_ref_list = list(ACCEPTED_MAP_SIZES.keys())
@@ -162,8 +161,14 @@ class MapStock:
             print("Replacing map...")
         dpi = fig.get_dpi()
         plt.savefig(file_path, dpi=dpi*9)    # increase dpi factor to improve quality
+        plt.close()
 
 if __name__ == '__main__':
+
+
+    from map.road_network import *
+    from utils import Point2D
+    from building_seeding import house_type, accessibility
 
     # Accessibility example
 
