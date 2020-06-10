@@ -2,7 +2,7 @@ from __future__ import division, print_function
 from numpy.random import random, choice
 from typing import Dict
 
-from generation import CropGenerator, ProcHouseGenerator
+from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
 
 
 class BuildingType:
@@ -20,7 +20,7 @@ class BuildingType:
 # All building types available for generation
 house_type = BuildingType('house', ProcHouseGenerator)
 crop_type = BuildingType('crop', CropGenerator)
-windmill_type = BuildingType('windmill', CropGenerator)
+windmill_type = BuildingType('windmill', WindmillGenerator)
 ghost_type = BuildingType('ghost')
 
 # dict to associate weights to types. The normalized weight = frequency of each type

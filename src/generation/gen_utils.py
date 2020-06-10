@@ -90,6 +90,9 @@ class Direction:
     Custom direction class
     """
 
+    __known_dirs = {'0 0 1': 'South', '0 1 0': 'Top', '1 0 0': 'East',
+                    '0 0 -1': 'North', '0 -1 0': 'Bottom', '-1 0 0': 'West'}
+
     def __init__(self, dx=0, dy=0, dz=0):
         """
         Given a 3D vector, return the closer cardinal direction
@@ -108,10 +111,8 @@ class Direction:
         self._dir_x = int(dx / abs(dx)) if dx else 0  # 1, 0, or -1
         self._dir_y = int(dy / abs(dy)) if dy else 0
         self._dir_z = int(dz / abs(dz)) if dz else 0
-        known_dirs = {'0 0 1': 'South', '0 1 0': 'Top', '1 0 0': 'East',
-                      '0 0 -1': 'North', '0 -1 0': 'Bottom', '-1 0 0': 'West'}
         tmp_key = '{} {} {}'.format(self._dir_x, self._dir_y, self._dir_z)
-        self._name = known_dirs[tmp_key] if tmp_key in known_dirs else 'Unknown'
+        self._name = self.__known_dirs[tmp_key] if tmp_key in self.__known_dirs else 'Unknown'
 
     def __eq__(self, other):
         if isinstance(other, Direction):
@@ -154,6 +155,12 @@ class Direction:
 
         """
         return Direction(dx=-self._dir_z, dz=self._dir_x)
+
+    @classmethod
+    def fromString(cls, dir_str):
+        str_to_coord = {value.lower(): key for key, value in Direction.__known_dirs.items()}  # reversed dict
+        x, y, z = list(map(int, str_to_coord[dir_str].split(' ')))
+        return Direction(x, y, z)
 
 
 East = Direction(1, 0, 0)
@@ -206,3 +213,4 @@ if __name__ == '__main__':
     assert -Direction(-3, 0, 0) == East
     assert -North == Direction(0, 0, 1)
     assert str(-Direction(0, 1, 0)) == str(Bottom) == 'Bottom'
+    assert Direction.fromString('east') == East

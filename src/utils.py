@@ -1,6 +1,6 @@
 from math import sqrt
 from random import random
-from os.path import realpath
+from os.path import realpath, sep
 
 
 class Point2D:
@@ -45,5 +45,5 @@ def euclidean(p1, p2):
 
 def get_project_path():
     this_path = realpath(__file__)
-    proj_path = '/'.join(this_path.split('/')[:-1])
+    proj_path = sep.join(this_path.split(sep)[:-1])
     return proj_path

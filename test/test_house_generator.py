@@ -1,5 +1,3 @@
-# Name to display in MCEdit filter menu
-
 from generation import TransformBox, ProcHouseGenerator
 from map.maps import Maps
 from pymclevel import BoundingBox, MCLevel

@@ -1,16 +1,22 @@
 from math import floor
+from os import sep
 from random import randint
 from itertools import product
-from numpy.random import choice
-from numpy import ones
 
+from numpy.random import choice
+from numpy import ones, array
+
+from pymclevel.block_copy import copyBlocksFrom
+from pymclevel.block_fill import fillBlocks
 from utilityFunctions import setBlock
 
 from gen_utils import TransformBox, Direction, cardinal_directions, Bottom, Top
-from pymclevel import alphaMaterials as Block
+from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.schematic import StructureNBT
 
 from utils import get_project_path, Point2D
+
+SURFACE_PER_ANIMAL = 16
 
 
 def paste_nbt(level, box, nbt_file_name):
@@ -20,10 +26,12 @@ def paste_nbt(level, box, nbt_file_name):
     x0, y0, z0 = box.minx, box.miny, box.minz
     # iterates over coordinates in the structure, copy to level
     for xs, ys, zs in product(xrange(_width), xrange(_height), xrange(_length)):
-        xd, yd, zd = x0 + xs, y0 + ys, z0 + zs  # coordinates in the level: translation of the structure
         block = _structure.Blocks[xs, ys, zs]  # (id, data) tuple
-        print(xs, ys, zs, block)
-        setBlock(level, block, xd, yd, zd)
+        if ys == 14:
+            print(xs, ys, zs, block)
+        if block != Block['Structure Void'].ID:
+            xd, yd, zd = x0 + xs, y0 + ys, z0 + zs  # coordinates in the level: translation of the structure
+            setBlock(level, block, xd, yd, zd)
 
 
 class Generator:
@@ -82,18 +90,37 @@ class Generator:
 
 class CropGenerator(Generator):
     def generate(self, level, height_map=None):
+        self._gen_animal_farm(level, height_map)
+
+    def _gen_animal_farm(self, level, height_map, animal='Cow'):
+        # type: (MCLevel, numpy.array, str) -> None
+        # todo: abreuvoir + herbe + abri
+        x, z = self._box.minx, self._box.minz
+        y = height_map[x - self._box.minx, z - self._box.minz]
+        fence_box = TransformBox((x, y, z), (self.width, 1, self.length))
+        fillBlocks(level, fence_box, Block['Oak Fence'])
+        fence_box.expand(-1, 0, -1, True)
+        fillBlocks(level, fence_box, Block['Air'])
+        animal_count = fence_box.surface // SURFACE_PER_ANIMAL
+        for _ in xrange(animal_count):
+            entity = Entity.Create(animal)  # type: Entity
+            x = randint(fence_box.minx, fence_box.maxx-1)
+            z = randint(fence_box.minz, fence_box.maxz-1)
+            Entity.setpos(entity, (x, y, z))
+            level.addEntity(entity)
+
+    def _gen_crop_v1(self, level):
         # dimensions
-        width, length = self._box.width, self._box.length
-        x0, y0, z0 = self._box.origin
+        x0, y0, z0 = self.origin
         # block states
         crop_ids = [141, 142, 59]
         prob = ones(len(crop_ids)) / len(crop_ids)  # uniform across the crops
 
-        water_sources = (1 + (width - 1) // 9) * (1 + (length - 1) // 9)  # each water source irrigates a 9x9 flat zone
+        water_sources = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)  # each water source irrigates a 9x9 flat zone
         for _ in xrange(water_sources):
-            xs, zs = x0 + randint(0, width - 1), z0 + randint(0, length - 1)
-            for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + width, xs + 5)),
-                                  xrange(max(z0, zs - 4), min(z0 + length, zs + 5))):
+            xs, zs = x0 + randint(0, self.width - 1), z0 + randint(0, self.length - 1)
+            for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + self.width, xs + 5)),
+                                  xrange(max(z0, zs - 4), min(z0 + self.length, zs + 5))):
                 if (xd, zd) == (xs, zs):
                     # water source
                     setBlock(level, (9, 15), xd, y0, zd)
@@ -182,3 +209,61 @@ class DoorGenerator(Generator):
             block_name = 'Oak Wood Planks'
         block = Block[block_name]
         return block.ID, block.blockData
+
+
+class WindmillGenerator(Generator):
+    def generate(self, level, height_map=None):
+        # type: (MCLevel, array) -> None
+        box = self._box
+        x, z = box.minx + box.width // 2, box.minz + box.length // 2
+        y = height_map[box.width//2, box.length//2] if height_map is not None else 15
+        box = TransformBox((x-5, y-14, z-4), (11, 11, 8))
+        fillBlocks(level, box.expand(1), Block['Bedrock'])  # protective shell around windmill frames
+
+        windmill_nbt = StructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
+        windmill_sch = windmill_nbt.toSchematic()
+        copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin)
+        ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
+
+        self.__activate_one_repeater(level, ground_box)
+
+    @staticmethod
+    def __activate_one_repeater(level, box):
+        # type: (MCLevel, TransformBox) -> None
+        repeatr_pos = []
+        repeatr_id = Block['unpowered_repeater'].ID
+        for x, y, z in box.positions:
+            block_id = level.blockAt(x, y, z)
+            if block_id == repeatr_id:
+                repeatr_pos.append((x, y, z))
+
+        x, y, z = box.minx + 1, box.miny, box.maxz-1
+        repeater = Block[repeatr_id, level.blockDataAt(x, y, z)]
+        dir_str = str(repeater.Blockstate[1]['facing'])
+        dir_com = Direction.fromString(dir_str)
+
+        # activate a repeater and preparing its tile tick
+        block = Block['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]
+        WindmillGenerator.__repeater_tile_tick(level, x, y, z, True)
+        setBlock(level, (block.ID, block.blockData), x, y, z)
+
+        # activate the command block following the previous repeater
+        x += 1
+        command_block_entity = level.getTileEntitiesInBox(TransformBox((x, y, z), (1, 1, 1)))[0]
+        command_block_entity['powered'].value = True  # power command block
+
+        # prepare tile tick for the repeater following the command block
+        x += 1
+        WindmillGenerator.__repeater_tile_tick(level, x, y, z, False)
+
+    @staticmethod
+    def __repeater_tile_tick(level, x, y, z, powered):
+        string_id = '{}powered_repeater'.format('' if powered else 'un')
+        tile_tick = TAG_Compound()
+        tile_tick.add(TAG_Int(-1, 'p'))
+        tile_tick.add(TAG_Int(10, 't'))
+        tile_tick.add(TAG_Int(x, 'x'))
+        tile_tick.add(TAG_Int(y, 'y'))
+        tile_tick.add(TAG_Int(z, 'z'))
+        tile_tick.add(TAG_String(string_id, 'i'))
+        level.addTileTick(tile_tick)
