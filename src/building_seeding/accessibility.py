@@ -8,9 +8,7 @@ from __future__ import division
 from itertools import product
 from math_function import balance
 import numpy as np
-from matplotlib import colors
 from map.road_network import RoadNetwork
-from building_seeding.building_pool import house_type
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from utils import Point2D
 
@@ -36,7 +34,6 @@ def accessibility(building_type, scenario, road_network, size):
 
 if __name__ == '__main__':
     sys.path.insert(1, '../../visu')
-    from pre_processing import Map, MapStock
 
     # Accessibility test
 
