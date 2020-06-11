@@ -9,7 +9,11 @@ from building_pool import BuildingPool, BuildingType
 from interest import interest, random_interest
 from parcel import Parcel
 from utils import Point2D
+from pre_processing import Map, MapStock
 
+
+import numpy as np
+from matplotlib import colors
 
 class VillageSkeleton:
 
@@ -25,7 +29,7 @@ class VillageSkeleton:
         self.parcel_size = parcel_size
         self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
 
-    def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None):
+    def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None, obstacle_map=None):
 
         iteration = len(self.parcel_list)
         suffix = "_{}".format(building_type.name) if building_type is not None else ""
@@ -37,6 +41,8 @@ class VillageSkeleton:
             self.map_stock.add_map(Map("{}2_sociability_map{}".format(iteration, suffix), N, sociability_map, "jet", (0, 1)))
         if interest_map is not None:
             self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, interest_map, "jet", (0, 1)))
+        if obstacle_map is not None:
+            self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, obstacle_map, colors.ListedColormap(['red', 'blue']), (0, 1), ['No', 'Yes']))
 
         minecraft_map = np.copy(self.maps.road_network.network)
 
@@ -51,17 +57,23 @@ class VillageSkeleton:
             minecraft_map[xmin:xmax, zmin:zmax] = COLORS[parcel.building_type.name]
             # minecraft_map[parcel.center.x, parcel.center.z] = COLORS[parcel.building_type.name]
 
+            minecraft_map[parcel.entry_point.x, parcel.entry_point.z] = 6
+
         village_center = self.ghost.center
         minecraft_map[village_center.x, village_center.z] = 5
 
-        minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red'])
+        minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple'])
 
-        self.map_stock.add_map(Map("{}{}_minecraft_map{}".format(iteration, 4 if iteration else 0, suffix), N, minecraft_map, minecraft_cmap, (0, 5),
-                            ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter']))
+        self.map_stock.add_map(Map("{}{}_minecraft_map{}".format(iteration, 4 if iteration else 0, suffix),
+                                   N,
+                                   minecraft_map,
+                                   minecraft_cmap,
+                                   (0, 6),
+                                   ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter', 'EntryPoint']))
 
     def grow(self):
 
-        # self.map_log()
+        self.map_log()
 
         for building_type in self.building_iterator:
 
@@ -78,10 +90,12 @@ class VillageSkeleton:
 
             self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel)
 
+            self.map_log(obstacle_map=self.maps.obstacle_map.map)
+
             # Road Creation Process
             self.maps.road_network.connect_to_network(new_parcel.entry_point)
 
-            # self.map_log(interest_map, accessibility_map, sociability_map, building_type)
+            self.map_log(interest_map, accessibility_map, sociability_map, building_type)
 
 
 if __name__ == '__main__':
@@ -90,14 +104,7 @@ if __name__ == '__main__':
     from map import Maps
     from flat_settlement import FlatSettlement
 
-    import sys
-
-    sys.path.insert(1, '../../visu')
-    from pre_processing import Map, MapStock
-    import numpy as np
-    from matplotlib import colors
-    
-    N = 50
+    N = 100
     
     my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
     my_maps = Maps(None, my_bounding_box)
