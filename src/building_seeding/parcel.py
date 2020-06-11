@@ -1,18 +1,19 @@
 from __future__ import division, print_function
 
-from building_seeding.building_pool import BuildingType, ghost_type
-from utils import Point2D, bernouilli
-from gen_utils import Direction, TransformBox, cardinal_directions
+from building_seeding.building_pool import BuildingType
+from parameters import MAX_ROAD_WIDTH
+from utils import *
 import map
 
 MIN_PARCEL_SIZE = 7
 MAX_PARCEL_AREA = 150
 MIN_RATIO_SIDE = 7 / 11
-ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH) // 2
+ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
+
 
 class Parcel:
 
-    def __init__(self, building_position, building_type=ghost_type, mc_map=None):
+    def __init__(self, building_position, building_type, mc_map=None):
         # type: (Point2D, BuildingType, map.Maps) -> Parcel
         self.__center = building_position
         self.__building_type = building_type
@@ -29,7 +30,7 @@ class Parcel:
         # todo: gerer le cas des parcelles trop eloignees du reseau
         if road_net.is_accessible(self.__center):
             nearest_road_point = road_net.path_map[self.__center.x][self.__center.z][0]
-            distance_threshold = MIN_PARCEL_SIZE + map.RoadNetwork.MAX_ROAD_LENGTH // 2
+            distance_threshold = MIN_PARCEL_SIZE + MAX_ROAD_WIDTH // 2
             if road_net.get_distance(self.__center) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 self.__entry_point = nearest_road_point

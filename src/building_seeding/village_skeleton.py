@@ -3,29 +3,23 @@ Village skeleton growth
 """
 
 from typing import List
-from building_seeding.building_pool import BuildingPool, ghost_type
-from building_seeding.interest import interest, random_interest
-from generation.parcel import Parcel
-from utils import Point2D
+
 import map.maps
-
-from pre_processing import Map, MapStock
-import numpy as np
-from matplotlib import colors
-
-
-
+from building_pool import BuildingPool, BuildingType
+from interest import interest, random_interest
+from parcel import Parcel
+from utils import Point2D
 
 
 class VillageSkeleton:
 
     def __init__(self, scenario, maps, ghost_position, parcel_list, parcel_size=7):
         # type: (str, map.maps.Maps, Point2D, List[Parcel], int) -> VillageSkeleton
-        assert(parcel_size % 2) # assert parcel_size is odd
+        assert(parcel_size % 2)  # assert parcel_size is odd
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
-        self.ghost = Parcel(ghost_position, ghost_type)
+        self.ghost = Parcel(ghost_position, BuildingType.from_name('ghost'))
         self.building_iterator = BuildingPool((maps.width - parcel_size - 1) * (maps.length - parcel_size - 1))
         self.parcel_list = parcel_list
         self.parcel_size = parcel_size
@@ -92,10 +86,9 @@ class VillageSkeleton:
 
 if __name__ == '__main__':
 
-    from gen_utils import TransformBox
-    from maps import Maps
+    from utils import TransformBox
+    from map import Maps
     from flat_settlement import FlatSettlement
-    from map.road_network import RoadNetwork
 
     import sys
 

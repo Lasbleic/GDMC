@@ -1,9 +1,7 @@
 from __future__ import division, print_function
-from pymclevel import BoundingBox
 from numpy import full
 from utils import Point2D
 from itertools import product
-import generation
 
 
 class ObstacleMap:

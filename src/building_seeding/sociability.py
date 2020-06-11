@@ -16,6 +16,7 @@ from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from parcel import Parcel
 from utils import Point2D
 
+
 def local_sociability(x, z, building_type, scenario, settlement_seeds):
 
     _sociability = 0

@@ -5,12 +5,12 @@ from random import choice
 import time
 from numpy import zeros, full, empty
 from sys import maxint
-from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
+
+from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH
 from utils import Point2D
 
 
 class RoadNetwork:
-    MAX_ROAD_LENGTH = 5
 
     def __init__(self, width, length, mc_map=None):
         # type: (int, int, Maps) -> RoadNetwork
@@ -20,7 +20,7 @@ class RoadNetwork:
         # Representing the distance from the network + the path to the network
         self.distance_map = full((width, length), maxint)
         self.path_map = empty((width, length), dtype=object)
-        self.lambda_max = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["Accessibility"]["windmill"][2]
+        self.lambda_max = MAX_LAMBDA
         # self.lambda_max = 0
         self.__all_maps = mc_map
 

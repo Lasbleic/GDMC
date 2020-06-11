@@ -1,11 +1,14 @@
 from __future__ import division, print_function
 from numpy.random import random, choice
 from typing import Dict
-
 from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
 
 
 class BuildingType:
+    """
+    Just a type of building, defined by a name and a generator
+    """
+
     def __init__(self, name, generator=None):
         self.name = name
         self.generator = generator
@@ -16,13 +19,21 @@ class BuildingType:
     def __hash__(self):
         return hash(self.name)
 
+    @staticmethod
+    def from_name(name):
+        if name == 'crop':
+            return BuildingType(name, CropGenerator)
+        if name == 'house':
+            return BuildingType(name, ProcHouseGenerator)
+        if name == 'ghost':
+            return BuildingType(name)
+        if name == 'windmill':
+            return BuildingType(name, WindmillGenerator)
 
-# All building types available for generation
-house_type = BuildingType('house', ProcHouseGenerator)
-crop_type = BuildingType('crop', CropGenerator)
-windmill_type = BuildingType('windmill', WindmillGenerator)
-ghost_type = BuildingType('ghost')
 
+house_type = BuildingType.from_name('house')
+crop_type = BuildingType.from_name('crop')
+windmill_type = BuildingType.from_name('windmill')
 # dict to associate weights to types. The normalized weight = frequency of each type
 type_weights = {house_type: 10, crop_type: 6, windmill_type: 2}
 

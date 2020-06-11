@@ -10,7 +10,7 @@ from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
 from utilityFunctions import setBlock
 
-from gen_utils import TransformBox, Direction, cardinal_directions, Bottom, Top
+from utils import TransformBox, Direction, cardinal_directions, Bottom, Top
 from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.schematic import StructureNBT
 
@@ -240,7 +240,7 @@ class WindmillGenerator(Generator):
         x, y, z = box.minx + 1, box.miny, box.maxz-1
         repeater = Block[repeatr_id, level.blockDataAt(x, y, z)]
         dir_str = str(repeater.Blockstate[1]['facing'])
-        dir_com = Direction.fromString(dir_str)
+        dir_com = Direction.from_string(dir_str)
 
         # activate a repeater and preparing its tile tick
         block = Block['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]

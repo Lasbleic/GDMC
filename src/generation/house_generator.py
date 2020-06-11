@@ -1,5 +1,5 @@
-from generation.gen_utils import North, South, West, East
-from generation.generators import *
+from utils import North, South, West, East
+from generators import *
 from pymclevel import MCLevel, MCSchematic
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks

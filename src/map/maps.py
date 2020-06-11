@@ -1,11 +1,11 @@
 from __future__ import division, print_function
 
 from pymclevel import MCLevel
-from generation import TransformBox, compute_height_map
 from obstacle_map import ObstacleMap
-from map.road_network import RoadNetwork
-
+from road_network import RoadNetwork
+from utils import TransformBox, compute_height_map
 from numpy import array
+
 
 class Maps:
     """
@@ -23,7 +23,7 @@ class Maps:
         else:
             xmin, xmax = bounding_box.minx, bounding_box.maxx
             zmin, zmax = bounding_box.minz, bounding_box.maxz
-            self.height_map = array([[0 for z in range(zmin, zmax)] for x in range(xmin, xmax)])
+            self.height_map = array([[0 for _ in range(zmin, zmax)] for _ in range(xmin, xmax)])
         self.road_network = RoadNetwork(self.__width, self.__length, mc_map=self)
 
     @property

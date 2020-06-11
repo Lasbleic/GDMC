@@ -1,14 +1,12 @@
 # Name to display in MCEdit filter menu
-from typing import Dict
 
-from flat_settlement import FlatSettlement
 import logging
 from time import gmtime, strftime, time
 
-from generation import TransformBox
+from flat_settlement import FlatSettlement
 from map.maps import Maps
 from pymclevel import BoundingBox, MCLevel
-from village_skeleton import VillageSkeleton
+from utils import TransformBox
 
 displayName = "Create a settlement"
 

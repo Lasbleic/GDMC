@@ -8,7 +8,8 @@ from __future__ import division
 from itertools import product
 
 from accessibility import accessibility, local_accessibility
-from building_seeding.building_pool import house_type, windmill_type
+from building_encyclopedia import BUILDING_ENCYCLOPEDIA
+from building_pool import house_type, windmill_type
 from map.road_network import *
 from sociability import sociability, local_sociability
 from extendability import extendability
@@ -100,7 +101,7 @@ if __name__ == '__main__':
     # note Charlie: commented this because the import of Parcel causes a circular import
     #
     # # Interest test
-    # print("Initialize test")
+    print("Initialize test")
     #
     # N = 100
     #
@@ -173,19 +174,19 @@ if __name__ == '__main__':
 
     # Execution time test of decision function
 
-    import time
-
-    print("Time test")
-
-    start_time = time.time()
-    for i in range(1000):
-        random_interest(interest_net, 10)
-    print("--- %s seconds ---" % (time.time() - start_time))
-
-    start_time = time.time()
-    for i in range(1000):
-        interest_net = fast_random_interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
-    print("--- %s seconds ---" % (time.time() - start_time))
+    # import time
+    #
+    # print("Time test")
+    #
+    # start_time = time.time()
+    # for i in range(1000):
+    #     random_interest(interest_net, 10)
+    # print("--- %s seconds ---" % (time.time() - start_time))
+    #
+    # start_time = time.time()
+    # for i in range(1000):
+    #     interest_net = fast_random_interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
+    # print("--- %s seconds ---" % (time.time() - start_time))
 
     # WTF il nous faut un getter !
 

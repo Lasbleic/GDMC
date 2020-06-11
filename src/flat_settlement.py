@@ -7,12 +7,11 @@ from random import randint
 from numpy.random import geometric, normal
 from typing import List
 
-from generation import Direction, TransformBox
-from generation.parcel import Parcel
+from utils import Direction, TransformBox
+from building_seeding import Parcel, VillageSkeleton
 from map.maps import Maps
 from map.road_network import RoadNetwork
 from utils import bernouilli, euclidean, Point2D
-from village_skeleton import VillageSkeleton
 
 MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
 SETTLEMENT_ACCESS_DIST = 12  # maximum distance from settlement center to road net
