@@ -102,15 +102,11 @@ class FlatSettlement:
         """
         Parcel extension from initialized parcels. Parcels are expended in place
         """
-        obs, net = self._maps.obstacle_map, self._maps.road_network
-        obs.map[:] = False
+        obs = self._maps.obstacle_map
+        obs.map[:] = True
         for parcel in self._parcels:
             obs.add_parcel_to_obstacle_map(parcel)
-        for x, z in product(xrange(net.width), xrange(net.length)):
-            if net.is_road(x, z):
-                fake_parcel = Parcel(Point2D(x, z))
-                fake_parcel.__box = TransformBox((x-2, 0, x-2), (5, 1, 5))
-                obs.add_parcel_to_obstacle_map(fake_parcel)
+        obs.add_network_to_obstacle_map()
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
         # most parcels should initially be expendable, except the ghost one
         expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)

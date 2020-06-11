@@ -67,7 +67,7 @@ class VillageSkeleton:
 
     def grow(self):
 
-        self.map_log()
+        # self.map_log()
 
         for building_type in self.building_iterator:
 
@@ -87,8 +87,7 @@ class VillageSkeleton:
             # Road Creation Process
             self.maps.road_network.connect_to_network(new_parcel.entry_point)
 
-            self.map_log(interest_map, accessibility_map, sociability_map, building_type)
-
+            # self.map_log(interest_map, accessibility_map, sociability_map, building_type)
 
 
 if __name__ == '__main__':

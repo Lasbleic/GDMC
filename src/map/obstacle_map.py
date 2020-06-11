@@ -36,6 +36,9 @@ class ObstacleMap:
     def __set_obstacle(self, x, z):
         self.map[x, z] = False
 
+    def __unset_obstacle(self, x, z):
+        self.map[x, z] = True
+
     # size must be odd
     def add_parcel_to_obstacle_map(self, parcel):
         # type: (generation.Parcel) -> None
@@ -44,16 +47,23 @@ class ObstacleMap:
             if self.__in_x_limits(x) and self.__in_z_limits(z):
                 self.__set_obstacle(x, z)
 
+    def unmark_parcel(self, parcel):
+        # type: (generation.Parcel) -> None
+        parcel = parcel.bounds.expand(1, 0, 1)  # a margin is added to not interfere with neighbouring obstacles
+        for x, z in product(range(parcel.minx, parcel.maxx), range(parcel.minz, parcel.maxz)):
+            if self.__in_x_limits(x) and self.__in_z_limits(z):
+                self.__unset_obstacle(x, z)
+
     def add_network_to_obstacle_map(self):
         if self.__all_maps is not None:
             network = self.__all_maps.road_network
-            for x, z in product(xrange(self.__width, self.__length)):
-                if network.is_road(x, z):
+            for xo, zo in product(xrange(self.__width), xrange(self.__length)):
+                if network.is_road(xo, zo):
                     # build a circular obstacle of designated width around road point
                     margin = 2  # todo: network.network should contain local road width
-                    for xo, zo in product(xrange(x - margin, x + margin), xrange(z - margin, z + margin)):
-                        if self.__in_x_limits(xo) and self.__in_z_limits(zo) and abs(xo*zo) < margin**2:
-                            self.__set_obstacle(xo, zo)
+                    for dx, dz in product(xrange(-margin, margin), xrange(-margin, margin)):
+                        if self.__in_x_limits(xo+dx) and self.__in_z_limits(zo+dz) and abs(dx*dz) < margin**2:
+                            self.__set_obstacle(xo+dx, zo+dz)
 
     def __getitem__(self, item):
         if len(item) == 2:

@@ -38,7 +38,7 @@ class BuildingPool:
 
     def __init_building_count(self, exploitable_surface):
         average_parcel_surface = 15**2  # todo: calibrate this parameter
-        min_dens, max_dens = 0.25, 0.75  # portion of built surface of the terrain
+        min_dens, max_dens = 0.3, 0.6  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
         self.settlement_limit = int((density * exploitable_surface) / average_parcel_surface)
         # self.settlement_limit = geometric(1 / average_parcel_count)  # yielded values too high

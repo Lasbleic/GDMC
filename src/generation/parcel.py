@@ -19,6 +19,7 @@ class Parcel:
         self.__map = mc_map  # type: map.Maps
         self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
         self.__box = TransformBox((building_position.x, 0, building_position.z), (1, 1, 1))  # type: TransformBox
+        self.__relative_box = TransformBox(self.__box)
         if mc_map is not None:
             self.__initialize_limits()
             self.__compute_entry_point()
@@ -69,7 +70,6 @@ class Parcel:
         assert self.is_expendable(direction)  # trust the user
         self.__box.expand(direction, inplace=True)
         # mark parcel points on obstacle map
-        print(self.__box.maxx, self.__box.maxz)
         self.__map.obstacle_map.add_parcel_to_obstacle_map(self)
 
     def is_expendable(self, direction=None):
@@ -83,10 +83,12 @@ class Parcel:
             return False
         else:
             expanded = self.__box.expand(direction)
-            obstacle = self.__map.obstacle_map
+            obstacle = self.__map.obstacle_map  # type: map.ObstacleMap
             extension = expanded - self.__box
             try:
+                obstacle.unmark_parcel(self)
                 no_obstacle = obstacle.map[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
+                obstacle.add_parcel_to_obstacle_map(self)
             except IndexError:
                 return False
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA
@@ -96,6 +98,7 @@ class Parcel:
             return no_obstacle and valid_sizes and valid_ratio and valid_coord
 
     def translate_to_absolute_coords(self, origin):
+        self.__relative_box = TransformBox(self.__box)  # store relative coords
         self.__box.translate(dx=origin.x, dz=origin.z)
 
     @property
@@ -136,7 +139,8 @@ class Parcel:
 
     @property
     def height_map(self):
-        return self.__map.height_map[self.minx:self.maxx, self.minz:self.maxz]
+        box = self.__relative_box
+        return self.__map.height_map[box.minx:box.maxx, box.minz:box.maxz]
 
     @property
     def center(self):
