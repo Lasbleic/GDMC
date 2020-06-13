@@ -59,7 +59,7 @@ class Parcel:
     def __initialize_limits(self):
         # build parcel box
         shifted_x = min(max(0, self.__center.x - MIN_PARCEL_SIZE // 2), self.__map.width - MIN_PARCEL_SIZE)  # type: int
-        shifted_z = min(max(0, self.__center.z - MIN_PARCEL_SIZE // 2), self.__map.length - MIN_PARCEL_SIZE)  # type: int
+        shifted_z = min(max(0, self.__center.z - MIN_PARCEL_SIZE // 2), self.__map.length - MIN_PARCEL_SIZE)  # type:int
         origin = (shifted_x, self.__map.height_map[shifted_x, shifted_z], shifted_z)
         size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
         self.__box = TransformBox(origin, size)
@@ -69,9 +69,10 @@ class Parcel:
     def expand(self, direction):
         # type: (Direction) -> None
         assert self.is_expendable(direction)  # trust the user
+        self.__map.obstacle_map.unmark_parcel(self, 1)
         self.__box.expand(direction, inplace=True)
         # mark parcel points on obstacle map
-        self.__map.obstacle_map.add_parcel_to_obstacle_map(self)
+        self.__map.obstacle_map.add_parcel_to_obstacle_map(self, 1)
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
@@ -87,9 +88,9 @@ class Parcel:
             obstacle = self.__map.obstacle_map  # type: map.ObstacleMap
             extension = expanded - self.__box
             try:
-                obstacle.unmark_parcel(self)
-                no_obstacle = obstacle.map[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
-                obstacle.add_parcel_to_obstacle_map(self)
+                obstacle.unmark_parcel(self, 1)
+                no_obstacle = obstacle[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
+                obstacle.add_parcel_to_obstacle_map(self, 1)
             except IndexError:
                 return False
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA

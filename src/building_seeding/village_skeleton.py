@@ -88,7 +88,7 @@ class VillageSkeleton:
 
             self.parcel_list.append(new_parcel)
 
-            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel)
+            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
 
             self.map_log(obstacle_map=self.maps.obstacle_map.map)
 

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from numpy import full
+from numpy import full, zeros
 from utils import Point2D
 from itertools import product
 
@@ -10,7 +10,8 @@ class ObstacleMap:
         # type: (int, int, Maps) -> ObstacleMap
         self.__width = width
         self.__length = length
-        self.map = full((self.__width, self.__length), True)
+        # self.map = full((self.__width, self.__length), True)
+        self.map = zeros((self.__width, self.__length))
         self.__all_maps = mc_map
         self.__init_map_with_environment(mc_map.box)
 
@@ -29,25 +30,28 @@ class ObstacleMap:
         return self.__is_accessible(point.x, point.z)
 
     def __is_accessible(self, x, z):
-        return self.map[x, z]
+        # return self.map[x, z]
+        return self.map[x, z] == 0
 
     def __set_obstacle(self, x, z):
-        self.map[x, z] = False
+        # self.map[x, z] = False
+        self.map[x, z] += 1
 
     def __unset_obstacle(self, x, z):
-        self.map[x, z] = True
+        # self.map[x, z] = True
+        self.map[x, z] -= 1
 
     # size must be odd
-    def add_parcel_to_obstacle_map(self, parcel):
-        # type: (generation.Parcel) -> None
-        parcel = parcel.bounds.expand(2, 0, 2)
+    def add_parcel_to_obstacle_map(self, parcel, margin):
+        # type: (generation.Parcel, int) -> None
+        parcel = parcel.bounds.expand(margin, 0, margin)
         for x, z in product(range(parcel.minx, parcel.maxx), range(parcel.minz, parcel.maxz)):
             if self.__in_x_limits(x) and self.__in_z_limits(z):
                 self.__set_obstacle(x, z)
 
-    def unmark_parcel(self, parcel):
+    def unmark_parcel(self, parcel, margin):
         # type: (generation.Parcel) -> None
-        parcel = parcel.bounds.expand(1, 0, 1)  # a margin is added to not interfere with neighbouring obstacles
+        parcel = parcel.bounds.expand(margin, 0, margin)
         for x, z in product(range(parcel.minx, parcel.maxx), range(parcel.minz, parcel.maxz)):
             if self.__in_x_limits(x) and self.__in_z_limits(z):
                 self.__unset_obstacle(x, z)
@@ -66,4 +70,4 @@ class ObstacleMap:
     def __getitem__(self, item):
         if len(item) == 2:
             x, z = item
-            return self.map[x, z]
+            return self.map[x, z] == 0
