@@ -36,6 +36,12 @@ BUILDING_ENCYCLOPEDIA = {
             "crop": (0.25, 0.75),
             "windmill": (0.25, 0.75)
 
+        },
+
+        "markov": {
+            "house": {"house": 10, "crop": 7},
+            "crop": {"crop": 10, "windmill": 4, "house": 6},
+            "windmill": {"crop": 1}
         }
     }
 }
