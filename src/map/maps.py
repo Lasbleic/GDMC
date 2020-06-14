@@ -3,6 +3,7 @@ from __future__ import division, print_function
 from pymclevel import MCLevel
 from obstacle_map import ObstacleMap
 from road_network import RoadNetwork
+from fluid_map import FluidMap
 from utils import TransformBox, compute_height_map
 from numpy import array
 
@@ -25,6 +26,7 @@ class Maps:
             zmin, zmax = bounding_box.minz, bounding_box.maxz
             self.height_map = array([[0 for _ in range(zmin, zmax)] for _ in range(xmin, xmax)])
         self.road_network = RoadNetwork(self.__width, self.__length, mc_map=self)
+        self.fluid_map = FluidMap(self, level)
 
     @property
     def width(self):

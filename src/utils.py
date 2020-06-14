@@ -1,3 +1,4 @@
+from itertools import product
 from math import sqrt
 from random import random, shuffle
 from os.path import realpath, sep
@@ -232,22 +233,10 @@ def compute_height_map(level, box, from_sky=True):
     ground_blocks = [Block.Grass.ID, Block.Gravel.ID, Block.Dirt.ID,
                      Block.Sand.ID, Block.Stone.ID, Block.Clay.ID]
 
-    lx, lz = xmax - xmin, zmax - zmin  # length & width
-    h = zeros((lx, lz), dtype=int)  # numpy height map
-
-    if from_sky:
-        for x in range(xmin, xmax):
-            for z in range(zmin, zmax):
-                y = 256
-                # for each coord in the box, goes down from height limit until it lands on a 'ground block'
-                if from_sky:
-                    while y >= 0 and level.blockAt(x, y, z) not in ground_blocks:
-                        y -= 1
-                else:
-                    y = level.heightMapAt(x, z)
-                h[x - xmin, z - zmin] = y
-    else:
-        h = array([[level.heightMapAt(x, z) for z in range(zmin, zmax)] for x in range(xmin, xmax)])
+    h = array([[level.heightMapAt(x, z) for z in range(zmin, zmax)] for x in range(xmin, xmax)])
+    for x, z in product(range(xmin, xmax), range(zmin, zmax)):
+        while h[x-xmin, z-zmin] >= 0 and level.blockAt(x, h[x-xmin, z-zmin], z) not in ground_blocks:
+            h[x-xmin, z-zmin] -= 1
 
     print('Computed height map in {}s'.format(time() - t0))
     return h
