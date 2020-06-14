@@ -1,6 +1,7 @@
-from generation import TransformBox, ProcHouseGenerator
+from generation import ProcHouseGenerator
 from map.maps import Maps
 from pymclevel import BoundingBox, MCLevel
+from utils import TransformBox
 
 displayName = "House generator test filter"
 

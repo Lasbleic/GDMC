@@ -13,7 +13,7 @@ displayName = "Create a settlement"
 # Dictionary representing different options
 inputs = ()
 
-logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%H-%M-%S', gmtime())), level=logging.DEBUG)
+logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%H-%M-%S', gmtime())), level=logging.INFO)
 
 
 # Necessary function to be considered as a filter by MCEdit. This is the function that will be executed when the filter

@@ -1,6 +1,7 @@
-from generation import TransformBox, CropGenerator
+from generation import CropGenerator
 from map.maps import Maps
 from pymclevel import Entity, MCLevel, BoundingBox
+from utils import TransformBox
 
 displayName = "Crop generator test filter"
 

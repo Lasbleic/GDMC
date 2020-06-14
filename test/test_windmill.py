@@ -1,5 +1,6 @@
-from generation import TransformBox, WindmillGenerator
-from map.maps import Maps
+from generation import WindmillGenerator
+from utils import TransformBox
+from map import Maps
 from pymclevel import MCLevel, BoundingBox
 
 displayName = "Windmill generator test filter"
