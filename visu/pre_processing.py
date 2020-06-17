@@ -150,7 +150,8 @@ class MapStock:
         cbar = plt.colorbar()
         if map.categories:
             n = len(map.categories)
-            cbar.set_ticks([map.extreme_values[1]*i/(2*n) for i in range(1, n*2, 2)])
+            vmin, vmax = map.extreme_values
+            cbar.set_ticks([vmin * (1 - i/(2*n)) + vmax * i/(2*n) for i in range(1, n*2, 2)])
             cbar.set_ticklabels(map.categories)
 
 
