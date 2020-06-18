@@ -31,11 +31,29 @@ BUILDING_ENCYCLOPEDIA = {
             "windmill": (12, 20, 25)
         },
 
-        "Weighting_factors": {
-            "house": (0.25, 0.75),
-            "crop": (0.25, 0.75),
-            "windmill": (0.25, 0.75)
+        "RiverDistance": {
+            "house": (10, 100),
+            "crop": (5, 50),
+            "windmill": (10, 75)
+        },
 
+        "OceanDistance": {
+            "house": (10, 75),
+            "crop": (30, 100),
+            "windmill": (25, 100)
+        },
+
+        "LavaObstacle": {
+            "house": (10, 20),
+            "crop": (8, 15),
+            "windmill": (10, 25)
+        },
+
+        # (accessibility, sociability, pure_water, sea_water, lava)
+        "Weighting_factors": {
+            "house": (1, 3, 1, 1, 1),
+            "crop": (1, 3, 2, 0, 1),
+            "windmill": (2, 4, 0, 0, 1)
         },
 
         "markov": {

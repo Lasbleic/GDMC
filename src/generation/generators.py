@@ -10,11 +10,9 @@ from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
 from utilityFunctions import setBlock
 
-from utils import TransformBox, Direction, cardinal_directions, Bottom, Top
+from utils import *
 from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.schematic import StructureNBT
-
-from utils import get_project_path, Point2D
 
 SURFACE_PER_ANIMAL = 16
 

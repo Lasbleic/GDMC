@@ -11,9 +11,9 @@ from parcel import Parcel
 from utils import Point2D
 from pre_processing import Map, MapStock
 
-
 import numpy as np
 from matplotlib import colors
+
 
 class VillageSkeleton:
 
@@ -81,7 +81,7 @@ class VillageSkeleton:
 
             # Village Element Seeding Process
 
-            interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps.road_network, [self.ghost] + self.parcel_list, self.size, self.parcel_size)
+            interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.parcel_list, self.size, self.parcel_size)
             building_position = random_interest(interest_map)
 
             new_parcel = Parcel(building_position, building_type, self.maps)

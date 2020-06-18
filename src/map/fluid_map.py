@@ -55,8 +55,12 @@ class FluidMap:
             if algorithm in ['prop', 'spread']:
                 algo = LabelPropagation if algorithm == 'prop' else LabelSpreading
                 model = algo(kernel, gamma=param, n_neighbors=min(len(lbls), param), tol=0, max_iter=200)
-                model.fit(data, lbls)
-                lbls = model.predict(data)
+                try:
+                    model.fit(data, lbls)
+                    lbls = model.predict(data)
+                except ValueError:
+                    # no water or no labeled water point (ponds only)
+                    lbls = [3 for _ in data]
 
             for (x, z), water_type in zip(data, lbls):
                 self.__water_map[x, z] = water_type
@@ -67,15 +71,15 @@ class FluidMap:
         print('Computed distance maps in {} seconds'.format(time() - t1))
 
     def __build_distance_maps(self):
-        self.fresh_water_distance = full(self.__water_map.shape, self.__water_limit)
-        self.sea_water_distance = full(self.__water_map.shape, self.__water_limit)
+        self.river_distance = full(self.__water_map.shape, self.__water_limit)
+        self.ocean_distance = full(self.__water_map.shape, self.__water_limit)
         self.lava_distance = full(self.__lava_map.shape, self.__lava_limit)
 
         for x, z in product(xrange(self.__width), xrange(self.__length)):
             if self.__water_map[x, z] in [2, 3]:
-                self.fresh_water_distance[x, z] = 0
+                self.river_distance[x, z] = 0
             elif self.__water_map[x, z] == 1:
-                self.sea_water_distance[x, z] = 0
+                self.ocean_distance[x, z] = 0
             elif self.__lava_map[x, z]:
                 self.lava_distance[x, z] = 0
 
@@ -130,8 +134,8 @@ class FluidMap:
                 update_distances(clst_neighbor)
                 del neighbours[0]
 
-        __pseudo_dijkstra(self.fresh_water_distance)
-        __pseudo_dijkstra(self.sea_water_distance)
+        __pseudo_dijkstra(self.river_distance)
+        __pseudo_dijkstra(self.ocean_distance)
         __pseudo_dijkstra(self.lava_distance)
 
     def is_lava(self, x_or_point, z=None):

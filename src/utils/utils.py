@@ -161,7 +161,7 @@ class Direction:
 
     def __eq__(self, other):
         if isinstance(other, Direction):
-            return self._dir_x == other._dir_x and self._dir_y == other._dir_y and self._dir_z == other._dir_z
+            return (self.x == other.x) and (self.y == other.y) and (self.z == other.z)
         return False
 
     def __str__(self):

@@ -36,6 +36,35 @@ def balance(d, lambda_min, lambda_0, lambda_max):
     return res
 
 
+def close_distance(d, lambdas):
+    # type: (float, (float, float)) -> float
+    lambda_min, lambda_max = lambdas
+    if d <= lambda_min or d > lambda_max:
+        res = -1
+
+    else:
+        res = balance(d, lambda_min, lambda_min, lambda_max)
+
+    return res
+
+
+def obstacle(d, lambdas):
+    # type: (float, (float, float)) -> float
+    """
+    Obstacle type interest base function:
+    below lambda min (lambdas[0]), impossible to spawn
+    between lambdas, possible but unwanted
+    above lambda max, neutral
+    """
+    lambda_min, lambda_max = lambdas
+    if d <= lambda_min:
+        return -1
+    elif d >= lambda_max:
+        return 0
+    else:
+        return balance(d, lambda_min, lambda_max, lambda_max)
+
+
 if __name__ == '__main__':
 
     functions_to_test = [attraction_repulsion, balance]

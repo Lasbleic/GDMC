@@ -29,7 +29,7 @@ def perform(level, box, options):
                     )
     img_stock.add_map(water_map)
 
-    for matrix, title in zip([maps.fluid_map.fresh_water_distance, maps.fluid_map.sea_water_distance, maps.fluid_map.lava_distance],
+    for matrix, title in zip([maps.fluid_map.river_distance, maps.fluid_map.ocean_distance, maps.fluid_map.lava_distance],
                              ['sweet_water_distance', 'salty_water_distance', 'lava_distance']):
         water_map = Map(title, max(maps.width, maps.length), matrix.T, "jet", (matrix.min(), matrix.max()))
         img_stock.add_map(water_map)

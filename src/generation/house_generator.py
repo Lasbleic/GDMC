@@ -1,9 +1,8 @@
-from utils import North, South, West, East
 from generators import *
 from pymclevel import MCLevel, MCSchematic
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
-from utils import bernouilli
+from utils import bernouilli, Direction, North, South, West, East
 
 
 class ProcHouseGenerator(Generator):
@@ -162,7 +161,7 @@ class _RoomSymbol(CardinalGenerator):
         elif direction == East:
             return TransformBox(b.origin + (b.width - 1, 0, 1), (1, b.height, b.length - 2))
         else:
-            raise ValueError("Not implemented yet, or unexpected direction")
+            raise ValueError("Not implemented yet, or unexpected direction {}".format(direction))
 
     def generate_door(self, parcel_door_dir, door_x, door_z, level):
         # type: (Direction, int, int, MCLevel) -> None

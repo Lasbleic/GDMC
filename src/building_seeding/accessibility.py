@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # road_map = Map("road_network", N, road_net.network, road_cmap, (0, 1), ['Grass', 'Road'])
     # start_time = time.time()
     # print("Compute accessibility...")
-    # access_net = accessibility(house_type, "Flat_scenario", road_net, (N, N))
+    # access_net = accessibility(BuildingType().house, "Flat_scenario", road_net, (N, N))
     # print("--- %s seconds ---" % (time.time() - start_time))
     # access_cmap = "jet"
     # access_map = Map("accessibility_map", N, access_net, access_cmap, (-1, 1))

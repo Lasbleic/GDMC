@@ -12,8 +12,12 @@ class BuildingType:
     """
     Just a type of building, defined by a name and a generator
     """
+    __crop_type = None
+    __windmill_type = None
+    __ghost_type = None
+    __house_type = None
 
-    def __init__(self, name, generator=None):
+    def __init__(self, name=None, generator=None):
         self.name = name
         self.generator = generator
 
@@ -23,33 +27,51 @@ class BuildingType:
     def __hash__(self):
         return hash(self.name)
 
+    def __eq__(self, other):
+        if isinstance(other, BuildingType):
+            return self.name == other.name
+        return False
+
+    @property
+    def house(self):
+        self.name = 'house'
+        self.generator = ProcHouseGenerator
+        return self
+
+    @property
+    def crop(self):
+        self.name = 'crop'
+        self.generator = CropGenerator
+        return self
+
+    @property
+    def windmill(self):
+        self.name = 'windmill'
+        self.generator = WindmillGenerator
+        return self
+
+    @property
+    def ghost(self):
+        self.name = 'ghost'
+        return self
+
     @staticmethod
     def from_name(name):
         if name == 'crop':
-            return BuildingType(name, CropGenerator)
+            return BuildingType().crop
         if name == 'house':
-            return BuildingType(name, ProcHouseGenerator)
+            return BuildingType().house
         if name == 'ghost':
-            return BuildingType(name)
+            return BuildingType().ghost
         if name == 'windmill':
-            return BuildingType(name, WindmillGenerator)
-
-
-house_type = BuildingType.from_name('house')
-crop_type = BuildingType.from_name('crop')
-windmill_type = BuildingType.from_name('windmill')
-# dict to associate weights to types. The normalized weight = frequency of each type
-type_weights = {house_type: 10, crop_type: 6, windmill_type: 2}
+            return BuildingType().windmill
 
 
 class BuildingPool:
-    def __init__(self, exploitable_surface, type_weight=None):
-        if type_weight is None:
-            type_weight = type_weights
+    def __init__(self, exploitable_surface):
         self._building_count = 0  # type: int
         self._settlement_limit = 0  # type: int
-        self.building_types = type_weight  # type: Dict[BuildingType, int]
-        self.__current_type = house_type
+        self.__current_type = BuildingType().house
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
@@ -79,9 +101,7 @@ class BuildingPool:
         #     return btype
 
         # second version, markov chain based:
-        if self._building_count == 0:
-            self.__current_type = house_type
-        elif self._building_count < self._settlement_limit:
+        if 0 < self._building_count < self._settlement_limit:
             transition_matrix = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["markov"]
             transition_states = transition_matrix[self.__current_type.name]  # type: Dict[str, int]
             types = transition_states.keys()
@@ -89,7 +109,7 @@ class BuildingPool:
             probs = [p / sum(probs) for p in probs]
             next_type = choice(types, p=probs)
             self.__current_type = BuildingType.from_name(next_type)
-        else:
+        elif self._building_count >= self._settlement_limit:
             raise StopIteration
 
         self._building_count += 1

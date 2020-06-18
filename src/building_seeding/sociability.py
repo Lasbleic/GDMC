@@ -10,7 +10,6 @@ import numpy as np
 from itertools import product
 from math_function import attraction_repulsion
 from math import sqrt
-from building_seeding.building_pool import house_type, windmill_type
 from pre_processing import Map, MapStock
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from parcel import Parcel
@@ -55,6 +54,7 @@ def sociability(building_type, scenario, settlement_seeds, size):
 
 
 if __name__ == '__main__':
+    from building_seeding import BuildingType
 
     # Sociability test
 
@@ -63,22 +63,22 @@ if __name__ == '__main__':
     building_net = np.zeros((N, N))
     set_seeds = []
 
-    house_1 = Parcel(Point2D(15, 31), house_type)
+    house_1 = Parcel(Point2D(15, 31), BuildingType().house)
     building_net[15, 31] = 1
     set_seeds.append(house_1)
 
-    house_2 = Parcel(Point2D(26, 6), house_type)
+    house_2 = Parcel(Point2D(26, 6), BuildingType().house)
     building_net[26, 6] = 1
     set_seeds.append(house_2)
 
-    mill_1 = Parcel(Point2D(37, 18), windmill_type)
+    mill_1 = Parcel(Point2D(37, 18), BuildingType().windmill)
     building_net[37, 18] = 2
     set_seeds.append(mill_1)
 
     building_cmap = colors.ListedColormap(['forestgreen', 'darkorange', "yellow"])
     building_map = Map("building_map", N, building_net, building_cmap, (0, 2), ['Grass', 'House', "Windmill"])
 
-    social_net = sociability(house_type, "Flat_scenario", set_seeds, (N, N))
+    social_net = sociability(BuildingType().house, "Flat_scenario", set_seeds, (N, N))
     social_cmap = "jet"
     social_map = Map("accessibility_map", N, social_net, social_cmap, (-1, 1))
 

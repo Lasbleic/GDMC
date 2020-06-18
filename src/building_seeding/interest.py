@@ -9,14 +9,18 @@ from itertools import product
 
 from accessibility import accessibility, local_accessibility
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from building_pool import house_type, windmill_type
+from building_seeding import BuildingType
+from building_seeding.math_function import close_distance, obstacle
+from map import Maps
 from map.road_network import *
 from sociability import sociability, local_sociability
 from extendability import extendability
 import numpy as np
 import sys
+
+from utils import Point2D
+
 sys.path.insert(1, '../../visu')
-from pre_processing import Map, MapStock
 
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
@@ -33,23 +37,35 @@ def local_interest(x, z, building_type, scenario, road_network, settlement_seeds
     return interest_score
 
 
-def interest(building_type, scenario, road_network, settlement_seeds, size, parcel_size):
-    weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
+def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size):
+    # type: (BuildingType, str, Maps, object, object, object) -> object
     _interest_map = np.zeros(size)
 
     print("Compute accessibility map")
-    accessibility_map = accessibility(building_type, scenario, road_network, size)
+    accessibility_map = accessibility(building_type, scenario, maps.road_network, size)
     print("Compute sociability map")
     sociability_map = sociability(building_type, scenario, settlement_seeds, size)
     extendability_map = extendability(size, parcel_size)
 
-    for x, z, in product(range(size[0]), range(size[1])):
+    scenario_dict = BUILDING_ENCYCLOPEDIA[scenario]
+    lambdas = {criteria: scenario_dict[criteria][building_type.name]
+               for criteria in scenario_dict if building_type.name in scenario_dict[criteria]}
 
-        if accessibility_map[x][z] == -1 or sociability_map[x][z] == -1 or extendability_map[x][z] == -1:
+    for x, z, in product(range(size[0]), range(size[1])):
+        interest_functions = np.array([
+            accessibility_map[x][z],
+            sociability_map[x][z],
+            close_distance(maps.fluid_map.river_distance[x, z], lambdas["RiverDistance"]),
+            close_distance(maps.fluid_map.ocean_distance[x, z], lambdas["OceanDistance"]),
+            obstacle(maps.fluid_map.lava_distance[x, z], lambdas["LavaObstacle"])
+        ])
+
+        if min(interest_functions) == -1 or extendability_map[x][z] == -1:
             interest_score = 0
         else:
-            interest_score = max(0, weighting_factors[0] * accessibility_map[x][z] + weighting_factors[1] *
-                                 sociability_map[x][z])
+            weights = np.array(lambdas["Weighting_factors"])
+            weighted_score = interest_functions.dot(weights) / sum(weights)
+            interest_score = max(0, weighted_score)
 
         _interest_map[x][z] = interest_score
 
