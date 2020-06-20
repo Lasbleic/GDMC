@@ -4,6 +4,7 @@ from itertools import product
 from time import time
 
 from numpy import full
+from numpy.core.multiarray import ndarray
 from numpy.ma import array
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
@@ -23,6 +24,8 @@ class FluidMap:
         self.__other_maps = mc_maps
         self.__water_limit = water_limit
         self.__lava_limit = lava_limit
+
+        self.has_lava = self.has_river = self.has_ocean = False
         self.detect_sources(level)
 
     def detect_sources(self, level, algorithm='spread', kernel='knn', param=256):
@@ -37,16 +40,20 @@ class FluidMap:
                 biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
                 if 'Ocean' in biome_types[biome] or 'Beach' in biome_types[biome]:
                     label = 1
+                    self.has_ocean = True
                 elif 'River' in biome_types[biome]:
                     label = 2
+                    self.has_river = True
                 elif 'Swamp' in biome_types[biome]:
                     label = 3
+                    self.has_river = True
                 else:
                     label = -1  # yet unlabeled
                 water_points.append((x, z, label))
 
             elif level.blockAt(xs, y, zs) in [Blocks.Lava.ID, Blocks.LavaActive.ID]:
                 self.__lava_map[x, z] = True
+                self.has_lava = True
 
         if water_points:
             data = [entry[:2] for entry in water_points]
@@ -146,6 +153,11 @@ class FluidMap:
         else:
             x = x_or_point
             return self.__lava_map[x, z]
+
+    @property
+    def as_obstacle_array(self):
+        obs = ((self.ocean_distance > 5) & (self.river_distance > 5) & (self.lava_distance > 10))  # type: ndarray
+        return obs.astype(int)
 
     @property
     def water(self):

@@ -35,14 +35,14 @@ class VillageSkeleton:
         suffix = "_{}".format(building_type.name) if building_type is not None else ""
         N = self.size[0]
 
-        if accessibility_map is not None:
-            self.map_stock.add_map(Map("{}1_accessibility_map{}".format(iteration, suffix), N, accessibility_map, "jet", (0, 1)))
-        if sociability_map is not None:
-            self.map_stock.add_map(Map("{}2_sociability_map{}".format(iteration, suffix), N, sociability_map, "jet", (0, 1)))
-        if interest_map is not None:
-            self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, interest_map, "jet", (0, 1)))
-        if obstacle_map is not None:
-            self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, obstacle_map, colors.ListedColormap(['red', 'blue']), (0, 1), ['No', 'Yes']))
+        # if accessibility_map is not None:
+        #     self.map_stock.add_map(Map("{}1_accessibility_map{}".format(iteration, suffix), N, accessibility_map, "jet", (0, 1)))
+        # if sociability_map is not None:
+        #     self.map_stock.add_map(Map("{}2_sociability_map{}".format(iteration, suffix), N, sociability_map, "jet", (0, 1)))
+        # if interest_map is not None:
+        #     self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, interest_map, "jet", (0, 1)))
+        # if obstacle_map is not None:
+        #     self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, obstacle_map, colors.ListedColormap(['red', 'blue']), (0, 1), ['No', 'Yes']))
 
         minecraft_map = np.copy(self.maps.road_network.network)
 
@@ -73,7 +73,7 @@ class VillageSkeleton:
 
     def grow(self):
 
-        self.map_log()
+        # self.map_log()
 
         for building_type in self.building_iterator:
 
@@ -90,7 +90,7 @@ class VillageSkeleton:
 
             self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
 
-            self.map_log(obstacle_map=self.maps.obstacle_map.map)
+            # self.map_log(obstacle_map=self.maps.obstacle_map.map)
 
             # Road Creation Process
             self.maps.road_network.connect_to_network(new_parcel.entry_point)

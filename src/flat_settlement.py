@@ -2,11 +2,14 @@ from __future__ import division
 
 import logging
 from itertools import product
+from math import exp
 from random import randint
 
 from numpy.random import geometric, normal
+from numpy import percentile
 from typing import List
 
+from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
 from utils import Direction, TransformBox
 from building_seeding import Parcel, VillageSkeleton
 from map.maps import Maps
@@ -106,6 +109,7 @@ class FlatSettlement:
         for parcel in self._parcels:
             obs.add_parcel_to_obstacle_map(parcel, 1)
         obs.add_network_to_obstacle_map()
+        obs.map += self._maps.fluid_map.as_obstacle_array
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
         # most parcels should initially be expendable, except the ghost one
         expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
@@ -128,6 +132,14 @@ class FlatSettlement:
 
             expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
 
+        # set parcels heights
+        def define_parcels_heights(parcel):
+            # type: (Parcel) -> None
+            y = percentile(parcel.height_map, 35)
+            d = euclidean(parcel.center, self.town_center)
+            h = int(MAX_HEIGHT * exp(-d / BUILDING_HEIGHT_SPREAD))
+            parcel.set_height(y, h)
+        map(define_parcels_heights, self._parcels)
         # translate all parcels to absolute coordinates
         map(lambda _parcel: _parcel.translate_to_absolute_coords(self.__origin), self._parcels)
 

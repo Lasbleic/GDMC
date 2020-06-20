@@ -79,6 +79,7 @@ class BuildingPool:
         min_dens, max_dens = 0.3, 0.6  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
         self._settlement_limit = int((density * exploitable_surface) / average_parcel_surface)
+        self._settlement_limit = max(self._settlement_limit, 1)
         # self.settlement_limit = geometric(1 / average_parcel_count)  # yielded values too high
         logging.info('New BuildingPool will generate {} parcels'.format(self._settlement_limit))
 

@@ -94,7 +94,8 @@ class RoadNetwork:
         def update_distance(updated_point, neighbor, _neighbors):
             new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbor)
             previous_distance = distance_map[neighbor.x][neighbor.z]
-            if previous_distance >= maxint and new_distance <= max_distance and not self.is_road(neighbor):
+            if previous_distance >= maxint and new_distance <= max_distance and not self.is_road(neighbor)\
+                    and new_distance < self.distance_map[neighbor.x, neighbor.z]:
                 _neighbors += [neighbor]
             if previous_distance > new_distance:
                 distance_map[neighbor.x][neighbor.z] = new_distance

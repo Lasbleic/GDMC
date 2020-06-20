@@ -19,8 +19,8 @@ class Parcel:
         self.__building_type = building_type
         self.__map = mc_map  # type: map.Maps
         self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
-        self.__box = TransformBox((building_position.x, 0, building_position.z), (1, 1, 1))  # type: TransformBox
-        self.__relative_box = TransformBox(self.__box)
+        self.__relative_box = TransformBox((building_position.x, 0, building_position.z), (1, 1, 1))  # type: TransformBox
+        self.__box = None  # type: TransformBox
         if mc_map is not None:
             self.__initialize_limits()
             self.__compute_entry_point()
@@ -62,7 +62,7 @@ class Parcel:
         shifted_z = min(max(0, self.__center.z - MIN_PARCEL_SIZE // 2), self.__map.length - MIN_PARCEL_SIZE)  # type:int
         origin = (shifted_x, self.__map.height_map[shifted_x, shifted_z], shifted_z)
         size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
-        self.__box = TransformBox(origin, size)
+        self.__relative_box = TransformBox(origin, size)
         # in case when the parcel hits the limits, does not change anything otherwise
         self.__center = Point2D(shifted_x + MIN_PARCEL_SIZE // 2, shifted_z + MIN_PARCEL_SIZE // 2)
 
@@ -70,7 +70,7 @@ class Parcel:
         # type: (Direction) -> None
         assert self.is_expendable(direction)  # trust the user
         self.__map.obstacle_map.unmark_parcel(self, 1)
-        self.__box.expand(direction, inplace=True)
+        self.__relative_box.expand(direction, inplace=True)
         # mark parcel points on obstacle map
         self.__map.obstacle_map.add_parcel_to_obstacle_map(self, 1)
 
@@ -84,9 +84,9 @@ class Parcel:
                     return True
             return False
         else:
-            expanded = self.__box.expand(direction)
+            expanded = self.__relative_box.expand(direction)
             obstacle = self.__map.obstacle_map  # type: map.ObstacleMap
-            extension = expanded - self.__box
+            extension = expanded - self.__relative_box
             try:
                 obstacle.unmark_parcel(self, 1)
                 no_obstacle = obstacle[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
@@ -100,7 +100,7 @@ class Parcel:
             return no_obstacle and valid_sizes and valid_ratio and valid_coord
 
     def translate_to_absolute_coords(self, origin):
-        self.__relative_box = TransformBox(self.__box)  # store relative coords
+        self.__box = TransformBox(self.__relative_box)
         self.__box.translate(dx=origin.x, dz=origin.z)
 
     @property
@@ -121,19 +121,19 @@ class Parcel:
 
     @property
     def minx(self):
-        return self.__box.minx
+        return self.__relative_box.minx
 
     @property
     def maxx(self):
-        return self.__box.maxx
+        return self.__relative_box.maxx
 
     @property
     def minz(self):
-        return self.__box.minz
+        return self.__relative_box.minz
 
     @property
     def maxz(self):
-        return self.__box.maxz
+        return self.__relative_box.maxz
 
     @property
     def generator(self):
@@ -158,12 +158,17 @@ class Parcel:
 
     @property
     def width(self):
-        return self.__box.width
+        return self.__relative_box.width
 
     @property
     def length(self):
-        return self.__box.length
+        return self.__relative_box.length
 
     @property
     def bounds(self):
-        return self.__box
+        return self.__relative_box
+
+    def set_height(self, y, h):
+        self.__relative_box.translate(dy=y-self.__relative_box.miny)
+        for _ in range(h-1):
+            self.__relative_box.expand(Top)

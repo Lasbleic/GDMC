@@ -50,7 +50,7 @@ def euclidean(p1, p2):
 
 def get_project_path():
     this_path = realpath(__file__)
-    proj_path = sep.join(this_path.split(sep)[:-1])
+    proj_path = sep.join(this_path.split(sep)[:-2])
     return proj_path
 
 

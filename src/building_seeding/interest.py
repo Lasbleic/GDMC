@@ -39,6 +39,22 @@ def local_interest(x, z, building_type, scenario, road_network, settlement_seeds
 
 def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size):
     # type: (BuildingType, str, Maps, object, object, object) -> object
+
+    def river_interest():
+        if maps.fluid_map.has_river:
+            return close_distance(maps.fluid_map.river_distance[x, z], lambdas["RiverDistance"])
+        return 0
+
+    def ocean_interest():
+        if maps.fluid_map.has_ocean:
+            return close_distance(maps.fluid_map.ocean_distance[x, z], lambdas["OceanDistance"])
+        return 0
+
+    def lava_interest():
+        if maps.fluid_map.has_lava:
+            return obstacle(maps.fluid_map.lava_distance[x, z], lambdas["LavaObstacle"])
+        return 0
+
     _interest_map = np.zeros(size)
 
     print("Compute accessibility map")
@@ -55,9 +71,9 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
         interest_functions = np.array([
             accessibility_map[x][z],
             sociability_map[x][z],
-            close_distance(maps.fluid_map.river_distance[x, z], lambdas["RiverDistance"]),
-            close_distance(maps.fluid_map.ocean_distance[x, z], lambdas["OceanDistance"]),
-            obstacle(maps.fluid_map.lava_distance[x, z], lambdas["LavaObstacle"])
+            river_interest(),
+            ocean_interest(),
+            lava_interest()
         ])
 
         if min(interest_functions) == -1 or extendability_map[x][z] == -1:
