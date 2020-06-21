@@ -83,10 +83,16 @@ class RoadNetwork:
             return _distance_map, _neighbours, _predecessor_map
 
         def closest_neighbor():
-            neighbors_distance = map(lambda neighbor: distance_map[neighbor.x][neighbor.z], neighbors)
-            min_distance = min(neighbors_distance)
-            closest_neighbors = [neighbors[i] for i, dist in enumerate(neighbors_distance) if dist == min_distance]
-            return choice(closest_neighbors)
+            _closest_neighbors = []
+            _min_distance = maxint
+            for neighbor in neighbors:
+                _current_distance = distance_map[neighbor.x][neighbor.z]
+                if _current_distance < _min_distance:
+                    _closest_neighbors = [neighbor]
+                    _min_distance = _current_distance
+                elif _current_distance == _min_distance:
+                    _closest_neighbors += [neighbor]
+            return choice(_closest_neighbors)
 
         def cost(src_point, dest_point):
             return 1
