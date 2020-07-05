@@ -1,3 +1,4 @@
+from generation.building_palette import HousePalette
 from generators import *
 from pymclevel import MCLevel, MCSchematic
 from pymclevel.block_copy import copyBlocksFrom
@@ -10,13 +11,13 @@ class ProcHouseGenerator(Generator):
     def __init__(self, box):
         Generator.__init__(self, box)
 
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         self._generate_main_building()
         self._generate_annex()
         self._center_building()
-        Generator.generate(self, level, height_map)
-        self._generate_door(level)
-        self._generate_stairs(level)
+        Generator.generate(self, level, height_map, palette)
+        self._generate_door(level, palette)
+        self._generate_stairs(level, palette)
 
     def _generate_main_building(self):
         w0, h0, l0 = self._box.width, self._box.height, self._box.length
@@ -79,13 +80,13 @@ class ProcHouseGenerator(Generator):
         dz = (self._box.length - self._layout_length) / 2
         self.children[0].translate(dx, 0, dz)
 
-    def _generate_door(self, level):
+    def _generate_door(self, level, palette):
         door_x, door_z = self._entry_point.x, self._entry_point.z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
         door_direction = Direction(dx=door_x-mean_x, dz=door_z-mean_z)
-        self.children[0].generate_door(door_direction, door_x, door_z, level)
+        self.children[0].generate_door(door_direction, door_x, door_z, level, palette)
 
-    def _generate_stairs(self, level):
+    def _generate_stairs(self, level, palette):
         pass
 
 
@@ -95,23 +96,25 @@ class _RoomSymbol(CardinalGenerator):
         CardinalGenerator.__init__(self, box)
         self._has_base = has_base
 
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         print("Generating Room at", self._get_box().origin, self._get_box().size)
         if self._has_base:
             self.children.append(_BaseSymbol(TransformBox(self.origin - (0, 1, 0), (self.width, 1, self.length))))
-        self._generate_pillars(level)
-        self._create_walls(level)
+        self._generate_pillars(level, palette)
+        self._create_walls(level, palette)
 
         prob = self._box.height / 4 - 1  # probability to build an upper floor
         upper_box = self._get_upper_box()
 
         if bernouilli(prob):
+            ceiling_box = upper_box.translate(dy=-1).split(dy=1)[0]
+            fillBlocks(level, ceiling_box, Block[palette['floor']], [Block['Air']])
             upper_room = _RoomSymbol(upper_box)
         else:
-            upper_room = _RoofSymbol(upper_box, roof_type='gable')
+            upper_room = _RoofSymbol(upper_box, roof_type=palette['roofType'])
         self[Top] = upper_room
         # build upper Symbol
-        Generator.generate(self, level, height_map)
+        Generator.generate(self, level, height_map, palette)
 
     def _get_box(self):
         return TransformBox(self._box.origin, (self._box.width, 4, self._box.length))
@@ -123,25 +126,25 @@ class _RoomSymbol(CardinalGenerator):
         new_size = (box.width, new_height, box.length)
         return TransformBox(new_origin, new_size)
 
-    def _generate_pillars(self, level):
+    def _generate_pillars(self, level, palette):
         b = self._get_box()
         for col_box in [TransformBox(b.origin, (1, b.height, 1)),
                         TransformBox(b.origin + (0, 0, b.length - 1), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, 0), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, b.length - 1), (1, b.height, 1))]:
-            fillBlocks(level, col_box, Block['Oak Wood (Upright)'])
+            fillBlocks(level, col_box, palette.get_structure_block('Upright'))
 
-    def _create_walls(self, level):
+    def _create_walls(self, level, palette):
         for direction in cardinal_directions():
             wall_box = self.get_wall_box(direction)
             if self[direction] is not None:
                 if isinstance(self[direction], _RoofSymbol):
-                    fillBlocks(level, wall_box, Block['Oak Wood Planks'])
+                    fillBlocks(level, wall_box, Block[palette['wall']])
                     continue
                 elif wall_box.volume < self[direction].get_wall_box(-direction).volume:
-                    wall_box.expand(direction, inplace=True)
+                    wall_box = wall_box.expand(direction).split(dy=3)[0]
                     wider_box = wall_box.enlarge(direction)
-                    fillBlocks(level, wider_box, Block['Oak Wood Planks'])
+                    fillBlocks(level, wider_box, Block[palette['wall']])
                     fillBlocks(level, wall_box, Block['Air'])
                     continue
 
@@ -163,8 +166,8 @@ class _RoomSymbol(CardinalGenerator):
         else:
             raise ValueError("Not implemented yet, or unexpected direction {}".format(direction))
 
-    def generate_door(self, parcel_door_dir, door_x, door_z, level):
-        # type: (Direction, int, int, MCLevel) -> None
+    def generate_door(self, parcel_door_dir, door_x, door_z, level, palette):
+        # type: (Direction, int, int, MCLevel, HousePalette) -> None
         """
             Generate a door in self room
             Parameters
@@ -177,12 +180,12 @@ class _RoomSymbol(CardinalGenerator):
         local_door_dir = Direction(dx=door_x-mean_x, dz=door_z-mean_z)  # direction of the door relative to this room
         if self[local_door_dir] is not None and isinstance(self[local_door_dir], _RoomSymbol):
             # passes the door to an annex room
-            self[local_door_dir].generate_door(local_door_dir, door_x, door_z, level)
+            self[local_door_dir].generate_door(local_door_dir, door_x, door_z, level, palette)
         else:
             # passes the door to the most suited wall of the room (no annex, close to entrance & large enough)
             door_dir = local_door_dir if self.get_wall_box(local_door_dir).surface > 1 else parcel_door_dir
             door_wall_box = self.get_wall_box(door_dir)
-            self[door_wall_box].generate_door(door_dir, door_x, door_z, level)
+            self[door_wall_box].generate_door(door_dir, door_x, door_z, level, palette)
 
 
 class _RoofSymbol(CardinalGenerator):
@@ -204,23 +207,24 @@ class _RoofSymbol(CardinalGenerator):
                 prob = (1. * width ** 2) / (width ** 2 + length ** 2)
                 self._direction = South if (bernouilli(prob)) else East
 
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         if self._roof_type == 'flat':
             box = self.flat_box
-            fillBlocks(level, box, Block['Bricks'])
+            fillBlocks(level, box.split(dy=1)[0], Block[palette['roofBlock']])
         elif self._roof_type == 'gable':
             if self._direction in [West, East]:
-                self.__gen_gable_x(level)
+                self.__gen_gable_x(level, palette)
             elif self._direction in [North, South]:
-                self.__gen_gable_z(level)
+                self.__gen_gable_z(level, palette)
             else:
                 raise ValueError('Expected direction str, found {}'.format(self._direction))
-            self.__gen_gable_cross(level)
+            self.__gen_gable_cross(level, palette)
 
     @property
     def flat_box(self):
         box = self._box
-        height = 1 if self._direction is None else (box.width + 1) // 2 if self._direction in [North, South] else (box.length + 1) // 2
+        height = 1 if self._direction is None else (box.width + 1) // 2 \
+            if self._direction in [North, South] else (box.length + 1) // 2
         new_size = (box.width, height, box.length)
         return TransformBox(box.origin, new_size)
 
@@ -233,36 +237,34 @@ class _RoofSymbol(CardinalGenerator):
             box.expand(Top, inplace=True)
         return box
 
-    def __gen_gable_x(self, level):
-        material = 'Stone Brick'
+    def __gen_gable_x(self, level, palette):
+        # type: (MCLevel, HousePalette) -> None
         box = self.gable_box
-        stair_format = '{} Stairs (Bottom, {})'
-        stair_revers = '{} Stairs (Top, {})'
         for index in xrange(box.length / 2):
             attic_box = TransformBox((box.minx + 1, box.miny + index, box.minz + index + 1),
                                      (box.width - 2, 1, box.length - 2*(index+1)))
             north_box = TransformBox((box.minx, box.miny + index, box.maxz - index - 1), (box.width, 1, 1))
             south_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-            fillBlocks(level, north_box, Block[stair_format.format(material, 'North')], [Block['Air']])
-            fillBlocks(level, south_box, Block[stair_format.format(material, 'South')], [Block['Air']])
+            fillBlocks(level, north_box, palette.get_roof_block('Bottom', 'North'), [Block['Air']])
+            fillBlocks(level, south_box, palette.get_roof_block('Bottom', 'South'), [Block['Air']])
             if index != 0:
                 fillBlocks(level, attic_box, Block['Bone Block (Upright)'])
                 attic_box.expand(-1, 0, 0, inplace=True)
                 fillBlocks(level, attic_box, Block['Air'])
-                fillBlocks(level, north_box.translate(dy=-1), Block[stair_revers.format(material, 'South')], [Block['Air']])
-                fillBlocks(level, south_box.translate(dy=-1), Block[stair_revers.format(material, 'North')], [Block['Air']])
+                fillBlocks(level, north_box.translate(dy=-1), palette.get_roof_block('Top', 'South'), [Block['Air']])
+                fillBlocks(level, south_box.translate(dy=-1), palette.get_roof_block('Top', 'North'), [Block['Air']])
             else:
-                fillBlocks(level, attic_box, Block['Oak Wood (North/South)'])
+                fillBlocks(level, attic_box, palette.get_structure_block('North/South'))
                 attic_box.expand(-1, 0, 0, inplace=True)
-                fillBlocks(level, attic_box, Block['Spruce Wood Planks'])
+                fillBlocks(level, attic_box, Block[palette['floor']])
         # build roof ridge
         if box.length % 2 == 1:
             index = box.length / 2
             ridge_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-            fillBlocks(level, ridge_box, Block['{} Slab (Bottom)'.format(material)], [Block['Air']])
-            fillBlocks(level, ridge_box.translate(dy=-1), Block['Oak Wood (East/West)'], [Block['Air']])
+            fillBlocks(level, ridge_box, palette.get_roof_block('Bottom'), [Block['Air']])
+            fillBlocks(level, ridge_box.translate(dy=-1), palette.get_structure_block('East/West'), [Block['Air']])
 
-    def __gen_gable_z(self, level):
+    def __gen_gable_z(self, level, palette):
         real_box = self.gable_box
         # prepare virtual level to generate rotated roof & copy surrounding blocks
         roof_level = MCSchematic(real_box.size)
@@ -271,11 +273,11 @@ class _RoofSymbol(CardinalGenerator):
             roof_level.rotateLeft()
 
         virt_box = TransformBox((1, 1, 1), (self.length, self.height, self.width))  # flip roof source box
-        _RoofSymbol(virt_box, self._direction.rotate(), self._roof_type).generate(roof_level)
+        _RoofSymbol(virt_box, self._direction.rotate(), self._roof_type).generate(roof_level, palette=palette)
         roof_level.rotateLeft()  # rotate generated roof
         copyBlocksFrom(level, roof_level, TransformBox((0, 0, 0), real_box.size), real_box.origin)
 
-    def __gen_gable_cross(self, level):
+    def __gen_gable_cross(self, level, palette):
         for direction in cardinal_directions():
             if self[direction] is not None and isinstance(self[direction], _RoofSymbol):
                 neighbour = self[direction]  # type: _RoofSymbol
@@ -286,28 +288,28 @@ class _RoofSymbol(CardinalGenerator):
                         box2 = TransformBox((box0.minx, box0.miny, box1.minz), (box0.width, box0.height, box1.length))
                     else:
                         box2 = TransformBox((box1.minx, box1.miny, box0.minz), (box1.width, box1.height, box0.length))
-                    _RoofSymbol(box2, self._direction, self._roof_type).generate(level)
+                    _RoofSymbol(box2, self._direction, self._roof_type).generate(level, palette=palette)
 
 
 class _WallSymbol(Generator):
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         assert (self.width == 1 or self.length == 1)
         assert (self.width * self.length >= 1)
         if self.length == 1:
-            self._generate_xwall(level)
+            self._generate_xwall(level, palette)
         else:
-            self._generate_zwall(level, height_map)
-        Generator.generate(self, level, height_map)
+            self._generate_zwall(level, palette)
+        Generator.generate(self, level, height_map, palette)
 
-    def _generate_xwall(self, level):
+    def _generate_xwall(self, level, palette):
         if self.width % 2 == 0:
             # even wall: split in two
             if self.width == 2:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
+                fillBlocks(level, self._box, Block[palette['wall']])
                 if bernouilli(0.5):
-                    fillBlocks(level, self._box.expand(0, -1, 0), Block['White Stained Glass Pane'])
+                    fillBlocks(level, self._box.expand(0, -1, 0), Block[palette['window']])
             elif self.width == 4:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
+                fillBlocks(level, self._box, Block[palette['wall']])
                 box_win = TransformBox(self._box.origin + (1, 0, 0), (2, self.height, 1))
                 self.children.append(_WallSymbol(box_win))
             else:
@@ -316,21 +318,21 @@ class _WallSymbol(Generator):
         else:
             # uneven wall: derive in column | window | wall
             if self.width == 1:
-                fillBlocks(level, self._box, Block['Oak Wood Planks'])
+                fillBlocks(level, self._box, Block[palette['wall']])
             else:
                 box_col, box_wal = self._box.split(dx=2)
                 box_win = TransformBox((self._box.origin + (1, 1, 0)), (1, self.height - 2, 1))
-                fillBlocks(level, box_col, Block['Oak Wood Planks'])
-                fillBlocks(level, box_win, Block['White Stained Glass Pane'])
+                fillBlocks(level, box_col, Block[palette['wall']])
+                fillBlocks(level, box_win, Block[palette['window']])
                 self.children.append(_WallSymbol(box_wal))
 
-    def _generate_zwall(self, level, height_map):
+    def _generate_zwall(self, level, palette):
         """
         Generates a flipped x_wall in a virtual level and pastes it to level.
         Parameters
         ----------
         level MCLevel level to generate in
-        height_map
+        palette Block palette
 
         Returns
         -------
@@ -338,31 +340,31 @@ class _WallSymbol(Generator):
         """
         tmp_box = TransformBox((0, 0, 0), (self.length, self.height, self.width))  # flip wall box
         wall_level = MCSchematic(tmp_box.size)  # prepare virtual level to generate rotated wall
-        _WallSymbol(tmp_box).generate(wall_level, height_map)  # generate rotated wall
+        _WallSymbol(tmp_box).generate(wall_level, palette=palette)  # generate rotated wall
         wall_level.rotateLeft()  # flip generated wall
         tmp_box = TransformBox(tmp_box.origin, self.size)  # flip generation box
         copyBlocksFrom(level, wall_level, tmp_box, self.origin)  # retrieve wall to real level
 
-    def generate_door(self, door_dir, door_x, door_z, level):
+    def generate_door(self, door_dir, door_x, door_z, level, palette):
         if not self.children:
             if self._box.surface <= 2:
-                DoorGenerator(self._box, door_dir).generate(level)
+                DoorGenerator(self._box, door_dir).generate(level, palette=palette)
             elif self.width > 2:
-                DoorGenerator(self._box.expand(-((self.width-1)/2), 0, 0), door_dir).generate(level)
+                DoorGenerator(self._box.expand(-((self.width-1)/2), 0, 0), door_dir).generate(level, palette=palette)
             else:
-                DoorGenerator(self._box.expand(0, 0, -((self.length-1)/2)), door_dir).generate(level)
+                DoorGenerator(self._box.expand(0, 0, -((self.length-1)/2)), door_dir).generate(level, palette=palette)
         elif len(self.children) == 1:
             if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
-                self.children[0].generate_door(door_dir, door_x, door_z, level)
+                self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
             else:
                 # see wall structure, this is a part of an uneven wall -> replace window with door
                 door_box = TransformBox(self.origin, (1, self.height, 1))
-                door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
-                DoorGenerator(door_box, door_dir).generate(level)
+                door_box = door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
+                DoorGenerator(door_box, door_dir, palette['door']).generate(level, palette=palette)
         else:
-            choice(self.children).generate_door(door_dir, door_x, door_z, level)
+            choice(self.children).generate_door(door_dir, door_x, door_z, level, palette)
 
 
 class _BaseSymbol(Generator):
-    def generate(self, level, height_map=None):
-        fillBlocks(level, self._box, Block['Cobblestone'])
+    def generate(self, level, height_map=None, palette=None):
+        fillBlocks(level, self._box, Block[palette['base']])

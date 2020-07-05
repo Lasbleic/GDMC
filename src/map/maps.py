@@ -20,7 +20,7 @@ class Maps:
         self.box = bounding_box
         self.obstacle_map = ObstacleMap(self.__width, self.__length, self)
         if level is not None:
-            self.height_map = compute_height_map(level, bounding_box, False)
+            self.height_map = compute_height_map(level, bounding_box)
         else:
             xmin, xmax = bounding_box.minx, bounding_box.maxx
             zmin, zmax = bounding_box.minz, bounding_box.maxz
