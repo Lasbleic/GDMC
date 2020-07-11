@@ -14,6 +14,7 @@ from utilityFunctions import setBlock
 from utils import *
 from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.schematic import StructureNBT
+from utils.structure_void_handle import VoidStructureNBT, all_but_void
 
 SURFACE_PER_ANIMAL = 16
 
@@ -219,9 +220,9 @@ class WindmillGenerator(Generator):
         box = TransformBox((x-5, y-14, z-4), (11, 11, 8))
         fillBlocks(level, box.expand(1), Block['Bedrock'])  # protective shell around windmill frames
 
-        windmill_nbt = StructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
+        windmill_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
         windmill_sch = windmill_nbt.toSchematic()
-        copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin)
+        copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin, blocksToCopy=all_but_void)
         ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
 
         self.__activate_one_repeater(level, ground_box)
