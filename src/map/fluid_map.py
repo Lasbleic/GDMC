@@ -8,7 +8,8 @@ from numpy.core.multiarray import ndarray
 from numpy.ma import array
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
-from parameters import MAX_WATER_EXPLORATION, MAX_LAVA_EXPLORATION
+from parameters import MAX_WATER_EXPLORATION, MAX_LAVA_EXPLORATION, MIN_DIST_TO_OCEAN, MIN_DIST_TO_RIVER, \
+    MIN_DIST_TO_LAVA
 from pymclevel import MCLevel, alphaMaterials as Blocks
 from pymclevel.biome_types import biome_types
 from utils import Point2D, cardinal_directions
@@ -156,7 +157,10 @@ class FluidMap:
 
     @property
     def as_obstacle_array(self):
-        obs = ((self.ocean_distance > 5) & (self.river_distance > 5) & (self.lava_distance > 10))  # type: ndarray
+        # if one of the conditions is valid, fluids are an obstacle
+        obs = ((self.ocean_distance <= MIN_DIST_TO_OCEAN)
+               | (self.river_distance <= MIN_DIST_TO_RIVER)
+               | (self.lava_distance <= MIN_DIST_TO_LAVA))  # type: ndarray
         return obs.astype(int)
 
     @property

@@ -64,7 +64,8 @@ class ObstacleMap:
                     # build a circular obstacle of designated width around road point
                     margin = 2  # todo: network.network should contain local road width
                     for dx, dz in product(xrange(-margin, margin), xrange(-margin, margin)):
-                        if self.__in_x_limits(xo+dx) and self.__in_z_limits(zo+dz) and abs(dx*dz) < margin**2:
+                        if self.__in_x_limits(xo+dx) and self.__in_z_limits(zo+dz) and abs(dx*dz) < margin**2\
+                                and not self.map[xo+dx, zo+dz]:
                             self.__set_obstacle(xo+dx, zo+dz)
 
     def __getitem__(self, item):

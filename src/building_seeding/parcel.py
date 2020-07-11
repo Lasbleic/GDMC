@@ -1,7 +1,10 @@
 from __future__ import division, print_function
 
+from random import randint
+
 from building_seeding.building_pool import BuildingType
 from parameters import MAX_ROAD_WIDTH
+from pymclevel.biome_types import biome_types
 from utils import *
 import map
 
@@ -19,7 +22,8 @@ class Parcel:
         self.__building_type = building_type
         self.__map = mc_map  # type: map.Maps
         self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
-        self.__relative_box = TransformBox((building_position.x, 0, building_position.z), (1, 1, 1))  # type: TransformBox
+        self.__relative_box = TransformBox((building_position.x, 0, building_position.z),
+                                           (1, 1, 1))  # type: TransformBox
         self.__box = None  # type: TransformBox
         if mc_map is not None:
             self.__initialize_limits()
@@ -38,7 +42,7 @@ class Parcel:
             # compute the local direction of the road
             target_road_pt = road_net.path_map[self.__center.x][self.__center.z][distance_threshold]
         else:
-            target_road_pt = Point2D(self.__map.width//2, self.__map.length//2)
+            target_road_pt = Point2D(self.__map.width // 2, self.__map.length // 2)
 
         local_road_x = target_road_pt.x - self.__center.x
         local_road_z = target_road_pt.z - self.__center.z
@@ -94,14 +98,15 @@ class Parcel:
             except IndexError:
                 return False
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA
-            valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1/MIN_RATIO_SIDE
+            valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
             max_x, max_z = self.__map.width, self.__map.length
-            valid_coord = (0 <= expanded.minx < expanded.maxx <= max_x) and (0 <= expanded.minz < expanded.maxz <= max_z)
+            valid_coord = (0 <= expanded.minx < expanded.maxx <= max_x) and (
+                        0 <= expanded.minz < expanded.maxz <= max_z)
             return no_obstacle and valid_sizes and valid_ratio and valid_coord
 
     def translate_to_absolute_coords(self, origin):
         self.__box = TransformBox(self.__relative_box)
-        self.__box.translate(dx=origin.x, dz=origin.z)
+        self.__box.translate(dx=origin.x, dz=origin.z, inplace=True)
 
     @property
     def entry_x(self):
@@ -169,6 +174,11 @@ class Parcel:
         return self.__relative_box
 
     def set_height(self, y, h):
-        self.__relative_box.translate(dy=y-self.__relative_box.miny)
-        for _ in range(h-1):
-            self.__relative_box.expand(Top)
+        self.__relative_box.translate(dy=y - self.__relative_box.miny, inplace=True)
+        for _ in range(h - 1):
+            self.__relative_box.expand(Top, inplace=True)
+
+    def biome(self, level):
+        biomes = [biome_types[level.getChunk(xs // 16, zs // 16).Biomes[xs & 15, zs & 15]] for xs, zs
+                  in product(range(self.minx, self.maxx), range(self.minz, self.maxz))]
+        return biomes[randint(0, len(biomes))]
