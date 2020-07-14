@@ -110,7 +110,7 @@ class RoadNetwork:
             self.__update_distance_map(path)
 
     def is_accessible(self, point):
-        return self.__get_distance(point) < maxint
+        return self.distance_map[point.x][point.z] < maxint
 
     # endregion
 
@@ -135,7 +135,7 @@ class RoadNetwork:
             path = self.path_map[point_to_connect.x][point_to_connect.z]
         else:
             path = self.a_star(self.__get_closest_node(point_to_connect), point_to_connect)
-        self.network_extremities += point_to_connect
+        self.network_extremities += [point_to_connect]
         self.network_node_list += [path[0]]
         self.__set_road(path)
 
@@ -181,7 +181,7 @@ class RoadNetwork:
             _distance_map = full((self.width, self.length), maxint)
             for root_point in root_points:
                 _distance_map[root_point.x][root_point.z] = 0
-            _neighbours = [root_points]
+            _neighbours = root_points
             _predecessor_map = empty((self.width, self.length), dtype=object)
             return _distance_map, _neighbours, _predecessor_map
 
@@ -336,15 +336,6 @@ if __name__ == "__main__":
     import numpy as np
     from matplotlib import colors
 
-    arr = np.zeros((5, 5), int)
-
-    arrone = np.ones((3, 3), int)
-    print(arr)
-    print(arrone)
-
-    arr[1,1] = arrone
-    print(arr)
-    """
     N = 100
     p1, p2, p3, p4 = Point2D(0, 0), Point2D(99, 99), Point2D(75, 25), Point2D(25, 75)
     net2 = RoadNetwork(N, N)
@@ -355,13 +346,16 @@ if __name__ == "__main__":
     road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
     road_map = Map("road_network", N, np.copy(net2.network), road_cmap, (0, 1), ['Grass', 'Road'])
 
-    net2.create_road(p4, p3)
+    net2.connect_to_network(p4)
     print("============ {ROAD FROM (0,75) to (99, 25)}===============")
     print(net2.network)
 
     road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
     road_map2 = Map("road_network_2", N, np.copy(net2.network), road_cmap, (0, 1), ['Grass', 'Road'])
 
+    distance_map = Map("distance_map", N, np.copy(net2.distance_map), "jet", (0, 25))
+
     the_stock = MapStock("road_network_test", N, clean_dir=True)
     the_stock.add_map(road_map)
-    the_stock.add_map(road_map2)"""
+    the_stock.add_map(road_map2)
+    the_stock.add_map(distance_map)
