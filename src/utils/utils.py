@@ -59,9 +59,12 @@ class TransformBox(BoundingBox):
     Adds class methods to the BoundingBox to transform the box's shape and position
     """
 
-    def translate(self, dx=0, dy=0, dz=0):
-        self._origin += (dx, dy, dz)
-        return self
+    def translate(self, dx=0, dy=0, dz=0, inplace=False):
+        if inplace:
+            self._origin += (dx, dy, dz)
+            return self
+        else:
+            return TransformBox(self.origin + (dx, dy, dz), self.size)
 
     def split(self, dx=None, dy=None, dz=None):
         assert (dx is not None) ^ (dy is not None) ^ (dz is not None)
@@ -223,7 +226,7 @@ def cardinal_directions():
     return iter(directions)
 
 
-def compute_height_map(level, box, from_sky=True):
+def compute_height_map(level, box):
     """
     Custom height map, quite slow
     """

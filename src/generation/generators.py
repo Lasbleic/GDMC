@@ -5,6 +5,7 @@ from itertools import product
 
 from numpy.random import choice
 from numpy import ones, array
+from typing import List
 
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
@@ -13,6 +14,7 @@ from utilityFunctions import setBlock
 from utils import *
 from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.schematic import StructureNBT
+from utils.structure_void_handle import VoidStructureNBT, all_but_void
 
 SURFACE_PER_ANIMAL = 16
 
@@ -39,9 +41,9 @@ class Generator:
         # type: (TransformBox, Point2D) -> Generator
         self._box = box
         self._entry_point = entry_point if entry_point is not None else Point2D(0, 0)
-        self.children = []
+        self.children = []  # type: List[Generator]
 
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         """
         Generates this building on the level
         Parameters
@@ -54,7 +56,7 @@ class Generator:
 
         """
         for sub_generator in self.children:
-            sub_generator.generate(level, height_map)
+            sub_generator.generate(level, height_map, palette)
 
     @property
     def width(self):
@@ -81,13 +83,13 @@ class Generator:
         return self._box.surface
 
     def translate(self, dx=0, dy=0, dz=0):
-        self._box.translate(dx, dy, dz)
+        self._box.translate(dx, dy, dz, True)
         for gen in self.children:
             gen.translate(dx, dy, dz)
 
 
 class CropGenerator(Generator):
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         self._gen_animal_farm(level, height_map)
 
     def _gen_animal_farm(self, level, height_map, animal='Cow'):
@@ -130,7 +132,7 @@ class CropGenerator(Generator):
 
 
 class HouseGenerator(Generator):
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         if self._box.width >= 7 and self._box.length >= 9:
             # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
             paste_nbt(level, self._box, 'house_7x9.nbt')
@@ -185,11 +187,11 @@ class DoorGenerator(Generator):
         self._direction = direction
         self._material = material
 
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
-            setBlock(level, (self._resource(x, y, z)), x, y, z)
+            setBlock(level, (self._resource(x, y, z, palette)), x, y, z)
 
-    def _resource(self, x, y, z):
+    def _resource(self, x, y, z, palette):
         if y == self._box.miny:
             block_name = '{} Door (Lower, Unopened, {})'.format(self._material, -self._direction)
         elif y == self._box.miny + 1:
@@ -204,13 +206,13 @@ class DoorGenerator(Generator):
                 hinge = 'Left' if (x == left_x and z == left_z) else 'Right'
             block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
         else:
-            block_name = 'Oak Wood Planks'
+            block_name = palette['wall']
         block = Block[block_name]
         return block.ID, block.blockData
 
 
 class WindmillGenerator(Generator):
-    def generate(self, level, height_map=None):
+    def generate(self, level, height_map=None, palette=None):
         # type: (MCLevel, array) -> None
         box = self._box
         x, z = box.minx + box.width // 2, box.minz + box.length // 2
@@ -218,9 +220,9 @@ class WindmillGenerator(Generator):
         box = TransformBox((x-5, y-14, z-4), (11, 11, 8))
         fillBlocks(level, box.expand(1), Block['Bedrock'])  # protective shell around windmill frames
 
-        windmill_nbt = StructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
+        windmill_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
         windmill_sch = windmill_nbt.toSchematic()
-        copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin)
+        copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin, blocksToCopy=all_but_void)
         ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
 
         self.__activate_one_repeater(level, ground_box)

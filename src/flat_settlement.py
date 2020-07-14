@@ -9,6 +9,7 @@ from numpy.random import geometric, normal
 from numpy import percentile
 from typing import List
 
+from generation.building_palette import get_biome_palette
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
 from utils import Direction, TransformBox
 from building_seeding import Parcel, VillageSkeleton
@@ -84,10 +85,12 @@ class FlatSettlement:
             mean_x = (self.limits.minx + self.limits.maxx) / 2
             dx = normal(mean_x, self.limits.width / 6)
             dx = int(min(self.limits.maxx-1, max(self.limits.minx, dx)))
+            dx -= self.limits.minx
 
             mean_z = (self.limits.minz + self.limits.maxz) / 2
             dz = normal(mean_z, self.limits.width / 6)
             dz = int(min(self.limits.maxz-1, max(self.limits.minz, dz)))
+            dz -= self.limits.minz
 
             random_center = Point2D(dx, dz)
             distance = self._road_network.get_distance(random_center)
@@ -153,7 +156,9 @@ class FlatSettlement:
         # single_house_town.generate(level)
 
         for parcel in self._parcels:  # type: Parcel
-            parcel.generator.generate(level, parcel.height_map)
+            parcel_biome = parcel.biome(level)
+            palette = get_biome_palette(parcel_biome)
+            parcel.generator.generate(level, parcel.height_map, palette)
 
     @property
     def town_center(self):
