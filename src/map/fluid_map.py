@@ -129,7 +129,7 @@ class FluidMap:
 
             def update_distances(updated_point):
                 x0, z0 = updated_point.x, updated_point.z
-                for xn, zn in product(xrange(x0-1, x0+2), xrange(z0-1, z0+2)):
+                for xn, zn in product(xrange(x0 - 1, x0 + 2), xrange(z0 - 1, z0 + 2)):
                     if (xn != x0 or zn != z0) and 0 <= xn < W and 0 <= zn < L and distance_map[xn, zn] > 0:
                         update_distance(updated_point, Point2D(xn, zn))
 
@@ -154,6 +154,17 @@ class FluidMap:
         else:
             x = x_or_point
             return self.__lava_map[x, z]
+
+    def is_fluid(self, x_or_point, z=None):
+        # type: (Point2D or int, None or int) -> object
+        if isinstance(x_or_point, Point2D):
+            p = x_or_point
+            return self.is_fluid(p.x, p.z)
+        else:
+            x = x_or_point
+            return ((self.ocean_distance[x][z] <= MIN_DIST_TO_OCEAN)
+                    | (self.river_distance[x][z] <= MIN_DIST_TO_RIVER)
+                    | (self.lava_distance[x][z] <= MIN_DIST_TO_LAVA))
 
     @property
     def as_obstacle_array(self):

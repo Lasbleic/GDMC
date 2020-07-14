@@ -9,7 +9,7 @@ from math import sqrt
 from sys import maxint
 from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH
 from utils import Point2D, bernouilli
-
+from utilityFunctions import setblock
 
 
 MAX_FLOAT = 100000.0
@@ -152,10 +152,10 @@ class RoadNetwork:
         x0, y0, z0 = origin
         __network = zeros((self.width, self.length), dtype=int)
         # block states
-        stony_palette = [1, 1, 1]
+        stony_palette = [4, 13, 1]
         stony_probs = [0.75, 0.20, 0.05]
-        grassy_palette = []
-        grassy_probs = []
+        grassy_palette = [208]
+        grassy_probs = [1]
         sandy_palette = []
         sandy_probs = []
 
@@ -169,7 +169,11 @@ class RoadNetwork:
                         block = choice(stony_palette, stony_probs)
                         __network[x][z] = block
 
-        # TODO : iterate through __network to set block
+        x0, y0, z0 = self.__all_maps.box.origin
+        for x in range(self.width):
+            for z in range(self.length):
+                if __network[x][z] > 0:
+                    setblock(level, (__network[x][z], 0), x0 + x, self.__all_maps.height_map[x][z], z0 + z)
 
     def __update_distance_map(self, road, force_update=False):
         self.dijkstra(road, self.lambda_max, force_update)
@@ -205,6 +209,7 @@ class RoadNetwork:
                 _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
                 _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
                 is_dest_obstacle = self.__all_maps.obstacle_map.is_accessible(dest_point)
+                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(dest_point)
             return maxint if is_dest_obstacle else abs(_src_height - _dest_height) + 1
 
         def update_distance(updated_point, neighbor, _neighbors):
@@ -278,6 +283,7 @@ class RoadNetwork:
                 _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
                 _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
                 is_dest_obstacle = self.__all_maps.obstacle_map.is_accessible(dest_point)
+                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(dest_point)
             return maxint if is_dest_obstacle else abs(_src_height - _dest_height) + 1
 
         def heuristic(point):
