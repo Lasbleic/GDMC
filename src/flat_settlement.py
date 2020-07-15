@@ -155,6 +155,8 @@ class FlatSettlement:
         # single_house_town = house_type.new_instance(self.limits)
         # single_house_town.generate(level)
 
+        self._road_network.generate(level, self.__origin)
+
         for parcel in self._parcels:  # type: Parcel
             parcel_biome = parcel.biome(level)
             palette = get_biome_palette(parcel_biome)
