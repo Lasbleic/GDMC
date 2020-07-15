@@ -9,7 +9,7 @@ from math import sqrt
 from sys import maxint
 from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH
 from utils import Point2D, bernouilli
-from utilityFunctions import setblock
+from utilityFunctions import setBlock
 
 
 MAX_FLOAT = 100000.0
@@ -36,7 +36,7 @@ class RoadNetwork:
 
     def __is_point_obstacle(self, point):
         if self.__all_maps is not None:
-            return self.__all_maps.obstacle_map.is_accessible(point)
+            return not self.__all_maps.obstacle_map.is_accessible(point)
         else:
             return False
 
@@ -61,11 +61,11 @@ class RoadNetwork:
                 min_distance = distance(node, point)
         return closest_node
 
-    def __get_distance(self, x, z=None):
+    def get_distance(self, x, z=None):
         # type: (Point2D or int, None or int) -> (int, [Point2D])
         if z is None:
             # assert isinstance(x, Point2D)
-            return maxint if self.__is_point_obstacle(x) else self.__get_distance(x.x, x.z)
+            return maxint if self.__is_point_obstacle(x) else self.get_distance(x.x, x.z)
         else:
             if self.distance_map[x][z] == maxint:
                 return maxint
@@ -173,7 +173,7 @@ class RoadNetwork:
         for x in range(self.width):
             for z in range(self.length):
                 if __network[x][z] > 0:
-                    setblock(level, (__network[x][z], 0), x0 + x, self.__all_maps.height_map[x][z], z0 + z)
+                    setBlock(level, (__network[x][z], 0), x0 + x, self.__all_maps.height_map[x][z], z0 + z)
 
     def __update_distance_map(self, road, force_update=False):
         self.dijkstra(road, self.lambda_max, force_update)
@@ -208,7 +208,7 @@ class RoadNetwork:
             if self.__all_maps is not None:
                 _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
                 _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
-                is_dest_obstacle = self.__all_maps.obstacle_map.is_accessible(dest_point)
+                is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
                 is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(dest_point)
             return maxint if is_dest_obstacle else abs(_src_height - _dest_height) + 1
 
@@ -282,7 +282,7 @@ class RoadNetwork:
             if self.__all_maps is not None:
                 _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
                 _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
-                is_dest_obstacle = self.__all_maps.obstacle_map.is_accessible(dest_point)
+                is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
                 is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(dest_point)
             return maxint if is_dest_obstacle else abs(_src_height - _dest_height) + 1
 

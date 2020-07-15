@@ -76,7 +76,7 @@ class FlatSettlement:
                     min_distance_to_roads *= 0.9
             # update road network
             if road_id == 0:
-                self._road_network.find_road(out_connections[0], out_connections[1])
+                self._road_network.create_road(out_connections[0], out_connections[1])
             else:
                 self._road_network.connect_to_network(out_connections[-1])
 
