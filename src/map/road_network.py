@@ -198,7 +198,7 @@ class RoadNetwork:
         for x in range(self.width):
             for z in range(self.length):
                 if __network[x][z] > 0:
-                    y = max(64, self.__all_maps.height_map[x][z])
+                    y = max(63, self.__all_maps.height_map[x][z])
                     setBlock(level, (__network[x][z], 0), x0 + x, y, z0 + z)
 
     def __get_road_width(self, road_block):
