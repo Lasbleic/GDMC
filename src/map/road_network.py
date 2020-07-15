@@ -7,6 +7,7 @@ from numpy.random import choice
 from sys import maxint
 
 from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH, BRIDGE_COST
+from pymclevel import MCLevel
 from utils import Point2D, bernouilli
 from utilityFunctions import setBlock
 
@@ -197,7 +198,7 @@ class RoadNetwork:
         for x in range(self.width):
             for z in range(self.length):
                 if __network[x][z] > 0:
-                    y = 63 if self.__all_maps.fluid_map.is_water(x, z) else self.__all_maps.height_map[x][z]
+                    y = max(64, self.__all_maps.height_map[x][z])
                     setBlock(level, (__network[x][z], 0), x0 + x, y, z0 + z)
 
     def __get_road_width(self, road_block):

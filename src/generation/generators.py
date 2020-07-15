@@ -90,7 +90,10 @@ class Generator:
 
 class CropGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
-        self._gen_animal_farm(level, height_map)
+        if bernouilli():
+            self._gen_animal_farm(level, height_map)
+        else:
+            self._gen_crop_v1(level, height_map)
 
     def _gen_animal_farm(self, level, height_map, animal='Cow'):
         # type: (MCLevel, numpy.array, str) -> None
@@ -109,7 +112,7 @@ class CropGenerator(Generator):
             Entity.setpos(entity, (x, y, z))
             level.addEntity(entity)
 
-    def _gen_crop_v1(self, level):
+    def _gen_crop_v1(self, level, height_map):
         # dimensions
         x0, y0, z0 = self.origin
         # block states
