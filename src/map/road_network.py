@@ -7,7 +7,8 @@ from numpy import zeros, full, empty
 from sys import maxint
 
 from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH
-from utils import Point2D
+from utils import Point2D, bernouilli
+from utilityFunctions import setBlock
 
 
 class RoadNetwork:
