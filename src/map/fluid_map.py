@@ -155,6 +155,24 @@ class FluidMap:
             x = x_or_point
             return self.__lava_map[x, z]
 
+    def is_close_to_fluid(self, x_or_point, z=None):
+        # type: (Point2D or int, None or int) -> object
+        if isinstance(x_or_point, Point2D):
+            p = x_or_point
+            return self.is_close_to_fluid(p.x, p.z)
+        else:
+            x = x_or_point
+            return ((self.ocean_distance[x][z] <= MIN_DIST_TO_OCEAN)
+                    | (self.river_distance[x][z] <= MIN_DIST_TO_RIVER)
+                    | (self.lava_distance[x][z] <= MIN_DIST_TO_LAVA))
+
+    def is_water(self, x_or_point, z=None):
+        if isinstance(x_or_point, Point2D):
+            return self.is_water(x_or_point.x, x_or_point.z)
+        else:
+            x = x_or_point
+            return self.ocean_distance[x, z] == 0 | self.river_distance[x, z]
+
     @property
     def as_obstacle_array(self):
         # if one of the conditions is valid, fluids are an obstacle
