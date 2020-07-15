@@ -55,6 +55,8 @@ class RoadNetwork:
 
         closest_node = None
         min_distance = MAX_FLOAT
+        if len(self.network_node_list) == 0:
+            closest_node = choice(self.road_blocks)
         for node in self.network_node_list:
             if distance(node, point) < min_distance:
                 closest_node = node
