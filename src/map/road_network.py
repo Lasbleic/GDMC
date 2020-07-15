@@ -1,12 +1,12 @@
 # coding=utf-8
 from __future__ import division, print_function
 
-from random import choice
 import time
 from numpy import zeros, full, empty
+from numpy.random import choice
 from sys import maxint
 
-from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH
+from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH, BRIDGE_COST
 from utils import Point2D, bernouilli
 from utilityFunctions import setBlock
 
@@ -99,10 +99,20 @@ class RoadNetwork:
             return choice(_closest_neighbors)
 
         def cost(src_point, dest_point):
-            return 1
+            _src_height = int(self.__all_maps.height_map[src_point.x, src_point.z])
+            _dest_height = int(self.__all_maps.height_map[dest_point.x, dest_point.z])
+            std_cost = abs(_src_height - _dest_height) + 1
+            if not self.__all_maps.obstacle_map.is_accessible(dest_point) or self.__all_maps.fluid_map.is_lava(dest_point):
+                return maxint
+            if self.__all_maps.fluid_map.is_water(dest_point):
+                return std_cost + BRIDGE_COST
+            return std_cost
 
         def update_distance(updated_point, neighbor, _neighbors):
-            new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbor)
+            c = cost(updated_point, neighbor)
+            if c == maxint:
+                return
+            new_distance = distance_map[updated_point.x][updated_point.z] + c
             previous_distance = distance_map[neighbor.x][neighbor.z]
             if previous_distance >= maxint and new_distance <= max_distance and not self.is_road(neighbor)\
                     and new_distance < self.distance_map[neighbor.x, neighbor.z]:
@@ -180,14 +190,15 @@ class RoadNetwork:
                     distance = abs(road_block.x - x) + abs(road_block.z - z) #Norme 1
                     prob = 1 - distance/(8*width) #A calibrer
                     if not bernouilli(prob):
-                        block = choice(stony_palette, stony_probs)
+                        block = choice(stony_palette, p=stony_probs)
                         __network[x][z] = block
 
         x0, y0, z0 = self.__all_maps.box.origin
         for x in range(self.width):
             for z in range(self.length):
                 if __network[x][z] > 0:
-                    setBlock(level, (__network[x][z], 0), x0 + x, self.__all_maps.height_map[x][z], z0 + z)
+                    y = 63 if self.__all_maps.fluid_map.is_water(x, z) else self.__all_maps.height_map[x][z]
+                    setBlock(level, (__network[x][z], 0), x0 + x, y, z0 + z)
 
     def __get_road_width(self, road_block):
         return 3

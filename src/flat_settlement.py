@@ -162,6 +162,10 @@ class FlatSettlement:
             palette = get_biome_palette(parcel_biome)
             parcel.generator.generate(level, parcel.height_map, palette)
 
+        x, z = self.town_center.x, self.town_center.z
+        y = self._maps.height_map[x, z]
+        self._road_network.generate(level, (x, y, z))
+
     @property
     def town_center(self):
         return self._center
