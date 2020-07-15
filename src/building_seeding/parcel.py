@@ -40,7 +40,9 @@ class Parcel:
                 self.__entry_point = nearest_road_point
                 return
             # compute the local direction of the road
-            target_road_pt = road_net.path_map[self.__center.x][self.__center.z][distance_threshold]
+            path = road_net.path_map[self.__center.x, self.__center.z]
+            index = max(0, len(path) - distance_threshold)
+            target_road_pt = path[index]
         else:
             target_road_pt = Point2D(self.__map.width // 2, self.__map.length // 2)
 
@@ -179,6 +181,6 @@ class Parcel:
             self.__relative_box.expand(Top, inplace=True)
 
     def biome(self, level):
-        biomes = [biome_types[level.getChunk(xs // 16, zs // 16).Biomes[xs & 15, zs & 15]] for xs, zs
-                  in product(range(self.minx, self.maxx), range(self.minz, self.maxz))]
-        return biomes[randint(0, len(biomes))]
+        xs, zs = randint(self.minx, self.maxx-1), randint(self.minz, self.maxz-1)
+        biome = biome_types[level.getChunk(xs // 16, zs // 16).Biomes[xs & 15, zs & 15]]
+        return biome
