@@ -21,6 +21,7 @@ class RoadNetwork:
         self.distance_map = full((width, length), maxint)
         self.path_map = empty((width, length), dtype=object)
         self.lambda_max = MAX_LAMBDA
+        self.road_blocks = []
         # self.lambda_max = 0
         self.__all_maps = mc_map
 
@@ -29,9 +30,11 @@ class RoadNetwork:
         if z is None:
             # assert isinstance(x, Point2D) # todo: find why this works when executing this class but not in mcedit
             self.set_road(x.x, x.z)
+            self.road_blocks += [x]
         else:
             self.update_distance_map(x, z)
             self.network[x][z] = 1
+
 
     def is_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> bool
@@ -155,6 +158,38 @@ class RoadNetwork:
 
     def is_accessible(self, point):
         return self.get_distance(point) < maxint
+
+    def generate(self, level, origin):
+        # type: (MCLevel, (int, int, int)) -> None
+        # dimensions
+        x0, y0, z0 = origin
+        __network = zeros((self.width, self.length), dtype=int)
+        # block states
+        stony_palette = [4, 13, 1]
+        stony_probs = [0.75, 0.20, 0.05]
+        grassy_palette = [208]
+        grassy_probs = [1]
+        sandy_palette = []
+        sandy_probs = []
+
+        for road_block in self.road_blocks:
+            width = self.__get_road_width(road_block)
+            for x in range(max(0, road_block.x - width + 1), min(self.width, road_block.x + width - 1)):
+                for z in range(max(0, road_block.z - width + 1), min(self.width, road_block.z + width - 1)):
+                    distance = abs(road_block.x - x) + abs(road_block.z - z) #Norme 1
+                    prob = 1 - distance/(8*width) #A calibrer
+                    if not bernouilli(prob):
+                        block = choice(stony_palette, stony_probs)
+                        __network[x][z] = block
+
+        x0, y0, z0 = self.__all_maps.box.origin
+        for x in range(self.width):
+            for z in range(self.length):
+                if __network[x][z] > 0:
+                    setBlock(level, (__network[x][z], 0), x0 + x, self.__all_maps.height_map[x][z], z0 + z)
+
+    def __get_road_width(self, road_block):
+        return 3
 
 
 if __name__ == "__main__":
