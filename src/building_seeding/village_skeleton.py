@@ -27,7 +27,7 @@ class VillageSkeleton:
         self.building_iterator = BuildingPool((maps.width - parcel_size - 1) * (maps.length - parcel_size - 1) - maps.fluid_map.as_obstacle_array.sum())
         self.parcel_list = parcel_list
         self.parcel_size = parcel_size
-        self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
+        #self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
 
     def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None, obstacle_map=None):
 
@@ -64,12 +64,14 @@ class VillageSkeleton:
 
         minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple'])
 
+        """
         self.map_stock.add_map(Map("{}{}_minecraft_map{}".format(iteration, 4 if iteration else 0, suffix),
                                    N,
                                    minecraft_map,
                                    minecraft_cmap,
                                    (0, 6),
                                    ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter', 'EntryPoint']))
+        """
 
     def grow(self):
 

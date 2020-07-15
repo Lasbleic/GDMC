@@ -191,7 +191,7 @@ class RoadNetwork:
                     distance = abs(road_block.x - x) + abs(road_block.z - z) #Norme 1
                     prob = 1 - distance/(8*width) #A calibrer
                     if not bernouilli(prob):
-                        block = choice(stony_palette, p=stony_probs)
+                        block = choice(grassy_palette)
                         __network[x][z] = block
 
         x0, y0, z0 = self.__all_maps.box.origin
