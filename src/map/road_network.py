@@ -89,8 +89,11 @@ class RoadNetwork:
             return self.network[x][z] > 0
 
     def __get_closest_road_point(self, point):
+        # type: (Point2D) -> Point2D
         if self.is_accessible(point):
             return self.path_map[point.x][point.z][0]
+        else:
+            return self.__get_closest_node(point)
 
     def __invalidate(self, point):
         self.distance_map[point.x][point.z] = maxint
@@ -204,17 +207,20 @@ class RoadNetwork:
         def cost(src_point, dest_point):
             _src_height = 0
             _dest_height = 0
-            is_dest_obstacle = False
             if self.__all_maps is not None:
                 _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
                 _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
-                is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
-                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(dest_point)
-            return maxint if is_dest_obstacle else abs(_src_height - _dest_height) + 1
+            return abs(_src_height - _dest_height) + 1
 
         def update_distance(updated_point, neighbor, _neighbors):
             new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbor)
             previous_distance = distance_map[neighbor.x][neighbor.z]
+            is_dest_obstacle = False
+            if self.__all_maps is not None:
+                is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(neighbor)
+                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(neighbor)
+            if is_dest_obstacle:
+                return
             if previous_distance >= maxint and new_distance <= max_distance and not self.__is_road(neighbor)\
                     and new_distance < self.distance_map[neighbor.x][neighbor.z]:
                 _neighbors += [neighbor]
