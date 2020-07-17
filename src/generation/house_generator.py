@@ -15,9 +15,14 @@ class ProcHouseGenerator(Generator):
         self._generate_main_building()
         self._generate_annex()
         self._center_building()
+        self._clear_trees(level)
         Generator.generate(self, level, height_map, palette)
         self._generate_door(level, palette)
         self._generate_stairs(level, palette)
+
+    def _clear_trees(self, level):
+        for gen in filter(lambda g: isinstance(g, _BaseSymbol), self.children):
+            gen._clear_trees(level)
 
     def _generate_main_building(self):
         w0, h0, l0 = self._box.width, self._box.height, self._box.length

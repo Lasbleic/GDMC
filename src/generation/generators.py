@@ -43,6 +43,10 @@ class Generator:
         self._entry_point = entry_point if entry_point is not None else Point2D(0, 0)
         self.children = []  # type: List[Generator]
 
+    def _clear_trees(self, level):
+        for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
+            clear_tree_at(level, Point2D(x, z))
+
     def generate(self, level, height_map=None, palette=None):
         """
         Generates this building on the level

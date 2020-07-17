@@ -6,6 +6,7 @@ from time import time
 from numpy import array, argmax, zeros
 from typing import Iterable
 from pymclevel import BoundingBox, alphaMaterials as Block
+from utilityFunctions import setBlock
 
 
 class Point2D:
@@ -80,7 +81,8 @@ class TransformBox(BoundingBox):
         return [b0, b1]
 
     def expand(self, dx_or_dir, dy=None, dz=None, inplace=False):
-        if isinstance(dx_or_dir, Direction):
+        # if isinstance(dx_or_dir, Direction):
+        if dx_or_dir.__class__.__name__ == 'Direction':
             dir = dx_or_dir
             dpos = (min(dir.x, 0), min(dir.y, 0), min(dir.z, 0))
             dsize = (abs(dir.x), abs(dir.y), abs(dir.z))
@@ -225,6 +227,12 @@ def cardinal_directions():
     shuffle(directions)
     return iter(directions)
 
+def all_directions():
+    # type: () -> Iterable[Direction]
+    directions = [East, South, West, North, Top, Bottom]
+    shuffle(directions)
+    return iter(directions)
+
 
 def compute_height_map(level, box):
     """
@@ -243,6 +251,29 @@ def compute_height_map(level, box):
 
     print('Computed height map in {}s'.format(time() - t0))
     return h
+
+
+def clear_tree_at(level, point):
+    # type: (MCLevel, Point2D) -> None
+
+    def is_tree(bid):
+        block = level.materials[bid]
+        return block.stringID in ['leaves', 'log']
+
+    y = level.heightMapAt(point.x, point.z) - 1
+    if not is_tree(level.blockAt(point.x, y, point.z)):
+        return
+
+    possible_tree_blocks = [(point.x, y, point.z)]
+    while possible_tree_blocks:
+        x0, y0, z0 = possible_tree_blocks.pop()
+        setBlock(level, (0, 0), x0, y0, z0)
+        for dir in all_directions():
+            x = x0 + dir.x
+            y = y0 + dir.y
+            z = z0 + dir.z
+            if is_tree(level.blockAt(x, y, z)):
+                possible_tree_blocks.append((x, y, z))
 
 
 if __name__ == '__main__':
