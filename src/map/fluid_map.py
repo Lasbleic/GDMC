@@ -146,25 +146,33 @@ class FluidMap:
         __pseudo_dijkstra(self.ocean_distance)
         __pseudo_dijkstra(self.lava_distance)
 
-    def is_lava(self, x_or_point, z=None):
-        # type: (Point2D or int, None or int) -> object
+    def is_lava(self, x_or_point, z=None, margin=0):
+        # type: (Point2D or int, None or int, float) -> object
         if isinstance(x_or_point, Point2D):
             p = x_or_point
-            return self.__lava_map[p.x, p.z]
+            return self.lava_distance[p.x, p.z] <= margin
         else:
             x = x_or_point
-            return self.__lava_map[x, z]
+            return self.lava_distance[x, z] <= margin
 
-    def is_fluid(self, x_or_point, z=None):
+    def is_close_to_fluid(self, x_or_point, z=None):
         # type: (Point2D or int, None or int) -> object
         if isinstance(x_or_point, Point2D):
             p = x_or_point
-            return self.is_fluid(p.x, p.z)
+            return self.is_close_to_fluid(p.x, p.z)
         else:
             x = x_or_point
             return ((self.ocean_distance[x][z] <= MIN_DIST_TO_OCEAN)
                     | (self.river_distance[x][z] <= MIN_DIST_TO_RIVER)
                     | (self.lava_distance[x][z] <= MIN_DIST_TO_LAVA))
+
+    def is_water(self, x_or_point, z=None, margin=0):
+        # type: (int or Point2D, int or None, float) -> bool
+        if isinstance(x_or_point, Point2D):
+            return self.is_water(x_or_point.x, x_or_point.z)
+        else:
+            x = x_or_point
+            return self.ocean_distance[x, z] <= margin | self.river_distance[x, z] <= margin
 
     @property
     def as_obstacle_array(self):

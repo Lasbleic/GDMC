@@ -147,13 +147,14 @@ class FlatSettlement:
         map(lambda _parcel: _parcel.translate_to_absolute_coords(self.__origin), self._parcels)
 
     def generate(self, level):
-        height_map = self._maps.height_map
         # todo: replace this
         # crop_town = crop_type.new_instance(self.limits)
         # crop_town.generate(level)
 
         # single_house_town = house_type.new_instance(self.limits)
         # single_house_town.generate(level)
+
+        self._road_network.generate(level)
 
         for parcel in self._parcels:  # type: Parcel
             parcel_biome = parcel.biome(level)

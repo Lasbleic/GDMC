@@ -1,19 +1,19 @@
 # coding=utf-8
 from __future__ import division, print_function
 
-from random import choice
+from numpy.random import choice
 import time
 from numpy import zeros, full, empty
 from pymclevel import alphaMaterials as Block, MCLevel
 from math import sqrt
 from sys import maxint
-from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH
-from utils import Point2D, bernouilli
+from parameters import MAX_LAMBDA, MAX_ROAD_WIDTH, BRIDGE_COST
+from utils import Point2D, bernouilli, euclidean, clear_tree_at
 from utilityFunctions import setBlock
 
 
 MAX_FLOAT = 100000.0
-MAX_DISTANCE_CYCLE = 10
+MAX_DISTANCE_CYCLE = 20
 
 class RoadNetwork:
 
@@ -50,17 +50,14 @@ class RoadNetwork:
 
     def __get_closest_node(self, point):
 
-        def distance(point1, point2):
-            return sqrt((point1.x - point2.x)**2 + (point1.z - point2.z)**2)
-
         closest_node = None
         min_distance = MAX_FLOAT
         if len(self.network_node_list) == 0:
             closest_node = choice(self.road_blocks)
         for node in self.network_node_list:
-            if distance(node, point) < min_distance:
+            if euclidean(node, point) < min_distance:
                 closest_node = node
-                min_distance = distance(node, point)
+                min_distance = euclidean(node, point)
         return closest_node
 
     def get_distance(self, x, z=None):
@@ -82,16 +79,18 @@ class RoadNetwork:
         else:
             self.network[x][z] = self.calculate_road_width(x, z)
 
-    def __is_road(self, x, z=None):
+    def is_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> bool
         if z is None:
             # assert isinstance(x, Point2D)
-            return self.__is_road(x.x, x.z)
+            return self.is_road(x.x, x.z)
         else:
             return self.network[x][z] > 0
 
     def __get_closest_road_point(self, point):
         # type: (Point2D) -> Point2D
+        if self.is_road(point):
+            return point
         if self.is_accessible(point):
             return self.path_map[point.x][point.z][0]
         else:
@@ -133,28 +132,26 @@ class RoadNetwork:
 
     def connect_to_network(self, point_to_connect):
         # type: (Point2D) -> None
-        def distance(point1, point2):
-            return sqrt((point1.x - point2.x)**2 + (point1.z - point2.z)**2)
 
         if self.is_accessible(point_to_connect):
             path = self.path_map[point_to_connect.x][point_to_connect.z]
         else:
             path = self.a_star(self.__get_closest_node(point_to_connect), point_to_connect)
         self.network_extremities += [point_to_connect]
-        self.network_node_list += [path[0]]
-        self.__set_road(path)
+        if path:
+            self.network_node_list += [path[0]]
+            self.__set_road(path)
 
         for node in self.network_node_list:
-            if distance(node, point_to_connect) < MAX_DISTANCE_CYCLE:
-                self.create_road(node, point_to_connect)
+            if 0 < euclidean(node, point_to_connect) < MAX_DISTANCE_CYCLE:
+                self.create_road(point_to_connect, node)
         return
 
     # endregion
 
-    def generate(self, level, origin):
-        # type: (MCLevel, (int, int, int)) -> None
+    def generate(self, level):
+        # type: (MCLevel) -> None
         # dimensions
-        x0, y0, z0 = origin
         __network = zeros((self.width, self.length), dtype=int)
         # block states
         stony_palette = [4, 13, 1]
@@ -164,17 +161,19 @@ class RoadNetwork:
         sandy_palette = []
         sandy_probs = []
 
+        x0, y0, z0 = self.__all_maps.box.origin
+
         for road_block in self.road_blocks:
-            width = self.__get_road_width(road_block)
-            for x in range(max(0, road_block.x - width + 1), min(self.width, road_block.x + width - 1)):
-                for z in range(max(0, road_block.z - width + 1), min(self.width, road_block.z + width - 1)):
+            road_width = self.__get_road_width(road_block)
+            for x in range(max(0, road_block.x - road_width), min(self.width, road_block.x + road_width + 1)):
+                for z in range(max(0, road_block.z - road_width), min(self.length, road_block.z + road_width + 1)):
+                    clear_tree_at(level, Point2D(x+x0, z+z0))
                     distance = abs(road_block.x - x) + abs(road_block.z - z) #Norme 1
-                    prob = 1 - distance/(8*width) #A calibrer
+                    prob = 1 - distance/(8*road_width) #A calibrer
                     if not bernouilli(prob):
-                        block = choice(stony_palette, stony_probs)
+                        block = choice(stony_palette, p=stony_probs)
                         __network[x][z] = block
 
-        x0, y0, z0 = self.__all_maps.box.origin
         for x in range(self.width):
             for z in range(self.length):
                 if __network[x][z] > 0:
@@ -212,7 +211,13 @@ class RoadNetwork:
             if self.__all_maps is not None:
                 _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
                 _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
-            return abs(_src_height - _dest_height) + 1
+                _cost = abs(int(_src_height) - int(_dest_height)) + 1
+                if self.is_road(dest_point):
+                    _cost = 1
+                elif self.__all_maps.fluid_map.is_water(dest_point, margin=4):
+                    _cost += BRIDGE_COST
+                return _cost
+            return 1
 
         def update_distance(updated_point, neighbor, _neighbors):
             new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbor)
@@ -220,10 +225,10 @@ class RoadNetwork:
             is_dest_obstacle = False
             if self.__all_maps is not None:
                 is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(neighbor)
-                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(neighbor)
+                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_lava(neighbor, margin=8)
             if is_dest_obstacle:
                 return
-            if previous_distance >= maxint and new_distance <= max_distance and not self.__is_road(neighbor)\
+            if previous_distance >= maxint and new_distance <= max_distance and not self.is_road(neighbor)\
                     and new_distance < self.distance_map[neighbor.x][neighbor.z]:
                 _neighbors += [neighbor]
             if previous_distance > new_distance:
@@ -244,7 +249,7 @@ class RoadNetwork:
         def path_to_dest(dest_point):
             current_point = dest_point
             path = []
-            while not self.__is_road(current_point):
+            while not self.is_road(current_point):
                 path = [current_point] + path
                 current_point = predecessor_map[current_point.x][current_point.z]
             return path
@@ -286,19 +291,30 @@ class RoadNetwork:
         def cost(src_point, dest_point):
             _src_height = 0
             _dest_height = 0
-            is_dest_obstacle = False
-            if self.__all_maps is not None:
-                _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
-                _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
-                is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
-                is_dest_obstacle = is_dest_obstacle or self.__all_maps.fluid_map.is_fluid(dest_point)
-            return maxint if is_dest_obstacle else abs(_src_height - _dest_height) + 1
+            if self.__all_maps is None or self.is_road(dest_point):
+                return 1
+
+            is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
+            is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=8)
+            if is_dest_obstacle:
+                return maxint
+
+            _src_height = self.__all_maps.height_map[src_point.x][src_point.z]
+            _dest_height = self.__all_maps.height_map[dest_point.x][dest_point.z]
+            std_cost = abs(int(_src_height) - int(_dest_height)) + 1
+            if self.__all_maps.fluid_map.is_water(dest_point, margin=4):
+                return std_cost + BRIDGE_COST
+            return std_cost
 
         def heuristic(point):
             return sqrt((point.x - ending_point.x)**2 + (point.z - ending_point.z)**2)*2
 
         def update_distance(updated_point, neighbor, _neighbors):
-            new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbor)
+            edge_cost = cost(updated_point, neighbor)
+            if edge_cost == maxint:
+                return
+
+            new_distance = distance_map[updated_point.x][updated_point.z] + edge_cost
             previous_distance = distance_map[neighbor.x][neighbor.z]
             if previous_distance >= MAX_FLOAT:
                 _neighbors += [neighbor]

@@ -33,14 +33,16 @@ class Parcel:
         road_net = self.__map.road_network
         # todo: gerer le cas des parcelles trop eloignees du reseau
         if road_net.is_accessible(self.__center):
-            nearest_road_point = road_net.path_map[self.__center.x][self.__center.z][0]
+            path = road_net.path_map[self.__center.x][self.__center.z]
+            nearest_road_point = path[0] if path else self.center
             distance_threshold = MIN_PARCEL_SIZE + MAX_ROAD_WIDTH // 2
             if road_net.get_distance(self.__center) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 self.__entry_point = nearest_road_point
                 return
             # compute the local direction of the road
-            target_road_pt = road_net.path_map[self.__center.x][self.__center.z][distance_threshold]
+            index = max(0, len(path) - distance_threshold)
+            target_road_pt = path[index]
         else:
             target_road_pt = Point2D(self.__map.width // 2, self.__map.length // 2)
 
@@ -179,6 +181,7 @@ class Parcel:
             self.__relative_box.expand(Top, inplace=True)
 
     def biome(self, level):
-        biomes = [biome_types[level.getChunk(xs // 16, zs // 16).Biomes[xs & 15, zs & 15]] for xs, zs
-                  in product(range(self.minx, self.maxx), range(self.minz, self.maxz))]
-        return biomes[randint(0, len(biomes))]
+        x = randint(self.__box.minx, self.__box.maxx - 1)
+        z = randint(self.__box.minz, self.__box.maxz - 1)
+        biome = biome_types[level.getChunk(x // 16, z // 16).Biomes[x & 15, z & 15]]
+        return biome
