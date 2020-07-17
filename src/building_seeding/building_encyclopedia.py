@@ -31,6 +31,12 @@ BUILDING_ENCYCLOPEDIA = {
             "windmill": (12, 20, 25)
         },
 
+        "Altitude": {
+            "house": (60, 68, 90),
+            "crop": (65, 70, 80),
+            "windmill": (65, 75, 95)
+        },
+
         "RiverDistance": {
             "house": (10, 100),
             "crop": (5, 50),
@@ -49,11 +55,11 @@ BUILDING_ENCYCLOPEDIA = {
             "windmill": (10, 25)
         },
 
-        # (accessibility, sociability, pure_water, sea_water, lava)
+        # (accessibility, sociability, altitude, pure_water, sea_water, lava)
         "Weighting_factors": {
-            "house": (1, 3, 1, 1, 1),
-            "crop": (1, 3, 2, 0, 1),
-            "windmill": (2, 4, 0, 0, 1)
+            "house": (1, 3, 2, 1, 1, 1),
+            "crop": (1, 3, 2, 2, 0, 1),
+            "windmill": (2, 4, 2, 0, 0, 1)
         },
 
         "markov": {

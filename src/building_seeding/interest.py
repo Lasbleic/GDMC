@@ -10,7 +10,7 @@ from itertools import product
 from accessibility import accessibility, local_accessibility
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding import BuildingType
-from building_seeding.math_function import close_distance, obstacle
+from building_seeding.math_function import close_distance, obstacle, balance
 from map import Maps
 from map.road_network import *
 from sociability import sociability, local_sociability
@@ -55,6 +55,11 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
             return obstacle(maps.fluid_map.lava_distance[x, z], lambdas["LavaObstacle"])
         return 0
 
+    def altitude_interest():
+        alt = maps.height_map[x, z]
+        lm, l0, lM = lambdas["Altitude"]
+        return balance(alt, lm, l0, lM)
+
     _interest_map = np.zeros(size)
 
     print("Compute accessibility map")
@@ -71,6 +76,7 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
         interest_functions = np.array([
             accessibility_map[x][z],
             sociability_map[x][z],
+            altitude_interest(),
             river_interest(),
             ocean_interest(),
             lava_interest()
@@ -94,7 +100,7 @@ def max_interest(_interest_map):
     return Point2D(argmax // width, argmax % length)
 
 
-def random_interest(_interest_map, max_iteration=10):
+def random_interest(_interest_map, max_iteration=1000):
     width = _interest_map.shape[1]
     # opportunity = width
     size = _interest_map.size
