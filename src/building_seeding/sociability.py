@@ -5,15 +5,13 @@ Function used to compute sociability
 
 from __future__ import division
 
-from matplotlib import colors
-import numpy as np
 from itertools import product
-from math_function import attraction_repulsion
 from math import sqrt
-from pre_processing import Map, MapStock
+
+import numpy as np
+
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from parcel import Parcel
-from utils import Point2D
+from math_function import attraction_repulsion
 
 
 def local_sociability(x, z, building_type, scenario, settlement_seeds):
@@ -51,37 +49,3 @@ def sociability(building_type, scenario, settlement_seeds, size):
         sociability_map[x, z] = local_sociability(x, z, building_type, scenario, settlement_seeds)
 
     return sociability_map
-
-
-if __name__ == '__main__':
-    from building_seeding import BuildingType
-
-    # Sociability test
-
-    N = 50
-
-    building_net = np.zeros((N, N))
-    set_seeds = []
-
-    house_1 = Parcel(Point2D(15, 31), BuildingType().house)
-    building_net[15, 31] = 1
-    set_seeds.append(house_1)
-
-    house_2 = Parcel(Point2D(26, 6), BuildingType().house)
-    building_net[26, 6] = 1
-    set_seeds.append(house_2)
-
-    mill_1 = Parcel(Point2D(37, 18), BuildingType().windmill)
-    building_net[37, 18] = 2
-    set_seeds.append(mill_1)
-
-    building_cmap = colors.ListedColormap(['forestgreen', 'darkorange', "yellow"])
-    building_map = Map("building_map", N, building_net, building_cmap, (0, 2), ['Grass', 'House', "Windmill"])
-
-    social_net = sociability(BuildingType().house, "Flat_scenario", set_seeds, (N, N))
-    social_cmap = "jet"
-    social_map = Map("accessibility_map", N, social_net, social_cmap, (-1, 1))
-
-    the_stock = MapStock("interest_test", N, clean_dir=True)
-    the_stock.add_map(building_map)
-    the_stock.add_map(social_map)

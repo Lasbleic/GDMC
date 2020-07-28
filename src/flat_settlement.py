@@ -125,7 +125,7 @@ class FlatSettlement:
                 road_dir_x = parcel.entry_x - parcel.mean_x
                 road_dir_z = parcel.entry_z - parcel.mean_z
                 road_dir = Direction(road_dir_x, 0, road_dir_z)
-                lateral_dir = road_dir.rotate() if bernouilli(0.5) else -road_dir.rotate()
+                lateral_dir = road_dir.rotate() if bernouilli() else -road_dir.rotate()
 
                 priority_directions = [road_dir, lateral_dir, -lateral_dir, -road_dir]
                 for direction in priority_directions:
@@ -159,7 +159,10 @@ class FlatSettlement:
         for parcel in self._parcels:  # type: Parcel
             parcel_biome = parcel.biome(level)
             palette = get_biome_palette(parcel_biome)
-            parcel.generator.generate(level, parcel.height_map, palette)
+            try:
+                parcel.generator.generate(level, parcel.height_map, palette)
+            except Exception:
+                print("FAIL")
 
     @property
     def town_center(self):

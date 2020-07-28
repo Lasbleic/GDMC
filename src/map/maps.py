@@ -35,3 +35,7 @@ class Maps:
     @property
     def length(self):
         return self.__length
+
+    @property
+    def water_height(self):
+        return self.fluid_map.water_height

@@ -19,4 +19,4 @@ class VoidStructureNBT(StructureNBT):
 
 
 all_but_void = range(materials.id_limit)
-all_but_void.remove(217)
+all_but_void.remove(alphaMaterials["Structure Void"].ID)

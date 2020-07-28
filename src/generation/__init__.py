@@ -1,2 +1,2 @@
-from generators import CropGenerator, HouseGenerator, WindmillGenerator
-from house_generator import ProcHouseGenerator
+from generation.generators import CropGenerator, HouseGenerator, WindmillGenerator
+from generation.house_generator import ProcHouseGenerator

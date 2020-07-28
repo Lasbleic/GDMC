@@ -18,6 +18,7 @@ from utils import Point2D, cardinal_directions
 class FluidMap:
 
     def __init__(self, mc_maps, level, water_limit=MAX_WATER_EXPLORATION, lava_limit=MAX_LAVA_EXPLORATION):
+        self.water_height = 0
         self.__width = mc_maps.width
         self.__length = mc_maps.length
         self.__water_map = full((mc_maps.width, mc_maps.length), 0)
@@ -37,6 +38,7 @@ class FluidMap:
             xs, zs = x + self.__other_maps.box.minx, z + self.__other_maps.box.minz
             y = self.__other_maps.height_map[x, z] + 1
             if level.blockAt(xs, y, zs) in [Blocks.Water.ID, Blocks.WaterActive.ID, Blocks.Ice.ID]:
+                self.water_height = y
                 cx, cz = xs // 16, zs // 16
                 biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
                 if 'Ocean' in biome_types[biome] or 'Beach' in biome_types[biome]:
@@ -172,7 +174,7 @@ class FluidMap:
             return self.is_water(x_or_point.x, x_or_point.z)
         else:
             x = x_or_point
-            return self.ocean_distance[x, z] <= margin | self.river_distance[x, z] <= margin
+            return (self.ocean_distance[x, z] <= margin) | (self.river_distance[x, z] <= margin)
 
     @property
     def as_obstacle_array(self):

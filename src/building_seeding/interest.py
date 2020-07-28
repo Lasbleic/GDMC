@@ -100,14 +100,17 @@ def max_interest(_interest_map):
     return Point2D(argmax // width, argmax % length)
 
 
-def random_interest(_interest_map, max_iteration=1000):
-    width = _interest_map.shape[1]
+def random_interest(_interest_map, max_iteration=100):
+    length = _interest_map.shape[1]
     # opportunity = width
     size = _interest_map.size
     cells = list(range(size))
+    cells = filter(lambda pos: _interest_map[pos//length, pos % length] > 0, cells)
+    if not cells:
+        return None
     while cells and max_iteration:
         random_cell = choice(cells)
-        x, z = random_cell // width, random_cell % width
+        x, z = random_cell // length, random_cell % length
         interest_score = _interest_map[x, z]
         if np.random.binomial(1, interest_score):
             return Point2D(x, z)
@@ -133,103 +136,3 @@ def fast_random_interest(building_type, scenario, road_network, settlement_seeds
             argmax_coord = (x, z)
         cells.remove(random_cell)
     return argmax_coord
-
-
-if __name__ == '__main__':
-    # note Charlie: commented this because the import of Parcel causes a circular import
-    #
-    # # Interest test
-    print("Initialize test")
-    #
-    # N = 100
-    #
-    # p1, p2, p3 = Point2D(0, 28), Point2D(27, 17), Point2D(99, 23)
-    # road_net = RoadNetwork(N, N)
-    # road_net.find_road(p1, p2)
-    # road_net.find_road(p2, p3)
-    # lvl_net = np.copy(road_net.network)
-    #
-    # set_seeds = []
-    #
-    # house_1 = Parcel((5, 31), house_type)
-    # lvl_net[5, 31] = 2
-    # set_seeds.append(house_1)
-    #
-    # house_2 = Parcel((16, 6), house_type)
-    # lvl_net[16, 6] = 2
-    # set_seeds.append(house_2)
-    #
-    # mill_1 = Parcel((37, 18), windmill_type)
-    # lvl_net[37, 18] = 3
-    # set_seeds.append(mill_1)
-    #
-    # lvl_cmap = colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow"])
-    # lvl_map = Map("level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
-    #
-    # print("Compute interest map")
-    # interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
-    # print("Interest map : Done")
-    # interest_cmap = "jet"
-    # interest_map = Map("interest_map", N, interest_net, interest_cmap, (0, 1))
-    #
-    # the_stock = MapStock("interest_test", N, clean_dir=True)
-    # the_stock.add_map(lvl_map)
-    # the_stock.add_map(interest_map)
-
-    # Show selected position
-
-    # max_lvl_net = np.copy(lvl_net)
-    # max_coord = max_interest(interest_net)
-    # print(max_coord)
-    # max_lvl_net[max_coord[0], max_coord[1]] = 4
-    # max_lvl_cmap = matplotlib.colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow",  "red"])
-    # max_lvl_map = Map("choice (max)", N, max_lvl_net, max_lvl_cmap, (0, 4),
-    #                   ["Grass", "Road", "House", "Windmill", "max choice"])
-    # the_stock.add_map(max_lvl_map)
-
-    # for i in range(3):
-    #     rand_lvl_net = np.copy(lvl_net)
-    #     rand_coord = random_interest(interest_net)
-    #     rand_lvl_net[rand_coord[0], rand_coord[1]] = 4
-    #     rand_lvl_cmap = matplotlib.colors.ListedColormap(["forestgreen", "beige", "darkorange", "yellow", "red"])
-    #     rand_lvl_map = Map("choice (random_{})".format(i), N, rand_lvl_net, rand_lvl_cmap, (0, 4),
-    #                       ["Grass", "Road", "House", "Windmill", "random choice"])
-    #     the_stock.add_map(rand_lvl_map)
-
-    # Update test
-
-    # house_3 = (house_type, (13, 12))
-    # lvl_net[13, 12] = 2
-    # set_seeds.append(house_3)
-    #
-    # updated_lvl_map = Map("updated_level", N, lvl_net, lvl_cmap, (0, 3), ["Grass", "Road", "House", "Windmill"])
-    #
-    # updated_interest_net = interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
-    # updated_interest_map = Map("updated_interest_map", N, updated_interest_net, interest_cmap, (0, 1))
-    #
-    # the_stock.add_map(updated_lvl_map)
-    # the_stock.add_map(updated_interest_map)
-
-    # Execution time test of decision function
-
-    # import time
-    #
-    # print("Time test")
-    #
-    # start_time = time.time()
-    # for i in range(1000):
-    #     random_interest(interest_net, 10)
-    # print("--- %s seconds ---" % (time.time() - start_time))
-    #
-    # start_time = time.time()
-    # for i in range(1000):
-    #     interest_net = fast_random_interest(house_type, "Flat_scenario", road_net, set_seeds, (N, N))
-    # print("--- %s seconds ---" % (time.time() - start_time))
-
-    # WTF il nous faut un getter !
-
-    # p1, p2 = Point2D(0, 25), Point2D(29, 16)
-    # road_net = RoadNetwork(30, 30)
-    # road_net.find_road(p1, p2)
-    # print(road_net.network[0, 25])
-    # print(road_net.network[25, 0])

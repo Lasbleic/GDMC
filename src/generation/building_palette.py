@@ -37,31 +37,31 @@ class HousePalette(dict):
 
 
 oak_house_palette1 = HousePalette('Cobblestone', 'Spruce Wood Planks', 'Oak Wood', 'Oak Wood Planks',
-                                    'White Stained Glass Pane', 'gable', 'Stone Brick', 'Oak')
+                                  'White Stained Glass Pane', 'gable', 'Stone Brick', 'Oak')
 
 birch_house_palette1 = HousePalette('Cobblestone', 'Oak Wood Planks', 'Birch Wood', 'Birch Wood Planks',
                                     'White Stained Glass Pane', 'gable', 'Stone Brick', 'Birch')
 
 dark_oak_house_palette1 = HousePalette('Cobblestone', 'Spruce Wood Planks', 'Dark Oak Wood', 'Dark Oak Wood Planks',
-                                    'White Stained Glass Pane', 'gable', 'Stone Brick', 'Dark Oak')
+                                       'White Stained Glass Pane', 'gable', 'Stone Brick', 'Dark Oak')
 
 spruce_house_palette1 = HousePalette('Cobblestone', 'Oak Wood Planks', 'Spruce Wood', 'Spruce Wood Planks',
-                                    'Light Gray Stained Glass Pane', 'gable', 'Stone Brick', 'Spruce')
+                                     'Light Gray Stained Glass Pane', 'gable', 'Stone Brick', 'Spruce')
 
 acacia_house_palette1 = HousePalette('Cobblestone', 'Birch Wood Planks', 'Acacia Wood', 'Acacia Wood Planks',
-                                    'White Stained Glass Pane', 'gable', 'Stone Brick', 'Acacia')
+                                     'White Stained Glass Pane', 'gable', 'Stone Brick', 'Acacia')
 
 jungle_house_palette1 = HousePalette('Cobblestone', 'Oak Wood Planks', 'Jungle Wood', 'Jungle Wood Planks',
-                                    'White Stained Glass Pane', 'gable', 'Stone Brick', 'Jungle')
+                                     'White Stained Glass Pane', 'gable', 'Stone Brick', 'Jungle')
 
 sand_house_palette1 = HousePalette('Cobblestone', 'Spruce Wood Planks', 'Smooth Sandstone', 'Sandstone',
-                                     'Birch Fence', 'flat', 'Chiseled Sandstone', 'Oak')
+                                   'Birch Fence', 'flat', 'Chiseled Sandstone', 'Oak')
 
 red_sand_house_palette1 = HousePalette('Cobblestone', 'Spruce Wood Planks', 'Smooth Red Sandstone', 'Red Sandstone',
-                                     'Birch Fence', 'flat', 'Chiseled Red Sandstone', 'Oak')
+                                       'Birch Fence', 'flat', 'Chiseled Red Sandstone', 'Oak')
 
 terracotta_palette1 = HousePalette('Red Sandstone', 'Spruce Wood Planks', 'Oak Wood', 'Hardened Clay',
-                                     'Spruce Fence', 'flat', 'Hardened Clay', 'Oak')
+                                   'Spruce Fence', 'flat', 'Hardened Clay', 'Oak')
 
 # Defines for each biome the acceptable palettes. Adapted from pymclevel.biome_types
 biome_palettes = {
@@ -137,7 +137,7 @@ def get_biome_palette(biome):
         if len(palette_options) == 0:
             return palette_options[0]
         else:
-            palette_index = randint(0, len(palette_options)-1)
+            palette_index = randint(0, len(palette_options) - 1)
             return palette_options[palette_index]
     except Exception:
         print("Exception occurred when getting palette for biome: {}".format(biome))

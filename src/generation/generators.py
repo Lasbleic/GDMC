@@ -1,19 +1,16 @@
 from math import floor
 from os import sep
 from random import randint
-from itertools import product
 
+from numpy import ones
 from numpy.random import choice
-from numpy import ones, array
 from typing import List
 
+from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
-from utilityFunctions import setBlock
-
-from utils import *
-from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.schematic import StructureNBT
+from utils import *
 from utils.structure_void_handle import VoidStructureNBT, all_but_void
 
 SURFACE_PER_ANIMAL = 16
@@ -94,7 +91,10 @@ class Generator:
 
 class CropGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
-        self._gen_animal_farm(level, height_map)
+        if bernouilli(0.7):
+            self._gen_animal_farm(level, height_map)
+        else:
+            self._gen_crop_v1(level, height_map)
 
     def _gen_animal_farm(self, level, height_map, animal='Cow'):
         # type: (MCLevel, numpy.array, str) -> None
@@ -113,7 +113,7 @@ class CropGenerator(Generator):
             Entity.setpos(entity, (x, y, z))
             level.addEntity(entity)
 
-    def _gen_crop_v1(self, level):
+    def _gen_crop_v1(self, level, height=None):
         # dimensions
         x0, y0, z0 = self.origin
         # block states
@@ -125,6 +125,8 @@ class CropGenerator(Generator):
             xs, zs = x0 + randint(0, self.width - 1), z0 + randint(0, self.length - 1)
             for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + self.width, xs + 5)),
                                   xrange(max(z0, zs - 4), min(z0 + self.length, zs + 5))):
+                if height is not None:
+                    y0 = height[xd-x0, zd-z0]
                 if (xd, zd) == (xs, zs):
                     # water source
                     setBlock(level, (9, 15), xd, y0, zd)

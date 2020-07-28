@@ -9,10 +9,9 @@ from building_pool import BuildingPool, BuildingType
 from interest import interest, random_interest
 from parcel import Parcel
 from utils import Point2D
-from pre_processing import Map, MapStock
+from time import time
 
 import numpy as np
-from matplotlib import colors
 
 
 class VillageSkeleton:
@@ -63,7 +62,7 @@ class VillageSkeleton:
         village_center = self.ghost.center
         minecraft_map[village_center.x, village_center.z] = 5
 
-        minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple'])
+        # minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple'])
         """
         self.map_stock.add_map(Map("{}{}_minecraft_map{}".format(iteration, 4 if iteration else 0, suffix),
                                    N,
@@ -77,27 +76,31 @@ class VillageSkeleton:
 
         # self.map_log()
 
+        t0 = time()
         for building_type in self.building_iterator:
 
             print("\nTrying to place {}".format(building_type.name))
 
-            # Village Element Seeding Process
+            try:
+                # Village Element Seeding Process
+                interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.parcel_list, self.size, self.parcel_size)
+                building_position = random_interest(interest_map)
+                if building_position is None:
+                    continue
 
-            interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.parcel_list, self.size, self.parcel_size)
-            building_position = random_interest(interest_map)
+                new_parcel = Parcel(building_position, building_type, self.maps)
+                self.parcel_list.append(new_parcel)
+                self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
 
-            new_parcel = Parcel(building_position, building_type, self.maps)
+                # Road Creation Process
+                self.maps.road_network.connect_to_network(new_parcel.entry_point)
+                self.map_log(interest_map, accessibility_map, sociability_map, building_type)
+            except Exception:
+                print("Failed")
+                continue
 
-            self.parcel_list.append(new_parcel)
-
-            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
-
-            # self.map_log(obstacle_map=self.maps.obstacle_map.map)
-
-            # Road Creation Process
-            self.maps.road_network.connect_to_network(new_parcel.entry_point)
-
-            self.map_log(interest_map, accessibility_map, sociability_map, building_type)
+            if time() - t0 >= 9 * 60:
+                break
 
 
 if __name__ == '__main__':

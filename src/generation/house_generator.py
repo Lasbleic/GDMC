@@ -105,8 +105,10 @@ class _RoomSymbol(CardinalGenerator):
         print("Generating Room at", self._get_box().origin, self._get_box().size)
         if self._has_base:
             self.children.append(_BaseSymbol(TransformBox(self.origin - (0, 1, 0), (self.width, 1, self.length))))
+        fillBlocks(level, self._get_box(), Block['Air'])
         self._generate_pillars(level, palette)
         self._create_walls(level, palette)
+        self.__place_torch(level)
 
         prob = self._box.height / 4 - 1  # probability to build an upper floor
         upper_box = self._get_upper_box()
@@ -192,6 +194,13 @@ class _RoomSymbol(CardinalGenerator):
             door_wall_box = self.get_wall_box(door_dir)
             self[door_wall_box].generate_door(door_dir, door_x, door_z, level, palette)
 
+    def __place_torch(self, level):
+        x0, y, z0 = self.origin + (1, 0, 1)
+        xM, zM = x0 + self.width - 3, z0 + self.length - 3
+        if xM >= x0 and zM >= z0:
+            x, z = randint(x0, xM), randint(z0, zM)
+            place_torch(level, x, y, z)
+
 
 class _RoofSymbol(CardinalGenerator):
 
@@ -210,7 +219,7 @@ class _RoofSymbol(CardinalGenerator):
                 self._direction = South
             else:
                 prob = (1. * width ** 2) / (width ** 2 + length ** 2)
-                self._direction = South if (bernouilli(prob)) else East
+                self._direction = East if (bernouilli(prob)) else South
 
     def generate(self, level, height_map=None, palette=None):
         if self._roof_type == 'flat':

@@ -3,9 +3,8 @@ Function used to compute interests
 """
 
 from __future__ import division
+
 from math import log, sqrt, exp
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 def attraction_repulsion(d, lambda_min, lambda_0, lambda_max):
@@ -63,25 +62,3 @@ def obstacle(d, lambdas):
         return 0
     else:
         return balance(d, lambda_min, lambda_max, lambda_max)
-
-
-if __name__ == '__main__':
-
-    functions_to_test = [attraction_repulsion, balance]
-    parameters_to_use = [(15, 20, 100), (10, 15, 35)]
-
-    for function, parameters in zip(functions_to_test, parameters_to_use):
-
-        lbd_min, lbd_0, lbda_max = parameters
-
-        x_range = np.arange(0, lbda_max + 10, 0.1)
-        y_range = np.array([])
-        for x in x_range:
-            y = function(x, lbd_min, lbd_0, lbda_max)
-            y_range = np.append(y_range, y)
-
-        plt.plot(x_range, y_range)
-        title = "\nlambda_0 : {} ; lambda_min : {} ; lambda_max : {}".format(lbd_0, lbd_min, lbda_max)
-        plt.title(function.__name__ + title)
-
-        plt.show()
