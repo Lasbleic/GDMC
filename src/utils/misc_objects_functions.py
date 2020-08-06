@@ -30,18 +30,21 @@ class Point2D:
         return Point2D(self.x - other.x, self.z - other.z)
 
     def __mul__(self, other):
-        assert type(other) == int or type(other) == float
-        return Point2D(self.x * other, self.z * other)
+        if type(other) == int or type(other) == float:
+            return Point2D(self.x * other, self.z * other)
+
+        assert isinstance(other, Point2D)
+        return Point2D(self.x * other.x, self.z * other.z)
+
+    def dot(self, other):
+        assert isinstance(other, Point2D)
+        mult = self * other
+        return mult.x + mult.z
 
 
 def bernouilli(p=.5):
     # type: (float) -> bool
-    if p >= 1:
-        return True
-    elif p <= 0:
-        return False
-    else:
-        return random() >= p
+    return random() <= p
 
 
 def euclidean(p1, p2):
@@ -274,6 +277,12 @@ def clear_tree_at(level, point):
             z = z0 + dir.z
             if is_tree(level.blockAt(x, y, z)):
                 possible_tree_blocks.append((x, y, z))
+
+
+def place_torch(level, x, y, z):
+    if not level.blockAt(x, y, z):
+        torch = Block["Torch (Up)"]
+        setBlock(level, (torch.ID, torch.blockData), x, y, z)
 
 
 if __name__ == '__main__':
