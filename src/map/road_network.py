@@ -161,10 +161,10 @@ class RoadNetwork:
         # block states
         stony_palette = [4, 13, 1]
         stony_probs = [0.75, 0.20, 0.05]
-        grassy_palette = [208]
-        grassy_probs = [1]
-        sandy_palette = []
-        sandy_probs = []
+        # grassy_palette = [208]
+        # grassy_probs = [1]
+        # sandy_palette = []
+        # sandy_probs = []
 
         x0, y0, z0 = self.__all_maps.box.origin
 
@@ -193,41 +193,6 @@ class RoadNetwork:
     def __update_distance_map(self, road, force_update=False):
         self.dijkstra(road, self.lambda_max, force_update)
 
-    def cost(self, src_point, dest_point):
-        value = 1
-        height_map = self.__all_maps.height_map
-        # if we don't have access to terrain info
-        if self.__all_maps is None:
-            return value
-
-        # if dest is road, no additional cost
-        if self.is_road(dest_point):
-            return 1
-
-        # if dest_point is an obstacle, return inf
-        is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
-        is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=8)
-        if is_dest_obstacle:
-            return maxint
-
-        # if height gap from src to dest is too high, return inf
-        _src_height = height_map[src_point.x, src_point.z]
-        _dest_height = height_map[dest_point.x, dest_point.z]
-        elevation = abs(int(_src_height) - int(_dest_height))
-        if elevation > 1:
-            return maxint
-
-        # finally, local cost depends on local steepness, measured as maximal elevation in a small radius
-        m = 2
-        local_height = height_map[max(0, dest_point.x - m): min(dest_point.x + m, self.width),
-                       max(0, dest_point.z - m): min(dest_point.z + m, self.length)]
-        value += (local_height.max() - local_height.min()) / m ** 2
-
-        # additional cost to build on water
-        if self.__all_maps.fluid_map.is_water(dest_point, margin=4):
-            value += BRIDGE_COST
-        return value
-
     # return the path from the point satisfying the ending_condition to the root_point, excluded
     def dijkstra(self, root_points, max_distance, force_update):
 
@@ -251,8 +216,14 @@ class RoadNetwork:
                     _closest_neighbors += [neighbor]
             return choice(_closest_neighbors)
 
+        def cost(orig_point, dest_point):
+            fluids = self.__all_maps.fluid_map
+            if fluids.is_water(dest_point) or fluids.is_lava(dest_point):
+                return maxint
+            return euclidean(orig_point, dest_point)
+
         def update_distance(updated_point, neighbor, _neighbors):
-            edge_cost = self.cost(updated_point, neighbor)
+            edge_cost = cost(updated_point, neighbor)
             if edge_cost == maxint:
                 return
 
@@ -321,8 +292,43 @@ class RoadNetwork:
         def heuristic(point):
             return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2) * 2
 
+        def cost(src_point, dest_point):
+            value = 1
+            height_map = self.__all_maps.height_map
+            # if we don't have access to terrain info
+            if self.__all_maps is None:
+                return value
+
+            # if dest is road, no additional cost
+            if self.is_road(dest_point):
+                return 1
+
+            # if dest_point is an obstacle, return inf
+            is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
+            is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=8)
+            if is_dest_obstacle:
+                return maxint
+
+            # if height gap from src to dest is too high, return inf
+            _src_height = height_map[src_point.x, src_point.z]
+            _dest_height = height_map[dest_point.x, dest_point.z]
+            elevation = abs(int(_src_height) - int(_dest_height))
+            if elevation > 1:
+                return maxint
+
+            # finally, local cost depends on local steepness, measured as maximal elevation in a small radius
+            m = 2
+            local_height = height_map[max(0, dest_point.x - m): min(dest_point.x + m, self.width),
+                           max(0, dest_point.z - m): min(dest_point.z + m, self.length)]
+            value += (local_height.max() - local_height.min()) / m ** 2
+
+            # additional cost to build on water
+            if self.__all_maps.fluid_map.is_water(dest_point, margin=4):
+                value += BRIDGE_COST
+            return value
+
         def update_distance(updated_point, neighbor, _neighbors):
-            edge_cost = self.cost(updated_point, neighbor)
+            edge_cost = cost(updated_point, neighbor)
             if edge_cost == maxint:
                 return
 
