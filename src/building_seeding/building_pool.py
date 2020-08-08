@@ -1,4 +1,7 @@
 from __future__ import division, print_function
+
+from math import sqrt
+
 from numpy.random import random, choice
 from typing import Dict
 
@@ -78,7 +81,7 @@ class BuildingPool:
         average_parcel_surface = 15**2  # todo: calibrate this parameter
         min_dens, max_dens = 0.3, 0.6  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
-        self._settlement_limit = int((density * exploitable_surface) / average_parcel_surface)
+        self._settlement_limit = int(sqrt(exploitable_surface / average_parcel_surface))
         self._settlement_limit = max(self._settlement_limit, 1)
         self._settlement_limit = min(self._settlement_limit, 50)
         # self.settlement_limit = geometric(1 / average_parcel_count)  # yielded values too high

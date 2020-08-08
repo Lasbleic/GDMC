@@ -3,7 +3,7 @@ from __future__ import division
 import logging
 from itertools import product
 from math import exp
-from random import randint
+from random import randint, choice
 
 from numpy.random import geometric, normal
 from numpy import percentile
@@ -38,17 +38,18 @@ class FlatSettlement:
 
     def __random_border_point(self):
         # type: () -> Point2D
-        width, length = self.limits.width, self.limits.length
-        # random draw to decide on what side the border will be. Favors larger sides
-        if bernouilli(width / (width + length)):
-            # border point along x border
-            x = 0 if bernouilli() else self.limits.width - 1
-            z = randint(0, length - 1)
-        else:
-            # border point along z border
-            x = randint(0, width - 1)
-            z = 0 if bernouilli() else self.limits.length - 1
-        return Point2D(x, z)
+        # width, length = self.limits.width, self.limits.length
+        # # random draw to decide on what side the border will be. Favors larger sides
+        # if bernouilli(width / (width + length)):
+        #     # border point along x border
+        #     x = 0 if bernouilli() else self.limits.width - 1
+        #     z = randint(0, length - 1)
+        # else:
+        #     # border point along z border
+        #     x = randint(0, width - 1)
+        #     z = 0 if bernouilli() else self.limits.length - 1
+        # return Point2D(x, z)
+        return choice(self._maps.fluid_map.external_connections)
 
     def init_road_network(self):
         out_connections = [self.__random_border_point()]

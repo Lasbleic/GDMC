@@ -23,7 +23,8 @@ class VillageSkeleton:
         self.size = (maps.width, maps.length)
         self.maps = maps
         self.ghost = Parcel(ghost_position, BuildingType.from_name('ghost'))
-        self.building_iterator = BuildingPool((maps.width - parcel_size - 1) * (maps.length - parcel_size - 1))
+        buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
+        self.building_iterator = BuildingPool(buildable_surface)
         self.parcel_list = parcel_list
         self.parcel_size = parcel_size
         #self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)

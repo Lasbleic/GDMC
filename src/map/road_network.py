@@ -188,7 +188,7 @@ class RoadNetwork:
                     y = max(self.__all_maps.water_height, self.__all_maps.height_map[x][z])
                     setBlock(level, (__network[x][z], 0), x0 + x, y, z0 + z)
                     if bernouilli(0.05):
-                        place_torch(level, x+x0, y+1, z+z0)
+                        place_torch(level, x + x0, y + 1, z + z0)
 
     def __update_distance_map(self, road, force_update=False):
         self.dijkstra(road, self.lambda_max, force_update)
@@ -268,6 +268,9 @@ class RoadNetwork:
             update_distances(clst_neighbor)
 
     def a_star(self, root_point, ending_point):
+
+        height_map = self.__all_maps.height_map
+
         def init():
             x, z = root_point.x, root_point.z
             _distance_map = full((self.width, self.length), MAX_FLOAT)
@@ -290,11 +293,10 @@ class RoadNetwork:
             return choice(_closest_neighbors)
 
         def heuristic(point):
-            return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2) * 2
+            return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2)
 
         def cost(src_point, dest_point):
             value = 1
-            height_map = self.__all_maps.height_map
             # if we don't have access to terrain info
             if self.__all_maps is None:
                 return value
@@ -314,13 +316,14 @@ class RoadNetwork:
             _dest_height = height_map[dest_point.x, dest_point.z]
             elevation = abs(int(_src_height) - int(_dest_height))
             if elevation > 1:
-                return maxint
+                value += elevation
 
             # finally, local cost depends on local steepness, measured as maximal elevation in a small radius
             m = 2
             local_height = height_map[max(0, dest_point.x - m): min(dest_point.x + m, self.width),
-                           max(0, dest_point.z - m): min(dest_point.z + m, self.length)]
-            value += (local_height.max() - local_height.min()) / m ** 2
+                                      max(0, dest_point.z - m): min(dest_point.z + m, self.length)]
+            # value += (local_height.max() - local_height.min()) / m ** 2
+            value += local_height.std()
 
             # additional cost to build on water
             if self.__all_maps.fluid_map.is_water(dest_point, margin=4):

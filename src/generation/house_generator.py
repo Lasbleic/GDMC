@@ -1,5 +1,5 @@
 from generation.building_palette import HousePalette
-from generators import *
+from generation.generators import *
 from pymclevel import MCLevel, MCSchematic
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks

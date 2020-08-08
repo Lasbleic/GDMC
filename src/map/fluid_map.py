@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from itertools import product
 from time import time
+from typing import List
 
 from numpy import full
 from numpy.core.multiarray import ndarray
@@ -26,6 +27,9 @@ class FluidMap:
         self.__other_maps = mc_maps
         self.__water_limit = water_limit
         self.__lava_limit = lava_limit
+        
+        self.__borderpts = []  # type: List[Point2D]
+        self.__coastline = []  # type: List[Point2D]
 
         self.has_lava = self.has_river = self.has_ocean = False
         self.detect_sources(level)
@@ -38,18 +42,17 @@ class FluidMap:
             xs, zs = x + self.__other_maps.box.minx, z + self.__other_maps.box.minz
             y = self.__other_maps.height_map[x, z] + 1
             if level.blockAt(xs, y, zs) in [Blocks.Water.ID, Blocks.WaterActive.ID, Blocks.Ice.ID]:
-                self.water_height = y
+                if not self.water_height:
+                    self.water_height = y
                 cx, cz = xs // 16, zs // 16
                 biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
                 if 'Ocean' in biome_types[biome] or 'Beach' in biome_types[biome]:
                     label = 1
-                    self.has_ocean = True
+                    self.water_height = y
                 elif 'River' in biome_types[biome]:
                     label = 2
-                    self.has_river = True
                 elif 'Swamp' in biome_types[biome]:
                     label = 3
-                    self.has_river = True
                 else:
                     label = -1  # yet unlabeled
                 water_points.append((x, z, label))
@@ -74,6 +77,11 @@ class FluidMap:
 
             for (x, z), water_type in zip(data, lbls):
                 self.__water_map[x, z] = water_type
+                if water_type == 1:
+                    self.has_ocean = True
+                elif water_type in [2, 3]:
+                    self.has_river = True
+
 
         t1 = time()
         print('Computed water map in {} seconds'.format(t1 - t0))
@@ -92,25 +100,30 @@ class FluidMap:
                 self.ocean_distance[x, z] = 0
             elif self.__lava_map[x, z]:
                 self.lava_distance[x, z] = 0
+            elif (x == 0) or (z == 0) or (x == (self.__width - 1)) or (z == (self.__length - 1)):
+                self.__borderpts.append(Point2D(x, z))
+
+        def is_init_neigh(distance_map, _x, _z):
+            # Context: find border water points in a water surface.
+            # Surrounded water points are useless in exploration
+            if distance_map[_x, _z] != 0:
+                return False
+            else:
+                for direction in cardinal_directions():
+                    x0, z0 = _x + direction.x, _z + direction.z
+                    try:
+                        if distance_map[x0, z0] != 0:
+                            return True  # (x, z) is a water (or lava) point with a non water neighbour
+                    except IndexError:
+                        continue
+                return False
+
+        self.__coastline = [Point2D(_x, _z) for _x, _z in product(xrange(self.__width), xrange(self.__length))
+                            if is_init_neigh(self.ocean_distance, _x, _z)]
 
         def __pseudo_dijkstra(distance_map):
             # type: (array) -> None
             max_distance = distance_map.max()
-
-            def is_init_neigh(_x, _z):
-                # Context: find border water points in a water surface.
-                # Surrounded water points are useless in exploration
-                if distance_map[_x, _z] != 0:
-                    return False
-                else:
-                    for dir in cardinal_directions():
-                        x0, z0 = _x + dir.x, _z + dir.z
-                        try:
-                            if distance_map[x0, z0] != 0:
-                                return True  # (x, z) is a water (or lava) point with a non water neighbour
-                        except IndexError:
-                            continue
-                    return False
 
             def cost(src_point, dst_point):
                 x_cost = abs(src_point.x - dst_point.x)
@@ -137,7 +150,8 @@ class FluidMap:
 
             # Function core
             W, L = distance_map.shape
-            neighbours = [Point2D(_x, _z) for _x, _z in product(xrange(W), xrange(L)) if is_init_neigh(_x, _z)]
+            neighbours = [Point2D(x1, z1) for x1, z1 in product(xrange(W), xrange(L))
+                          if is_init_neigh(distance_map, x1, z1)]
 
             while len(neighbours) > 0:
                 clst_neighbor = neighbours[0]
@@ -187,3 +201,7 @@ class FluidMap:
     @property
     def water(self):
         return self.__water_map
+
+    @property
+    def external_connections(self):
+        return self.__borderpts + self.__coastline
