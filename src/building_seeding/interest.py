@@ -22,6 +22,11 @@ from utils import Point2D
 
 sys.path.insert(1, '../../visu')
 
+altitude_interest_map = None
+river_interest_map = None
+ocean_interest_map = None
+lava_interest_map = None
+
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
     weighting_factors = BUILDING_ENCYCLOPEDIA[scenario]["Weighting_factors"][building_type.name]
@@ -38,25 +43,25 @@ def local_interest(x, z, building_type, scenario, road_network, settlement_seeds
 
 
 def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size):
-    # type: (BuildingType, str, Maps, object, object, object) -> object
+    # type: (BuildingType, str, Maps, object, tuple, object) -> object
 
-    def river_interest():
+    def river_interest(_x, _z):
         if maps.fluid_map.has_river:
-            return close_distance(maps.fluid_map.river_distance[x, z], lambdas["RiverDistance"])
+            return close_distance(maps.fluid_map.river_distance[_x, _z], lambdas["RiverDistance"])
         return 0
 
-    def ocean_interest():
+    def ocean_interest(_x, _z):
         if maps.fluid_map.has_ocean:
-            return close_distance(maps.fluid_map.ocean_distance[x, z], lambdas["OceanDistance"])
+            return close_distance(maps.fluid_map.ocean_distance[_x, _z], lambdas["OceanDistance"])
         return 0
 
-    def lava_interest():
+    def lava_interest(_x, _z):
         if maps.fluid_map.has_lava:
-            return obstacle(maps.fluid_map.lava_distance[x, z], lambdas["LavaObstacle"])
+            return obstacle(maps.fluid_map.lava_distance[_x, _z], lambdas["LavaObstacle"])
         return 0
 
-    def altitude_interest():
-        alt = maps.height_map[x, z]
+    def altitude_interest(_x, _z):
+        alt = maps.height_map.altitude(_x, _z)
         lm, l0, lM = lambdas["Altitude"]
         return balance(alt, lm, l0, lM)
 
@@ -72,14 +77,21 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
     lambdas = {criteria: scenario_dict[criteria][building_type.name]
                for criteria in scenario_dict if building_type.name in scenario_dict[criteria]}
 
+    global altitude_interest_map, ocean_interest_map, river_interest_map, lava_interest_map
+    if altitude_interest_map is None:
+        altitude_interest_map = np.array([[altitude_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+        ocean_interest_map = np.array([[ocean_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+        river_interest_map = np.array([[river_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+        lava_interest_map = np.array([[lava_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+
     for x, z, in product(range(size[0]), range(size[1])):
         interest_functions = np.array([
             accessibility_map[x][z],
             sociability_map[x][z],
-            altitude_interest(),
-            river_interest(),
-            ocean_interest(),
-            lava_interest()
+            altitude_interest_map[x, z],
+            river_interest_map[x, z],
+            ocean_interest_map[x, z],
+            lava_interest_map[x, z]
         ])
 
         if min(interest_functions) == -1 or extendability_map[x][z] == -1:
@@ -116,7 +128,8 @@ def random_interest(_interest_map, max_iteration=100):
             return Point2D(x, z)
         cells.remove(random_cell)
         max_iteration -= 1
-    return max_interest(_interest_map)
+    return None
+    # return max_interest(_interest_map)
 
 
 def fast_random_interest(building_type, scenario, road_network, settlement_seeds, sizes):

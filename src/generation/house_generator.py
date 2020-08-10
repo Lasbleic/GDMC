@@ -21,7 +21,7 @@ class ProcHouseGenerator(Generator):
         self._generate_stairs(level, palette)
 
     def _clear_trees(self, level):
-        for gen in filter(lambda g: isinstance(g, _BaseSymbol), self.children):
+        for gen in filter(lambda g: isinstance(g, _RoomSymbol), self.children):
             gen._clear_trees(level)
 
     def _generate_main_building(self):
@@ -104,7 +104,8 @@ class _RoomSymbol(CardinalGenerator):
     def generate(self, level, height_map=None, palette=None):
         print("Generating Room at", self._get_box().origin, self._get_box().size)
         if self._has_base:
-            self.children.append(_BaseSymbol(TransformBox(self.origin - (0, 1, 0), (self.width, 1, self.length))))
+            h = 1 if height_map is None else max(1, self.origin.y - height_map.min())
+            self.children.append(_BaseSymbol(TransformBox(self.origin - (0, h, 0), (self.width, h, self.length))))
         fillBlocks(level, self._get_box(), Block['Air'])
         self._generate_pillars(level, palette)
         self._create_walls(level, palette)
@@ -368,13 +369,14 @@ class _WallSymbol(Generator):
             else:
                 DoorGenerator(self._box.expand(0, 0, -((self.length-1)/2)), door_dir).generate(level, palette=palette)
         elif len(self.children) == 1:
-            if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
-                self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
-            else:
-                # see wall structure, this is a part of an uneven wall -> replace window with door
-                door_box = TransformBox(self.origin, (1, self.height, 1))
-                door_box = door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
-                DoorGenerator(door_box, door_dir, palette['door']).generate(level, palette=palette)
+            self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
+            # if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
+            #     self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
+            # else:
+            #     # see wall structure, this is a part of an uneven wall -> replace window with door
+            #     door_box = TransformBox(self.origin, (1, self.height, 1))
+            #     door_box = door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
+            #     DoorGenerator(door_box, door_dir, palette['door']).generate(level, palette=palette)
         else:
             choice(self.children).generate_door(door_dir, door_x, door_z, level, palette)
 

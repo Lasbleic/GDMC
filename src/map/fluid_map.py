@@ -19,7 +19,6 @@ from utils import Point2D, cardinal_directions
 class FluidMap:
 
     def __init__(self, mc_maps, level, water_limit=MAX_WATER_EXPLORATION, lava_limit=MAX_LAVA_EXPLORATION):
-        self.water_height = 0
         self.__width = mc_maps.width
         self.__length = mc_maps.length
         self.__water_map = full((mc_maps.width, mc_maps.length), 0)
@@ -40,15 +39,12 @@ class FluidMap:
         t0 = time()
         for x, z in product(range(self.__width), range(self.__length)):
             xs, zs = x + self.__other_maps.box.minx, z + self.__other_maps.box.minz
-            y = self.__other_maps.height_map[x, z] + 1
+            y = self.__other_maps.height_map.fluid_height(x, z)
             if level.blockAt(xs, y, zs) in [Blocks.Water.ID, Blocks.WaterActive.ID, Blocks.Ice.ID]:
-                if not self.water_height:
-                    self.water_height = y
                 cx, cz = xs // 16, zs // 16
                 biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
                 if 'Ocean' in biome_types[biome] or 'Beach' in biome_types[biome]:
                     label = 1
-                    self.water_height = y
                 elif 'River' in biome_types[biome]:
                     label = 2
                 elif 'Swamp' in biome_types[biome]:
@@ -81,7 +77,6 @@ class FluidMap:
                     self.has_ocean = True
                 elif water_type in [2, 3]:
                     self.has_river = True
-
 
         t1 = time()
         print('Computed water map in {} seconds'.format(t1 - t0))
@@ -129,8 +124,8 @@ class FluidMap:
                 x_cost = abs(src_point.x - dst_point.x)
                 z_cost = abs(src_point.z - dst_point.z)
                 # todo: create HeightMap class, __getitem__(Point2D)
-                src_y = int(self.__other_maps.height_map[src_point.x, src_point.z])
-                dst_y = int(self.__other_maps.height_map[dst_point.x, dst_point.z])
+                src_y = int(self.__other_maps.height_map.fluid_height(src_point.x, src_point.z))
+                dst_y = int(self.__other_maps.height_map.fluid_height(dst_point.x, dst_point.z))
                 y_cost = 2 * max(dst_y - src_y, 0)  # null cost for water to go downhill
                 return x_cost + y_cost + z_cost
 
@@ -138,7 +133,7 @@ class FluidMap:
                 new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbour)
                 previous_distance = distance_map[neighbour.x][neighbour.z]
                 if previous_distance >= max_distance > new_distance:
-                    assert neighbour not in neighbours
+                    # assert neighbour not in neighbours
                     neighbours.append(neighbour)
                 distance_map[neighbour.x, neighbour.z] = min(previous_distance, new_distance)
 

@@ -7,7 +7,7 @@ from numpy import sign
 displayName = "Create Busses"
 
 
-def performed(level, box, options):
+def perform(level, box, options):
     level.markDirtyBox(box)
 
     bus = BusCreator(level, box, options)

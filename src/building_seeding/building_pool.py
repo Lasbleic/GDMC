@@ -15,10 +15,6 @@ class BuildingType:
     """
     Just a type of building, defined by a name and a generator
     """
-    __crop_type = None
-    __windmill_type = None
-    __ghost_type = None
-    __house_type = None
 
     def __init__(self, name=None, generator=None):
         self.name = name
@@ -78,12 +74,12 @@ class BuildingPool:
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
-        average_parcel_surface = 15**2  # todo: calibrate this parameter
+        average_parcel_surface = 12**2  # todo: calibrate this parameter
         min_dens, max_dens = 0.3, 0.6  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
-        self._settlement_limit = int(sqrt(exploitable_surface / average_parcel_surface))
+        self._settlement_limit = int((exploitable_surface / average_parcel_surface) ** 0.7)
         self._settlement_limit = max(self._settlement_limit, 1)
-        self._settlement_limit = min(self._settlement_limit, 50)
+        # self._settlement_limit = min(self._settlement_limit, 50)
         # self.settlement_limit = geometric(1 / average_parcel_count)  # yielded values too high
         logging.info('New BuildingPool will generate {} parcels'.format(self._settlement_limit))
 
@@ -119,3 +115,11 @@ class BuildingPool:
 
         self._building_count += 1
         return self.__current_type
+
+    @property
+    def size(self):
+        return self._settlement_limit
+
+    @property
+    def count(self):
+        return self._building_count

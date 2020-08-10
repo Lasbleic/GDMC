@@ -38,15 +38,15 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "RiverDistance": {
-            "house": (10, 100),
-            "crop": (5, 50),
-            "windmill": (10, 75)
+            "house": (10, 120),
+            "crop": (5, 80),
+            "windmill": (10, 150)
         },
 
         "OceanDistance": {
-            "house": (10, 75),
-            "crop": (30, 100),
-            "windmill": (25, 100)
+            "house": (10, 150),
+            "crop": (30, 200),
+            "windmill": (25, 200)
         },
 
         "LavaObstacle": {

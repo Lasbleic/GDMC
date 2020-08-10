@@ -230,6 +230,7 @@ def cardinal_directions():
     shuffle(directions)
     return iter(directions)
 
+
 def all_directions():
     # type: () -> Iterable[Direction]
     directions = [East, South, West, North, Top, Bottom]
@@ -237,31 +238,12 @@ def all_directions():
     return iter(directions)
 
 
-def compute_height_map(level, box):
-    """
-    Custom height map, quite slow
-    """
-    t0 = time()
-    xmin, xmax = box.minx, box.maxx
-    zmin, zmax = box.minz, box.maxz
-    ground_blocks = [Block.Grass.ID, Block.Gravel.ID, Block.Dirt.ID,
-                     Block.Sand.ID, Block.Stone.ID, Block.Clay.ID]
-
-    h = array([[level.heightMapAt(x, z) for z in range(zmin, zmax)] for x in range(xmin, xmax)])
-    for x, z in product(range(xmin, xmax), range(zmin, zmax)):
-        while h[x-xmin, z-zmin] >= 0 and level.blockAt(x, h[x-xmin, z-zmin], z) not in ground_blocks:
-            h[x-xmin, z-zmin] -= 1
-
-    print('Computed height map in {}s'.format(time() - t0))
-    return h
-
-
 def clear_tree_at(level, point):
     # type: (MCLevel, Point2D) -> None
 
     def is_tree(bid):
         block = level.materials[bid]
-        return block.stringID in ['leaves', 'log']
+        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block']
 
     y = level.heightMapAt(point.x, point.z) - 1
     if not is_tree(level.blockAt(point.x, y, point.z)):
@@ -271,10 +253,19 @@ def clear_tree_at(level, point):
     while possible_tree_blocks:
         x0, y0, z0 = possible_tree_blocks.pop()
         setBlock(level, (0, 0), x0, y0, z0)
-        for dir in all_directions():
-            x = x0 + dir.x
-            y = y0 + dir.y
-            z = z0 + dir.z
+
+        if level.materials[level.blockAt(x0, y0, z0)].stringID != 'red_mushroom_block':
+            # explore top/bottom diagonal blocks
+            for direction in cardinal_directions():
+                for dy in [-1, 1]:
+                    x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
+                    if is_tree(level.blockAt(x, y, z)):
+                        possible_tree_blocks.append((x, y, z))
+
+        for direction in all_directions():
+            x = x0 + direction.x
+            y = y0 + direction.y
+            z = z0 + direction.z
             if is_tree(level.blockAt(x, y, z)):
                 possible_tree_blocks.append((x, y, z))
 

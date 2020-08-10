@@ -10,9 +10,10 @@ from numpy import percentile
 from typing import List
 
 from generation.building_palette import get_biome_palette
+from generation.generators import Generator
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
 from utils import Direction, TransformBox
-from building_seeding import Parcel, VillageSkeleton
+from building_seeding import Parcel, VillageSkeleton, BuildingType
 from map.maps import Maps
 from map.road_network import RoadNetwork
 from utils import bernouilli, euclidean, Point2D
@@ -100,14 +101,15 @@ class FlatSettlement:
                 logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
                 break
 
-    def build_skeleton(self):
+    def build_skeleton(self, time_limit):
         self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
-        self._village_skeleton.grow()
+        self._village_skeleton.grow(time_limit)
 
     def define_parcels(self):
         """
         Parcel extension from initialized parcels. Parcels are expended in place
         """
+        print("Extending parcels")
         obs = self._maps.obstacle_map
         obs.map[:] = 0
         for parcel in self._parcels:
@@ -139,10 +141,14 @@ class FlatSettlement:
         # set parcels heights
         def define_parcels_heights(parcel):
             # type: (Parcel) -> None
-            y = percentile(parcel.height_map, 35)
+            # y = percentile(parcel.height_map, 35)
+            y = self._maps.height_map.altitude(parcel.entry_x, parcel.entry_z)
+            y = min(parcel.height_map.max(), max(parcel.height_map.min(), y))
             d = euclidean(parcel.center, self.town_center)
             h = int(MAX_HEIGHT * exp(-d / BUILDING_HEIGHT_SPREAD))
             parcel.set_height(y, h)
+
+        print("Defining parcels' and buildings' heights")
         map(define_parcels_heights, self._parcels)
         # translate all parcels to absolute coordinates
         map(lambda _parcel: _parcel.translate_to_absolute_coords(self.__origin), self._parcels)

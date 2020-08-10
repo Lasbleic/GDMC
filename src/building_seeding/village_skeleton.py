@@ -73,22 +73,24 @@ class VillageSkeleton:
                                    ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter', 'EntryPoint']))
         """
 
-    def grow(self):
-
+    def grow(self, do_limit):
+        print("Seeding parcels")
         # self.map_log()
 
         t0 = time()
         for building_type in self.building_iterator:
 
-            print("\nTrying to place {}".format(building_type.name))
+            print("\nTrying to place {} - #{} out of {}".format(building_type.name, self.building_iterator.count, self.building_iterator.size))
 
             try:
                 # Village Element Seeding Process
                 interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.parcel_list, self.size, self.parcel_size)
                 building_position = random_interest(interest_map)
                 if building_position is None:
+                    print("No suitable position found")
                     continue
 
+                print("Placed at x:{}, z:{}".format(building_position.x, building_position.z))
                 new_parcel = Parcel(building_position, building_type, self.maps)
                 self.parcel_list.append(new_parcel)
                 self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
@@ -100,7 +102,8 @@ class VillageSkeleton:
                 print("Failed")
                 continue
 
-            if time() - t0 >= 9 * 60:
+            if do_limit and time() - t0 >= 9 * 60:
+                print("Time limit reached: early stopping parcel seeding")
                 break
 
 

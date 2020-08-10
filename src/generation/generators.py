@@ -100,7 +100,7 @@ class CropGenerator(Generator):
         # type: (MCLevel, numpy.array, str) -> None
         # todo: abreuvoir + herbe + abri
         x, z = self._box.minx, self._box.minz
-        y = height_map[x - self._box.minx, z - self._box.minz]
+        y = height_map[x - self._box.minx, z - self._box.minz] + 1
         fence_box = TransformBox((x, y, z), (self.width, 1, self.length))
         fillBlocks(level, fence_box, Block['Oak Fence'])
         fence_box.expand(-1, 0, -1, True)

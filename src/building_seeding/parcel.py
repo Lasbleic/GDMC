@@ -3,6 +3,7 @@ from __future__ import division, print_function
 from random import randint
 
 from building_seeding.building_pool import BuildingType
+from generation.generators import Generator
 from parameters import MAX_ROAD_WIDTH
 from pymclevel.biome_types import biome_types
 from utils import *
@@ -66,7 +67,7 @@ class Parcel:
         # build parcel box
         shifted_x = min(max(0, self.__center.x - MIN_PARCEL_SIZE // 2), self.__map.width - MIN_PARCEL_SIZE)  # type: int
         shifted_z = min(max(0, self.__center.z - MIN_PARCEL_SIZE // 2), self.__map.length - MIN_PARCEL_SIZE)  # type:int
-        origin = (shifted_x, self.__map.height_map[shifted_x, shifted_z], shifted_z)
+        origin = (shifted_x, self.__map.height_map.altitude(shifted_x, shifted_z), shifted_z)
         size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
         self.__relative_box = TransformBox(origin, size)
         # in case when the parcel hits the limits, does not change anything otherwise
@@ -104,11 +105,15 @@ class Parcel:
             max_x, max_z = self.__map.width, self.__map.length
             valid_coord = (0 <= expanded.minx < expanded.maxx <= max_x) and (
                         0 <= expanded.minz < expanded.maxz <= max_z)
-            return no_obstacle and valid_sizes and valid_ratio and valid_coord
+            extension.expand(-direction, inplace=True)
+            extension_height = self.__map.height_map.box_height(extension, True)
+            flat_extend = extension_height.std() <= 3
+            return no_obstacle and valid_sizes and valid_ratio and valid_coord and flat_extend
 
     def translate_to_absolute_coords(self, origin):
         self.__box = TransformBox(self.__relative_box)
         self.__box.translate(dx=origin.x, dz=origin.z, inplace=True)
+        self.__entry_point += Point2D(origin.x, origin.z)
 
     @property
     def entry_x(self):
@@ -144,12 +149,14 @@ class Parcel:
 
     @property
     def generator(self):
-        return self.__building_type.new_instance(self.__box)
+        gen = self.__building_type.new_instance(self.__box)  # type: Generator
+        gen._entry_point = self.__entry_point
+        return gen
 
     @property
     def height_map(self):
         box = self.__relative_box
-        return self.__map.height_map[box.minx:box.maxx, box.minz:box.maxz]
+        return self.__map.height_map.box_height(box, True)
 
     @property
     def center(self):
