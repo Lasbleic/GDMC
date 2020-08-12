@@ -1,12 +1,13 @@
-from itertools import product
 from math import sqrt
-from random import random, shuffle
 from os.path import realpath, sep
-from time import time
-from numpy import array, argmax, zeros
+from random import random, shuffle
 from typing import Iterable
-from pymclevel import BoundingBox, alphaMaterials as Block
+
+from numpy import array, argmax
+
+from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Block
 from utilityFunctions import setBlock
+from itertools import product
 
 
 class Point2D:
@@ -86,9 +87,9 @@ class TransformBox(BoundingBox):
     def expand(self, dx_or_dir, dy=None, dz=None, inplace=False):
         # if isinstance(dx_or_dir, Direction):
         if dx_or_dir.__class__.__name__ == 'Direction':
-            dir = dx_or_dir
-            dpos = (min(dir.x, 0), min(dir.y, 0), min(dir.z, 0))
-            dsize = (abs(dir.x), abs(dir.y), abs(dir.z))
+            direction = dx_or_dir
+            dpos = (min(direction.x, 0), min(direction.y, 0), min(direction.z, 0))
+            dsize = (abs(direction.x), abs(direction.y), abs(direction.z))
             expanded_box = TransformBox(self.origin + dpos, self.size + dsize)
         else:
             expanded_box = TransformBox(BoundingBox.expand(self, dx_or_dir, dy, dz))
@@ -238,8 +239,8 @@ def all_directions():
     return iter(directions)
 
 
-def clear_tree_at(level, point):
-    # type: (MCLevel, Point2D) -> None
+def clear_tree_at(level, box, point):
+    # type: (MCInfdevOldLevel, TransformBox, Point2D) -> None
 
     def is_tree(bid):
         block = level.materials[bid]
@@ -256,17 +257,16 @@ def clear_tree_at(level, point):
 
         if level.materials[level.blockAt(x0, y0, z0)].stringID != 'red_mushroom_block':
             # explore top/bottom diagonal blocks
-            for direction in cardinal_directions():
-                for dy in [-1, 1]:
-                    x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
-                    if is_tree(level.blockAt(x, y, z)):
-                        possible_tree_blocks.append((x, y, z))
+            for direction, dy in product(cardinal_directions(), [-1, 1]):
+                x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
+                if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
+                    possible_tree_blocks.append((x, y, z))
 
         for direction in all_directions():
             x = x0 + direction.x
             y = y0 + direction.y
             z = z0 + direction.z
-            if is_tree(level.blockAt(x, y, z)):
+            if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
                 possible_tree_blocks.append((x, y, z))
 
 
@@ -274,6 +274,12 @@ def place_torch(level, x, y, z):
     if not level.blockAt(x, y, z):
         torch = Block["Torch (Up)"]
         setBlock(level, (torch.ID, torch.blockData), x, y, z)
+
+
+def sym_range(v, dv, vmax=None):
+    v0 = max(0, v-dv)
+    v1 = min(vmax, v+dv+1) if vmax is not None else v+dv+1
+    return range(v0, v1)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,12 @@
 from math import floor
 from os import sep
 from random import randint
+from typing import List
 
 from numpy import ones
 from numpy.random import choice
-from typing import List
 
-from pymclevel import alphaMaterials as Block, MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
+from pymclevel import MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
 from pymclevel.schematic import StructureNBT
@@ -42,7 +42,7 @@ class Generator:
 
     def _clear_trees(self, level):
         for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
-            clear_tree_at(level, Point2D(x, z))
+            clear_tree_at(level, self._box, Point2D(x, z))
 
     def generate(self, level, height_map=None, palette=None):
         """
@@ -97,8 +97,8 @@ class CropGenerator(Generator):
             self._gen_crop_v1(level, height_map)
 
     def _gen_animal_farm(self, level, height_map, animal='Cow'):
-        # type: (MCLevel, numpy.array, str) -> None
-        # todo: abreuvoir + herbe + abri
+        # type: (MCLevel, array, str) -> None
+        # todo: abreuvoir + herbe + abri + terrain adaptability
         x, z = self._box.minx, self._box.minz
         y = height_map[x - self._box.minx, z - self._box.minz] + 1
         fence_box = TransformBox((x, y, z), (self.width, 1, self.length))
@@ -120,7 +120,8 @@ class CropGenerator(Generator):
         crop_ids = [141, 142, 59]
         prob = ones(len(crop_ids)) / len(crop_ids)  # uniform across the crops
 
-        water_sources = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)  # each water source irrigates a 9x9 flat zone
+        # each water source irrigates a 9x9 flat zone
+        water_sources = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)
         for _ in xrange(water_sources):
             xs, zs = x0 + randint(0, self.width - 1), z0 + randint(0, self.length - 1)
             for xd, zd in product(xrange(max(x0, xs - 4), min(x0 + self.width, xs + 5)),
@@ -219,7 +220,7 @@ class DoorGenerator(Generator):
 
 class WindmillGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
-        # type: (MCLevel, array) -> None
+        # type: (MCLevel, array, dict) -> None
         box = self._box
         x, z = box.minx + box.width // 2, box.minz + box.length // 2
         y = height_map[box.width//2, box.length//2] if height_map is not None else 15

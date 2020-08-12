@@ -1,8 +1,6 @@
 from generation.building_palette import HousePalette
 from generation.generators import *
 from pymclevel import MCLevel, MCSchematic
-from pymclevel.block_copy import copyBlocksFrom
-from pymclevel.block_fill import fillBlocks
 from utils import bernouilli, Direction, North, South, West, East
 
 
@@ -89,6 +87,7 @@ class ProcHouseGenerator(Generator):
         door_x, door_z = self._entry_point.x, self._entry_point.z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
         door_direction = Direction(dx=door_x-mean_x, dz=door_z-mean_z)
+        # todo: properly place doors in z walls (manually search for a window to replace ?)
         self.children[0].generate_door(door_direction, door_x, door_z, level, palette)
 
     def _generate_stairs(self, level, palette):
