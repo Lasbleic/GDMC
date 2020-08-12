@@ -61,7 +61,7 @@ BUILDING_ENCYCLOPEDIA = {
             "windmill": (10, 25)
         },
 
-        # (accessibility, sociability, altitude, pure_water, sea_water, lava)
+        # (accessibility, sociability, altitude, pure_water, sea_water, lava, steepness)
         "Weighting_factors": {
             "house": (1, 3, 2, 1, 1, 1, 1),
             "crop": (1, 3, 2, 2, 0, 1, 3),

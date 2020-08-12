@@ -1,5 +1,4 @@
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from building_seeding.interest import interest, random_interest
-from building_seeding.village_skeleton import VillageSkeleton
 from building_seeding.parcel import Parcel
+from building_seeding.village_skeleton import VillageSkeleton

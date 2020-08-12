@@ -6,7 +6,8 @@ from typing import List
 
 import map.maps
 from building_pool import BuildingPool, BuildingType
-from interest import interest, random_interest
+from building_seeding.interest.interest import interest, random_interest
+from interest import InterestSeeder
 from parcel import Parcel
 from utils import Point2D
 from time import time
@@ -22,17 +23,20 @@ class VillageSkeleton:
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
-        self.ghost = Parcel(ghost_position, BuildingType.from_name('ghost'))
+        self.ghost = ghost_position
         buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
         self.building_iterator = BuildingPool(buildable_surface)
-        self.parcel_list = parcel_list
+        self.__parcel_list = parcel_list
         self.parcel_size = parcel_size
         # self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
         self.map_stock = None
 
+        ghost = Parcel(ghost_position, BuildingType.from_name('ghost'))
+        self.__interest = InterestSeeder(maps, parcel_list, scenario, ghost)
+
     def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None, obstacle_map=None):
 
-        iteration = len(self.parcel_list)
+        iteration = len(self.__parcel_list)
         suffix = "_{}".format(building_type.name) if building_type is not None else ""
         N = self.size[0]
 
@@ -51,7 +55,7 @@ class VillageSkeleton:
                   "crop": 3,
                   "windmill": 4}
 
-        for parcel in self.parcel_list:
+        for parcel in self.__parcel_list:
             xmin, xmax = parcel.minx, parcel.maxx
             zmin, zmax = parcel.minz, parcel.maxz
 
@@ -82,25 +86,27 @@ class VillageSkeleton:
 
             print("\nTrying to place {} - #{} out of {}".format(building_type.name, self.building_iterator.count, self.building_iterator.size))
 
-            try:
-                # Village Element Seeding Process
-                interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.parcel_list, self.size, self.parcel_size)
-                building_position = random_interest(interest_map)
-                if building_position is None:
-                    print("No suitable position found")
-                    continue
+            # try:
+            # Village Element Seeding Process
+            building_position = self.__interest.get_seed(building_type)
 
-                print("Placed at x:{}, z:{}".format(building_position.x, building_position.z))
-                new_parcel = Parcel(building_position, building_type, self.maps)
-                self.parcel_list.append(new_parcel)
-                self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
-
-                # Road Creation Process
-                self.maps.road_network.connect_to_network(new_parcel.entry_point)
-                self.map_log(interest_map, accessibility_map, sociability_map, building_type)
-            except Exception:
-                print("Failed")
+            # interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.__parcel_list, self.size, self.parcel_size)
+            # building_position = random_interest(interest_map)
+            if building_position is None:
+                print("No suitable position found")
                 continue
+
+            print("Placed at x:{}, z:{}".format(building_position.x, building_position.z))
+            new_parcel = Parcel(building_position, building_type, self.maps)
+            self.__parcel_list.append(new_parcel)
+            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
+
+            # Road Creation Process
+            self.maps.road_network.connect_to_network(new_parcel.entry_point)
+            # self.map_log(interest_map, accessibility_map, sociability_map, building_type)
+            # except Exception:
+            #     print("Failed")
+            #     continue
 
             if do_limit and time() - t0 >= 9 * 60:
                 print("Time limit reached: early stopping parcel seeding")

@@ -4,9 +4,10 @@ MAX_WATER_EXPLORATION = 100
 MAX_LAVA_EXPLORATION = 50
 BRIDGE_COST = 5
 
-# buildings height
+# buildings dimensions
 MAX_HEIGHT = 12  # 12 -> max 3 floors
 BUILDING_HEIGHT_SPREAD = 120  # at that distance from the center, buildings' height is a third of max height (1/e ~ .36)
+AVERAGE_PARCEL_SIZE = 12
 
 # distances
 MIN_DIST_TO_LAVA = 10

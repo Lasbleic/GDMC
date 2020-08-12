@@ -13,7 +13,6 @@ import sys
 
 def extendability(size, parcel_size):
 
-
     extendability_map = np.zeros(size)
 
     shift = parcel_size // 2

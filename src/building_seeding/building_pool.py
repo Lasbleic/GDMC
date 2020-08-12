@@ -10,6 +10,8 @@ from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
 
 import logging
 
+from parameters import AVERAGE_PARCEL_SIZE
+
 
 class BuildingType:
     """
@@ -74,7 +76,7 @@ class BuildingPool:
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
-        average_parcel_surface = 12**2  # todo: calibrate this parameter
+        average_parcel_surface = AVERAGE_PARCEL_SIZE**2  # todo: calibrate this parameter
         min_dens, max_dens = 0.3, 0.6  # portion of built surface of the terrain
         density = min_dens + random() * (max_dens - min_dens)
         self._settlement_limit = int((exploitable_surface / average_parcel_surface) ** 0.7)
