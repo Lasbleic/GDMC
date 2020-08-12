@@ -13,7 +13,8 @@ displayName = "Create a settlement"
 # Dictionary representing different options
 inputs = (
     ("Authors: team charretiers", "label"),
-    ("10' limit", True)
+    ("10' limit", True),
+    ("debug mode", False)
 )
 
 logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%H-%M-%S', gmtime())), level=logging.INFO)
@@ -32,5 +33,5 @@ def perform(level, box, options):
     settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
     settlement.build_skeleton(options["10' limit"])     # define buildings list and seed them
     settlement.define_parcels()     # define parcels around seeds
-    settlement.generate(level)      # build buildings on parcels
+    settlement.generate(level, options["debug mode"])      # build buildings on parcels
     logging.debug('{} seconds of execution'.format(time() - t0))

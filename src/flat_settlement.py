@@ -153,7 +153,7 @@ class FlatSettlement:
         # translate all parcels to absolute coordinates
         map(lambda _parcel: _parcel.translate_to_absolute_coords(self.__origin), self._parcels)
 
-    def generate(self, level):
+    def generate(self, level, print_stack=False):
         # todo: replace this
         # crop_town = crop_type.new_instance(self.limits)
         # crop_town.generate(level)
@@ -166,10 +166,13 @@ class FlatSettlement:
         for parcel in self._parcels:  # type: Parcel
             parcel_biome = parcel.biome(level)
             palette = get_biome_palette(parcel_biome)
-            try:
+            if print_stack:
                 parcel.generator.generate(level, parcel.height_map, palette)
-            except Exception:
-                print("FAIL")
+            else:
+                try:
+                    parcel.generator.generate(level, parcel.height_map, palette)
+                except Exception:
+                    print("FAIL")
 
     @property
     def town_center(self):
