@@ -22,10 +22,12 @@ from utils import Point2D
 
 sys.path.insert(1, '../../visu')
 
-altitude_interest_map = None
-river_interest_map = None
-ocean_interest_map = None
-lava_interest_map = None
+# TODO: create classes to store these immutable arrays for each building type
+# altitude_interest_map = None
+# steep_interest_map = None
+# river_interest_map = None
+# ocean_interest_map = None
+# lava_interest_map = None
 
 
 def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
@@ -65,6 +67,10 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
         lm, l0, lM = lambdas["Altitude"]
         return balance(alt, lm, l0, lM)
 
+    def steepness_interest(_x, _z):
+        steep = maps.height_map.steepness(_x, _z)
+        return close_distance(steep, lambdas["Steepness"])
+
     _interest_map = np.zeros(size)
 
     print("Compute accessibility map")
@@ -77,12 +83,11 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
     lambdas = {criteria: scenario_dict[criteria][building_type.name]
                for criteria in scenario_dict if building_type.name in scenario_dict[criteria]}
 
-    global altitude_interest_map, ocean_interest_map, river_interest_map, lava_interest_map
-    if altitude_interest_map is None:
-        altitude_interest_map = np.array([[altitude_interest(x, z) for z in range(size[1])] for x in range(size[0])])
-        ocean_interest_map = np.array([[ocean_interest(x, z) for z in range(size[1])] for x in range(size[0])])
-        river_interest_map = np.array([[river_interest(x, z) for z in range(size[1])] for x in range(size[0])])
-        lava_interest_map = np.array([[lava_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+    altitude_interest_map = np.array([[altitude_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+    steep_interest_map = np.array([[steepness_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+    ocean_interest_map = np.array([[ocean_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+    river_interest_map = np.array([[river_interest(x, z) for z in range(size[1])] for x in range(size[0])])
+    lava_interest_map = np.array([[lava_interest(x, z) for z in range(size[1])] for x in range(size[0])])
 
     for x, z, in product(range(size[0]), range(size[1])):
         interest_functions = np.array([
@@ -91,7 +96,8 @@ def interest(building_type, scenario, maps, settlement_seeds, size, parcel_size)
             altitude_interest_map[x, z],
             river_interest_map[x, z],
             ocean_interest_map[x, z],
-            lava_interest_map[x, z]
+            lava_interest_map[x, z],
+            steep_interest_map[x, z]
         ])
 
         if min(interest_functions) == -1 or extendability_map[x][z] == -1:
@@ -148,4 +154,4 @@ def fast_random_interest(building_type, scenario, road_network, settlement_seeds
             max_local_interest = local_interest
             argmax_coord = (x, z)
         cells.remove(random_cell)
-    return argmax_coord
+    return
