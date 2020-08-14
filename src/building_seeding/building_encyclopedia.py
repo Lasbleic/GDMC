@@ -16,7 +16,7 @@ BUILDING_ENCYCLOPEDIA = {
             "crop-house": (20, 25, 100),
             "crop-windmill": (7, 10, 100),
             "crop-ghost": (20, 25, 100),
-            "windmill-windmill": (7, 10, 100),
+            "windmill-windmill": (16, 25, 100),
             "windmill-house": (20, 25, 100),
             "windmill-crop": (7, 10, 100),
             "windmill-ghost": (20, 25, 100),
@@ -26,9 +26,9 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Accessibility": {
-            "house": (7, 10, 25),
-            "crop": (15, 20, 25),
-            "windmill": (12, 20, 25)
+            "house": (7, 10, 15),
+            "crop": (10, 20, 30),
+            "windmill": (5, 8, 15)
         },
 
         "Altitude": {

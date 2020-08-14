@@ -79,10 +79,11 @@ class HeightMap:
     def air_height(self, xr, zr):
         return self.__air_height[xr, zr]
 
-    def box_height(self, box, use_relative_coords):
-        x0 = box.minx if use_relative_coords else box.minx + self.__origin.x
-        z0 = box.minz if use_relative_coords else box.minz + self.__origin.z
-        return self.__altitude[x0: (x0 + box.width), z0:(z0 + box.length)]
+    def box_height(self, box, use_relative_coords, include_fluids=False):
+        x0 = box.minx if use_relative_coords else box.minx - self.__origin.x
+        z0 = box.minz if use_relative_coords else box.minz - self.__origin.z
+        matrix = self.__fluid_height if include_fluids else self.__altitude
+        return matrix[x0: (x0 + box.width), z0:(z0 + box.length)]
 
     def steepness(self, x, z):
         value = 0

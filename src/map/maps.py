@@ -20,8 +20,8 @@ class Maps:
         self.box = bounding_box
         self.obstacle_map = ObstacleMap(self.__width, self.__length, self)  # type: ObstacleMap
         self.height_map = HeightMap(level, bounding_box)  # type: HeightMap
-        self.road_network = RoadNetwork(self.__width, self.__length, mc_map=self)  # type: RoadNetwork
         self.fluid_map = FluidMap(self, level)
+        self.road_network = RoadNetwork(self.__width, self.__length, mc_map=self)  # type: RoadNetwork
 
     @property
     def width(self):

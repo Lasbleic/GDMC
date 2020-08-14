@@ -84,15 +84,13 @@ class FlatSettlement:
 
     def init_town_center(self):
         while True:
-            mean_x = (self.limits.minx + self.limits.maxx) / 2
+            mean_x = self.limits.width / 2
             dx = normal(mean_x, self.limits.width / 6)
-            dx = int(min(self.limits.maxx-1, max(self.limits.minx, dx)))
-            dx -= self.limits.minx
+            dx = int(min(self.limits.width-1, max(0, dx)))
 
-            mean_z = (self.limits.minz + self.limits.maxz) / 2
-            dz = normal(mean_z, self.limits.width / 6)
-            dz = int(min(self.limits.maxz-1, max(self.limits.minz, dz)))
-            dz -= self.limits.minz
+            mean_z = self.limits.length / 2
+            dz = normal(mean_z, self.limits.length / 6)
+            dz = int(min(self.limits.length-1, max(0, dz)))
 
             random_center = Point2D(dx, dz)
             distance = self._road_network.get_distance(random_center)
