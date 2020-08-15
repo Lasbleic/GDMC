@@ -75,7 +75,6 @@ class Bridge(Generator):
             return d + rounded
 
         r1, r2 = my_round(2*y1)/2, my_round(2*y2)/2
-        print(r1, r2)
         y = int(r1)
         if r2 - r1 <= 1/2 and y2 - y1 <= 2/3:
             if r1 - int(r1) == 0:

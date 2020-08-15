@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, ceil
 from os.path import realpath, sep
 from random import random, shuffle
 from typing import Iterable
@@ -21,6 +21,9 @@ class Point2D:
 
     def __eq__(self, other):
         return other.x == self.x and other.z == self.z
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __add__(self, other):
         assert isinstance(other, Point2D)
@@ -277,8 +280,8 @@ def place_torch(level, x, y, z):
 
 
 def sym_range(v, dv, vmax=None):
-    v0 = max(0, v-dv)
-    v1 = min(vmax, v+dv+1) if vmax is not None else v+dv+1
+    v0 = max(0, v-int(dv))
+    v1 = min(vmax, v+int(ceil(dv))) if vmax is not None else v+int(ceil(dv))
     return range(v0, v1)
 
 

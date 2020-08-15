@@ -1,11 +1,12 @@
 MAX_LAMBDA = 30
-MAX_ROAD_WIDTH = 5
+MAX_ROAD_WIDTH = 7
+MIN_ROAD_WIDTH = 3
 MAX_WATER_EXPLORATION = 100
 MAX_LAVA_EXPLORATION = 50
 
-# Each bridge costs a fixed cost + linear cost on length
+# Each bridge costs a initial cost + linear cost on length
 BRIDGE_COST = 10
-FIXED_BRIDGE_COST = 2
+BRIDGE_UNIT_COST = 2
 
 # buildings dimensions
 MAX_HEIGHT = 12  # 12 -> max 3 floors

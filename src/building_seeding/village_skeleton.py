@@ -2,17 +2,16 @@
 Village skeleton growth
 """
 
+from time import time
 from typing import List
+
+import numpy as np
 
 import map.maps
 from building_pool import BuildingPool, BuildingType
-from building_seeding.interest.interest import interest, random_interest
 from interest import InterestSeeder
 from parcel import Parcel
 from utils import Point2D
-from time import time
-
-import numpy as np
 
 
 class VillageSkeleton:
@@ -31,8 +30,8 @@ class VillageSkeleton:
         # self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
         self.map_stock = None
 
-        ghost = Parcel(ghost_position, BuildingType.from_name('ghost'))
-        self.__interest = InterestSeeder(maps, parcel_list, scenario, ghost)
+        parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
+        self.__interest = InterestSeeder(maps, parcel_list, scenario)
 
     def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None, obstacle_map=None):
 
@@ -88,6 +87,7 @@ class VillageSkeleton:
 
             # try:
             # Village Element Seeding Process
+            self.__interest.reuse_existing_parcel(building_type)  # If succeeds should update building_type in place
             building_position = self.__interest.get_seed(building_type)
 
             # interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.__parcel_list, self.size, self.parcel_size)

@@ -2,13 +2,14 @@
 from __future__ import division, print_function
 
 from sys import maxint
+from typing import Set
 
 from numpy import full, empty, mean, uint8, zeros, std
 
 import map
 from generation.bridge import Bridge
 from generation.generators import *
-from parameters import MAX_LAMBDA, BRIDGE_COST, MAX_ROAD_WIDTH, FIXED_BRIDGE_COST
+from parameters import *
 from pymclevel import alphaMaterials as Materials
 from utilityFunctions import setBlock
 from utils import Point2D, bernouilli, euclidean, clear_tree_at, place_torch, TransformBox
@@ -31,7 +32,7 @@ class RoadNetwork:
         self.path_map = empty((width, length), dtype=object)
         self.lambda_max = MAX_LAMBDA
         self.network_node_list = []
-        self.road_blocks = []
+        self.road_blocks = set()  # type: Set[Point2D]
         self.network_extremities = []
         self.__generator = RoadGenerator(self, mc_map.box, mc_map.fluid_map)
         self.__all_maps = mc_map
@@ -50,14 +51,14 @@ class RoadNetwork:
             # assert isinstance(x, Point2D)
             return self.get_road_width(x.x, x.z)
         else:
-            return self.network[x][z]
+            return self.network[x, z]
 
     def __get_closest_node(self, point):
 
         closest_node = None
         min_distance = MAX_FLOAT
         if len(self.network_node_list) == 0:
-            closest_node = choice(self.road_blocks)
+            closest_node = choice(list(self.road_blocks))
         for node in self.network_node_list:
             if euclidean(node, point) < min_distance:
                 closest_node = node
@@ -74,13 +75,17 @@ class RoadNetwork:
                 return maxint
             return max(0, self.distance_map[x][z] - self.get_road_width(self.__get_closest_road_point(Point2D(x, z))))
 
-    def __set_road_block(self, x, z=None):
+    def __set_road_block(self, xp, z=None):
         # type: (Point2D or int, None or int) -> None
         if z is None:
-            self.__set_road_block(x.x, x.z)
-            self.road_blocks += [x]
+            self.road_blocks.add(xp)
+            x, z = xp.x, xp.z
+            if self.network[x, z] == 0:
+                self.network[x, z] = MIN_ROAD_WIDTH
+            elif self.network[x, z] < MAX_ROAD_WIDTH:
+                self.network[x, z] += 1
         else:
-            self.network[x][z] += 1  # self.calculate_road_width(x, z)
+            self.__set_road_block(Point2D(x, z))
 
     def is_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> bool
@@ -122,17 +127,18 @@ class RoadNetwork:
 
     # endregion
 
-    def calculate_road_width(self, x, z):
-        """
-        Takes relative coordinates. Return local road width based on the number of surrounding roads.
-        The denser the network, the wider the road
-        """
-        mx, mz = int(sqrt(self.width)), int(sqrt(self.length))
-        surroundings = product(range(max(0, x-mx), min(self.width, x+mx)),
-                               range(max(0, z-mz), min(self.length, z+mz))
-                               )
-        road_count = sum(int(self.is_road(x, z)) for x, z in surroundings)
-        return min(MAX_ROAD_WIDTH, 1 + road_count // max(mx, mz))
+    # def calculate_road_width(self, x, z):
+    #     """
+    #     Takes relative coordinates. Return local road width based on the number of surrounding roads.
+    #     The denser the network, the wider the road
+    #     """
+    #     # mx, mz = int(sqrt(self.width)), int(sqrt(self.length))
+    #     # surroundings = product(range(max(0, x-mx), min(self.width, x+mx)),
+    #     #                        range(max(0, z-mz), min(self.length, z+mz))
+    #     #                        )
+    #     # road_count = sum(int(self.is_road(x, z)) for x, z in surroundings)
+    #     # return min(MAX_ROAD_WIDTH, 1 + road_count // max(mx, mz))
+    #     return 1
 
     # region PUBLIC INTERFACE
 
@@ -166,7 +172,7 @@ class RoadNetwork:
                 if _t1 is None:
                     _t1 = time()
                 self.create_road(point_to_connect, node)
-                # todo: add building blocks in the middle of road cycles
+                # todo: add plazas / city blocks in the middle of road cycles
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 
@@ -205,7 +211,7 @@ class RoadNetwork:
         if self.__all_maps.fluid_map.is_water(dest_point, margin=4):
             if not self.__all_maps.fluid_map.is_water(src_point):
                 return BRIDGE_COST
-            return FIXED_BRIDGE_COST
+            return BRIDGE_UNIT_COST
 
         # additional cost for slopes
         _src_height = self.__all_maps.height_map.fluid_height(src_point.x, src_point.z)
@@ -265,7 +271,7 @@ class RoadNetwork:
             if fluids.is_lava(dest_point):
                 return maxint
             elif fluids.is_water(dest_point):
-                return FIXED_BRIDGE_COST
+                return BRIDGE_UNIT_COST
             return euclidean(orig_point, dest_point)
 
         def update_distance(updated_point, neighbor, _neighbors):
@@ -414,7 +420,7 @@ class RoadGenerator(Generator):
 
         print("[RoadGenerator] generating road blocks...", end='')
         for road_block in self.__network.road_blocks:
-            road_width = self.__network.get_road_width(road_block)
+            road_width = self.__network.get_road_width(road_block) / 2.0
             # todo: flatten roads & use stairs/slabs + richer block palette
             for x in sym_range(road_block.x, road_width, self.width):
                 for z in sym_range(road_block.z, road_width, self.length):

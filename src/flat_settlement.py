@@ -102,6 +102,8 @@ class FlatSettlement:
     def build_skeleton(self, time_limit):
         self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
         self._village_skeleton.grow(time_limit)
+        for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
+            self._parcels.remove(parcel)
 
     def define_parcels(self):
         """

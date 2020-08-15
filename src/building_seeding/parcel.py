@@ -17,18 +17,26 @@ ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
 
 class Parcel:
 
-    def __init__(self, building_position, building_type, mc_map=None):
+    def __init__(self, seed, building_type, mc_map=None):
         # type: (Point2D, BuildingType, map.Maps) -> Parcel
-        self.__center = building_position
+        self.__center = seed
         self.__building_type = building_type
         self.__map = mc_map  # type: map.Maps
         self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
-        self.__relative_box = TransformBox((building_position.x, 0, building_position.z),
+        self.__relative_box = TransformBox((seed.x, 0, seed.z),
                                            (1, 1, 1))  # type: TransformBox
         self.__box = None  # type: TransformBox
         if mc_map is not None:
             self.__initialize_limits()
             self.__compute_entry_point()
+
+    def __eq__(self, other):
+        if not isinstance(other, Parcel):
+            return False
+        return self.center == other.center and self.building_type == other.building_type
+
+    def __str__(self):
+        return "{} parcel at {}".format(self.building_type.name, self.center)
 
     def __compute_entry_point(self):
         road_net = self.__map.road_network
@@ -99,6 +107,7 @@ class Parcel:
                 no_obstacle = obstacle[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
                 obstacle.add_parcel_to_obstacle_map(self, 1)
             except IndexError:
+                obstacle.add_parcel_to_obstacle_map(self, 1)
                 return False
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
@@ -107,7 +116,10 @@ class Parcel:
                         0 <= expanded.minz < expanded.maxz <= max_z)
             extension.expand(-direction, inplace=True)
             extension_height = self.__map.height_map.box_height(extension, True)
-            flat_extend = extension_height.std() <= 3
+            try:
+                flat_extend = extension_height.std() <= 3
+            except RuntimeWarning:
+                flat_extend = True
             return no_obstacle and valid_sizes and valid_ratio and valid_coord and flat_extend
 
     def translate_to_absolute_coords(self, origin):

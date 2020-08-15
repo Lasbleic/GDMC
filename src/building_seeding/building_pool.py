@@ -21,6 +21,8 @@ class BuildingType:
     def __init__(self, name=None, generator=None):
         self.name = name
         self.generator = generator
+        if name is not None and isinstance(name, BuildingType):
+            self.copy(name)
 
     def new_instance(self, box):
         return self.generator(box)
@@ -32,6 +34,9 @@ class BuildingType:
         if isinstance(other, BuildingType):
             return self.name == other.name
         return False
+
+    def __str__(self):
+        return "Building type {}".format(self.name if self.name is not None else "undefined")
 
     @property
     def house(self):
@@ -66,6 +71,12 @@ class BuildingType:
             return BuildingType().ghost
         if name == 'windmill':
             return BuildingType().windmill
+
+    def copy(self, other):
+        assert isinstance(other, BuildingType)
+        self.name = other.name
+        self.generator = other.generator
+        return self
 
 
 class BuildingPool:

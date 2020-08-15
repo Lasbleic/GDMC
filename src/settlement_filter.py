@@ -32,6 +32,9 @@ def perform(level, box, options):
     settlement.init_road_network()  # define outside connections
     settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
     settlement.build_skeleton(options["10' limit"])     # define buildings list and seed them
-    settlement.define_parcels()     # define parcels around seeds
+    try:
+        settlement.define_parcels()     # define parcels around seeds
+    except RuntimeWarning:
+        pass
     settlement.generate(level, options["debug mode"])      # build buildings on parcels
     logging.debug('{} seconds of execution'.format(time() - t0))

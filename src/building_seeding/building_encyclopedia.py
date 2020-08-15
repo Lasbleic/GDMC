@@ -8,27 +8,27 @@ BUILDING_ENCYCLOPEDIA = {
     "Flat_scenario": {
 
         "Sociability": {
-            "house-house": (7, 10, 100),
-            "house-crop": (20, 25, 100),
-            "house-windmill": (20, 25, 100),
+            "house-house": (10, 13, 80),
+            "house-crop": (12, 20, 100),
+            "house-windmill": (15, 25, 100),
             "house-ghost": (1, 2, 100),
-            "crop-crop": (7, 10, 100),
-            "crop-house": (20, 25, 100),
-            "crop-windmill": (7, 10, 100),
-            "crop-ghost": (20, 25, 100),
-            "windmill-windmill": (16, 25, 100),
-            "windmill-house": (20, 25, 100),
-            "windmill-crop": (7, 10, 100),
-            "windmill-ghost": (20, 25, 100),
+            "crop-crop": (10, 13, 50),
+            "crop-house": (10, 25, 50),
+            "crop-windmill": (11, 15, 100),
+            "crop-ghost": (1, 20, 100),
+            "windmill-windmill": (15, 30, 100),
+            "windmill-house": (15, 25, 100),
+            "windmill-crop": (10, 12, 100),
+            "windmill-ghost": (1, 30, 100),
             "ghost-house": (1, 2, 100),
             "ghost-crop": (20, 25, 100),
             "ghost-windmill": (20, 25, 100)
         },
 
         "Accessibility": {
-            "house": (7, 10, 15),
+            "house": (8, 11, 18),
             "crop": (10, 20, 30),
-            "windmill": (5, 8, 15)
+            "windmill": (10, 12, 18)
         },
 
         "Altitude": {

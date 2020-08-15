@@ -42,7 +42,7 @@ def close_distance(d, lambdas):
         res = -1
 
     else:
-        res = balance(d, lambda_min, lambda_min, lambda_max)
+        res = balance(d, 0, lambda_min, lambda_max)
 
     return res
 
