@@ -6,6 +6,7 @@ from typing import List
 from numpy import ones
 from numpy.random import choice
 
+from generation.building_palette import HousePalette
 from pymclevel import MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
@@ -43,6 +44,10 @@ class Generator:
     def _clear_trees(self, level):
         for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
             clear_tree_at(level, self._box, Point2D(x, z))
+
+    def surface_pos(self, height_map):
+        for x, z in product(xrange(self.width), xrange(self.length)):
+            yield x+self.origin.x, height_map[x, z], z+self.origin.z
 
     def generate(self, level, height_map=None, palette=None):
         """
@@ -83,33 +88,66 @@ class Generator:
     def surface(self):
         return self._box.surface
 
+    @property
+    def mean(self):
+        return Point2D(self._box.minx + self.width // 2, self._box.minz + self.length // 2)
+
     def translate(self, dx=0, dy=0, dz=0):
         self._box.translate(dx, dy, dz, True)
         for gen in self.children:
             gen.translate(dx, dy, dz)
 
+    @property
+    def entry_direction(self):
+        door_x, door_z = self._entry_point.x, self._entry_point.z
+        mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
+        return Direction(dx=door_x-mean_x, dz=door_z-mean_z)
+
 
 class CropGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
-        if bernouilli(0.7):
-            self._gen_animal_farm(level, height_map)
-        else:
+        style_choice = choice(range(3), p=[0.3, 0.2, 0.5])
+        if style_choice == 0:
+            self._gen_animal_farm(level, height_map, palette)
+        elif style_choice == 1:
             self._gen_crop_v1(level, height_map)
+        else:
+            self._gen_harvested_crop(level, height_map)
 
-    def _gen_animal_farm(self, level, height_map, animal='Cow'):
-        # type: (MCLevel, array, str) -> None
+    def _gen_animal_farm(self, level, height_map, palette, animal='Cow'):
+        # type: (MCLevel, array, HousePalette, str) -> None
         # todo: abreuvoir + herbe + abri + terrain adaptability
-        x, z = self._box.minx, self._box.minz
-        y = height_map[x - self._box.minx, z - self._box.minz] + 1
-        fence_box = TransformBox((x, y, z), (self.width, 1, self.length))
-        fillBlocks(level, fence_box, Block['Oak Fence'])
-        fence_box.expand(-1, 0, -1, True)
-        fillBlocks(level, fence_box, Block['Air'])
+        # x, z = self._box.minx, self._box.minz
+        # y = height_map[x - self._box.minx, z - self._box.minz] + 1
+        # fillBlocks(level, fence_box, Block['Oak Fence'])
+        # fence_box.expand(-1, 0, -1, True)
+        # fillBlocks(level, fence_box, Block['Air'])
+        fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
+        fence_block = Block['{} Fence'.format(palette['door'])]
+        gate_block = Block['{} Fence Gate (Closed, {})'.format(palette['door'], self.entry_direction)]
+        gate_pos, gate_dist = None, 0
+
+        # place fences
+        for x, y, z in self.surface_pos(height_map):
+            if self._box.is_lateral(x, z):
+                setBlock(level, (fence_block.ID, fence_block.blockData), x, y + 1, z)
+                new_gate_pos = Point2D(x, z)
+                new_gate_dist = euclidean(new_gate_pos, self._entry_point)
+                if (gate_pos is None or new_gate_dist < gate_dist) and not self._box.is_corner(new_gate_pos):
+                    gate_pos, gate_dist = new_gate_pos, new_gate_dist
+
+        # place gate
+        x, z = gate_pos.x, gate_pos.z
+        y = height_map[x-self.origin.x, z-self.origin.z] + 1
+        setBlock(level, (gate_block.ID, gate_block.blockData), x, y, z)
+
+        # place animals
         animal_count = fence_box.surface // SURFACE_PER_ANIMAL
         for _ in xrange(animal_count):
             entity = Entity.Create(animal)  # type: Entity
             x = randint(fence_box.minx, fence_box.maxx-1)
             z = randint(fence_box.minz, fence_box.maxz-1)
+            y = height_map[x-self.origin.x, z-self.origin.z] + 1
             Entity.setpos(entity, (x, y, z))
             level.addEntity(entity)
 
@@ -136,6 +174,21 @@ class CropGenerator(Generator):
                     bid = choice(crop_ids, p=prob)
                     age = randint(0, 7)
                     setBlock(level, (bid, age), xd, y0 + 1, zd)  # crop
+
+    def _gen_harvested_crop(self, level, height_map):
+        mx, mz = randint(0, 1), randint(0, 2)
+        for x, y, z in self.surface_pos(height_map):
+            if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.15):
+                setBlock(level, (3, 0), x, y, z)  # dirt under hay bales
+                b = Block["Hay Bale (East/West)"]
+                y += 1
+            else:
+                b = Block["Farmland (Dry, Moisture 6)"]
+            setBlock(level, (b.ID, b.blockData), x, y, z)
+        h = height_map
+        irrigation_height = min(h[h.shape[0]//2, h.shape[1]//2], h.max()) + 1 - self._box.miny
+        irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
+        fillBlocks(level, irrigation_box, Block["Water (Still, Level 7 (Source))"])
 
 
 class HouseGenerator(Generator):

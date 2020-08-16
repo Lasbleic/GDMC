@@ -10,7 +10,11 @@ class ProcHouseGenerator(Generator):
         Generator.__init__(self, box)
 
     def generate(self, level, height_map=None, palette=None):
-        self._generate_main_building()
+        try:
+            self._generate_main_building()
+        except ValueError:
+            print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))
+            return
         self._generate_annex()
         self._center_building()
         self._clear_trees(level)
@@ -85,9 +89,7 @@ class ProcHouseGenerator(Generator):
 
     def _generate_door(self, level, palette):
         door_x, door_z = self._entry_point.x, self._entry_point.z
-        mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
-        door_direction = Direction(dx=door_x-mean_x, dz=door_z-mean_z)
-        # todo: properly place doors in z walls (manually search for a window to replace ?)
+        door_direction = self.entry_direction
         self.children[0].generate_door(door_direction, door_x, door_z, level, palette)
 
     def _generate_stairs(self, level, palette):
@@ -360,15 +362,26 @@ class _WallSymbol(Generator):
         copyBlocksFrom(level, wall_level, tmp_box, self.origin)  # retrieve wall to real level
 
     def generate_door(self, door_dir, door_x, door_z, level, palette):
+        box = self._box
         if not self.children:
-            if self._box.surface <= 2:
-                DoorGenerator(self._box, door_dir).generate(level, palette=palette)
+            if box.surface <= 2:
+                DoorGenerator(box, door_dir).generate(level, palette=palette)
             elif self.width > 2:
-                DoorGenerator(self._box.expand(-((self.width-1)/2), 0, 0), door_dir).generate(level, palette=palette)
+                DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
             else:
-                DoorGenerator(self._box.expand(0, 0, -((self.length-1)/2)), door_dir).generate(level, palette=palette)
+                is_win = [int(level.blockAt(box.minx, box.miny+1, box.minz+_) == Block[palette['window']].ID) for _ in range(box.length)]
+                door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
+                door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
+                if door_z > 0 and is_win[door_z - 1]:
+                    door_box.expand(0, 0, -1, True)
+                elif door_z < box.width - 1 and is_win[door_z + 1]:
+                    door_box.expand(0, 0, 1, True)
+                DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         elif len(self.children) == 1:
-            self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
+            if self.width > 2:
+                DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
+            else:
+                self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
             # if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
             #     self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
             # else:

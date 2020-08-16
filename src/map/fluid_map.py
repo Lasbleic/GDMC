@@ -123,7 +123,6 @@ class FluidMap:
             def cost(src_point, dst_point):
                 x_cost = abs(src_point.x - dst_point.x)
                 z_cost = abs(src_point.z - dst_point.z)
-                # todo: create HeightMap class, __getitem__(Point2D)
                 src_y = int(self.__other_maps.height_map.fluid_height(src_point.x, src_point.z))
                 dst_y = int(self.__other_maps.height_map.fluid_height(dst_point.x, dst_point.z))
                 y_cost = 2 * max(dst_y - src_y, 0)  # null cost for water to go downhill

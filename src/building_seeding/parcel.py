@@ -9,7 +9,7 @@ from pymclevel.biome_types import biome_types
 from utils import *
 import map
 
-MIN_PARCEL_SIZE = 7
+MIN_PARCEL_SIZE = 5
 MAX_PARCEL_AREA = 150
 MIN_RATIO_SIDE = 7 / 11
 ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
@@ -22,7 +22,7 @@ class Parcel:
         self.__center = seed
         self.__building_type = building_type
         self.__map = mc_map  # type: map.Maps
-        self.__entry_point = self.__center  # type: Point2D  # todo: compute this, input parameter
+        self.__entry_point = self.__center  # type: Point2D
         self.__relative_box = TransformBox((seed.x, 0, seed.z),
                                            (1, 1, 1))  # type: TransformBox
         self.__box = None  # type: TransformBox
@@ -40,12 +40,11 @@ class Parcel:
 
     def __compute_entry_point(self):
         road_net = self.__map.road_network
-        # todo: gerer le cas des parcelles trop eloignees du reseau
         if road_net.is_accessible(self.__center):
-            path = road_net.path_map[self.__center.x][self.__center.z]
+            path = road_net.path_map[self.__center.x, self.__center.z]
             nearest_road_point = path[0] if path else self.center
             distance_threshold = MIN_PARCEL_SIZE + MAX_ROAD_WIDTH // 2
-            if road_net.get_distance(self.__center) <= distance_threshold:
+            if len(path) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 self.__entry_point = nearest_road_point
                 return
@@ -99,28 +98,28 @@ class Parcel:
                     return True
             return False
         else:
-            expanded = self.__relative_box.expand(direction)
-            obstacle = self.__map.obstacle_map  # type: map.ObstacleMap
-            extension = expanded - self.__relative_box
-            try:
-                obstacle.unmark_parcel(self, 1)
-                no_obstacle = obstacle[extension.minx:extension.maxx, extension.minz:extension.maxz].all()
-                obstacle.add_parcel_to_obstacle_map(self, 1)
-            except IndexError:
-                obstacle.add_parcel_to_obstacle_map(self, 1)
+            # try:
+            expanded = self.__relative_box.expand(direction)  # expanded parcel
+            obstacle = self.__map.obstacle_map  # type: map.ObstacleMap  # obstacle map
+            ext = expanded - self.__relative_box  # extended part of the expanded parcel
+
+            if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
                 return False
+
+            obstacle.unmark_parcel(self, 1)
+            no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].all()
+            h = self.__map.height_map.box_height(expanded, True)
+            flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
+            obstacle.add_parcel_to_obstacle_map(self, 1)
+            # except IndexError:
+            #     obstacle.add_parcel_to_obstacle_map(self, 1)
+            #     return False
+            # except ValueError:
+            #     print("Found empty array when trying to extend {} parcel, ({}, {})".format(self.building_type, self.width, self.length))
+            #     return False
             valid_sizes = expanded.surface <= MAX_PARCEL_AREA
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
-            max_x, max_z = self.__map.width, self.__map.length
-            valid_coord = (0 <= expanded.minx < expanded.maxx <= max_x) and (
-                        0 <= expanded.minz < expanded.maxz <= max_z)
-            extension.expand(-direction, inplace=True)
-            extension_height = self.__map.height_map.box_height(extension, True)
-            try:
-                flat_extend = extension_height.std() <= 3
-            except RuntimeWarning:
-                flat_extend = True
-            return no_obstacle and valid_sizes and valid_ratio and valid_coord and flat_extend
+            return no_obstacle and valid_sizes and valid_ratio and flat_extend
 
     def translate_to_absolute_coords(self, origin):
         self.__box = TransformBox(self.__relative_box)

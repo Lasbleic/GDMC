@@ -83,6 +83,7 @@ class InterestSeeder:
             typed_interest_map.notify_type_change(self.__parcels, parcel, old_type)
 
         # Set the building type to be seeded
+        print("Replaced {} parcel at {} with type {}".format(old_type.name, parcel.center, parcel.building_type.name))
         new_type.copy(old_type)
 
 
@@ -105,6 +106,7 @@ class InterestMap:
         scenario_dict = BUILDING_ENCYCLOPEDIA[scenario]
         self.__lambdas = {criteria: scenario_dict[criteria][building_type.name]
                           for criteria in scenario_dict if building_type.name in scenario_dict[criteria]}
+        self.__lambdas["Sociability"] = scenario_dict["Sociability"]
         self.__acc_w = self.__lambdas["Weighting_factors"][0]
         self.__soc_w = self.__lambdas["Weighting_factors"][1]
         self.__fix_w = sum(self.__lambdas["Weighting_factors"][2:])
@@ -129,7 +131,7 @@ class InterestMap:
                 self.__social = new_soc
             else:
                 self.__social = (old_soc * n + new_soc * m) / (n + m)
-                self.__social[(old_soc == -1) | (old_soc == -1)] = -1
+                self.__social[(old_soc == -1) | (new_soc == -1)] = -1
             self.__known_seeds += m
 
             self.__compute_interest()
@@ -260,7 +262,7 @@ class InterestMap:
             lm, l0, lM = self.__lambdas["Sociability"]["-".join([self.type.name, other_type.name])]
             return attraction_repulsion(value, lm, l0, lM)
 
-        for x, z in product(range(self.__size[0], self.__size[1])):
+        for x, z in product(range(self.__size[0]), range(self.__size[1])):
             distance = euclidean(parcel.center, Point2D(x, z))
             old_score = soc_interest(distance, old_type)
             new_score = soc_interest(distance, parcel.building_type)

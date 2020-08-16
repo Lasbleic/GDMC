@@ -123,7 +123,6 @@ class TransformBox(BoundingBox):
         """
         exclusion operator, only works if self is an extension of other in a single direction
         should work well with self.expand(Direction), eg box.expand(South) - box -> southern extension of box
-        todo: test this
         """
         same_coords = [self.minx == other.minx, self.maxx == other.maxx, self.minz == other.minz,
                        self.maxz == other.maxz]
@@ -140,6 +139,18 @@ class TransformBox(BoundingBox):
     @property
     def surface(self):
         return self.width * self.length
+
+    def is_corner(self, new_gate_pos):
+        return self.is_lateral(new_gate_pos.x) and self.is_lateral(None, new_gate_pos.z)
+
+    def is_lateral(self, x=None, z=None):
+        assert x is not None or z is not None
+        if x is None:
+            return z == self.minz or z == self.maxz - 1
+        if z is None:
+            return x == self.minx or x == self.maxx - 1
+        else:
+            return self.is_lateral(x, None) or self.is_lateral(None, z)
 
 
 class Direction:
@@ -262,7 +273,7 @@ def clear_tree_at(level, box, point):
             # explore top/bottom diagonal blocks
             for direction, dy in product(cardinal_directions(), [-1, 1]):
                 x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
-                if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
+                if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box and euclidean(point, Point2D(x, z)) < 5:
                     possible_tree_blocks.append((x, y, z))
 
         for direction in all_directions():

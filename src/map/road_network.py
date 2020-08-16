@@ -4,7 +4,7 @@ from __future__ import division, print_function
 from sys import maxint
 from typing import Set
 
-from numpy import full, empty, mean, uint8, zeros, std
+from numpy import full, empty, mean, uint8, zeros, std, argmin
 
 import map
 from generation.bridge import Bridge
@@ -17,6 +17,7 @@ from utils import Point2D, bernouilli, euclidean, clear_tree_at, place_torch, Tr
 MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 32
 MIN_DISTANCE_CYCLE = 24
+DIST_BETWEEN_NODES = 12
 
 
 class RoadNetwork:
@@ -63,6 +64,19 @@ class RoadNetwork:
             if euclidean(node, point) < min_distance:
                 closest_node = node
                 min_distance = euclidean(node, point)
+
+        # try to promote an extremity to node
+        alt_edge = [_ for _ in self.road_blocks if _ not in self.network_node_list]
+        alt_dist = [euclidean(_, point) for _ in alt_edge]
+        i = int(argmin(alt_dist))
+        edge, dist = alt_edge[i], alt_dist[i]
+        # i = int(argmin([euclidean(_, point) for _ in self.road_blocks if _ not in self.network_node_list]))
+        # edge = self.network_extremities[i]
+        # dist = euclidean(edge, point)
+        if dist < min_distance:
+            if euclidean(edge, closest_node) >= DIST_BETWEEN_NODES:
+                self.network_node_list.append(edge)
+            closest_node = edge
         return closest_node
 
     def get_distance(self, x, z=None):
@@ -85,7 +99,7 @@ class RoadNetwork:
             elif self.network[x, z] < MAX_ROAD_WIDTH:
                 self.network[x, z] += 1
         else:
-            self.__set_road_block(Point2D(x, z))
+            self.__set_road_block(Point2D(xp, z))
 
     def is_road(self, x, z=None):
         # type: (Point2D or int, None or int) -> bool
@@ -109,18 +123,20 @@ class RoadNetwork:
 
     def __set_road(self, path):
         # type: ([Point2D]) -> None
-
+        force_update = False
         if any(self.__is_point_obstacle(point) for point in path):
-            self.__invalidate(path[-1])
-            self.__set_road_block(path[0])
-            self.__update_distance_map([path[0]])
-            self.__set_road(path[1:])
-        else:
-            for point in path:
-                self.__set_road_block(point)
-            self.__update_distance_map(path)
-
-            # todo: public stairs structures (/ ladders ?) in steep streets
+            force_update = True
+            # todo: qu'est-ce qu'on fait ici ?
+            # self.__invalidate(path[-1])
+            # self.__set_road_block(path[0])
+            # self.__update_distance_map([path[0]])
+            # self.__set_road(path[1:])
+            path = self.a_star(path[0], path[-1])
+        # else:
+        self.__generator.handle_new_road(path)
+        for point in path:
+            self.__set_road_block(point)
+        self.__update_distance_map(path, force_update)
 
     def is_accessible(self, point):
         return type(self.path_map[point.x][point.z]) == list
@@ -145,7 +161,6 @@ class RoadNetwork:
     def create_road(self, root_point, ending_point):
         # type: (Point2D, Point2D) -> None
         path = self.a_star(root_point, ending_point)
-        self.__generator.handle_new_road(path)
         self.__set_road([root_point] + path)
         self.network_extremities += [root_point, ending_point]
         return
@@ -163,7 +178,6 @@ class RoadNetwork:
             print("[RoadNetwork] Computed road path in {:0.2f}s".format(time()-_t0))
         self.network_extremities += [point_to_connect]
         if path:
-            self.__generator.handle_new_road(path)
             self.__set_road(path)
 
         _t1 = None
@@ -173,10 +187,11 @@ class RoadNetwork:
                     _t1 = time()
                 self.create_road(point_to_connect, node)
                 # todo: add plazas / city blocks in the middle of road cycles
+                # todo: ajouter une condition du genre "si c'est 4x plus long d'aller par la route que tout droit, créer chemin"
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 
-        if path:
+        if path and all(euclidean(path[0], node) > DIST_BETWEEN_NODES for node in self.network_node_list):
             self.network_node_list.append(path[0])
 
         return
@@ -284,7 +299,7 @@ class RoadNetwork:
             new_dist = distance_map[updated_point.x][updated_point.z] + edge_dist
             previous_cost = cost_map[neighbor.x][neighbor.z]
             if previous_cost >= maxint and new_dist <= max_distance and not self.is_road(neighbor) \
-                    and new_cost < self.cost_map[neighbor.x][neighbor.z]:
+                    and (new_cost < self.cost_map[neighbor.x][neighbor.z] or force_update):
                 _neighbors += [neighbor]
             if previous_cost > new_cost:
                 cost_map[neighbor.x][neighbor.z] = new_cost
@@ -311,7 +326,9 @@ class RoadNetwork:
             return path
 
         def update_maps_info_at(point):
-            if self.cost_map[point.x][point.z] > cost_map[point.x][point.z]:
+            x, z = point.x, point.z
+            if self.cost_map[x, z] > cost_map[x, z]\
+               or (self.is_accessible(point) and any(self.__is_point_obstacle(p) for p in self.path_map[x, z])):
                 cost_map[point.x][point.z] = cost_map[point.x][point.z]
                 self.distance_map[point.x][point.z] = distance_map[point.x][point.z]
                 self.path_map[point.x][point.z] = path_to_dest(point)

@@ -26,9 +26,9 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Accessibility": {
-            "house": (8, 11, 18),
-            "crop": (10, 20, 30),
-            "windmill": (10, 12, 18)
+            "house": (6, 11, 18),
+            "crop": (6, 20, 30),
+            "windmill": (6, 12, 18)
         },
 
         "Altitude": {

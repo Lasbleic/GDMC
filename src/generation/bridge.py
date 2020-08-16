@@ -21,7 +21,6 @@ class Bridge(Generator):
         return self
 
     def generate(self, level, height_map=None, palette=None):
-        # todo: draw a cleaner curve / line
         self._box = TransformBox(self._box)
         self.translate(dx=self.__origin.x, dz=self.__origin.z)
         self.__straighten_bridge_points()

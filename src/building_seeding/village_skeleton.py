@@ -99,7 +99,7 @@ class VillageSkeleton:
             print("Placed at x:{}, z:{}".format(building_position.x, building_position.z))
             new_parcel = Parcel(building_position, building_type, self.maps)
             self.__parcel_list.append(new_parcel)
-            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 2)
+            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 1)
 
             # Road Creation Process
             self.maps.road_network.connect_to_network(new_parcel.entry_point)

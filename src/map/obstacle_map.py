@@ -1,4 +1,7 @@
 from __future__ import division, print_function
+
+from math import floor
+
 from numpy import full, zeros
 from utils import Point2D
 from itertools import product
@@ -64,7 +67,7 @@ class ObstacleMap:
                 if network.is_road(xo, zo):
                     # build a circular obstacle of designated width around road point
                     margin = network.get_road_width(xo, zo)
-                    m0, m1 = margin // 2, margin - margin // 2
+                    m0, m1 = int(margin/2), int(floor(margin/2)) + 1
                     for dx, dz in product(xrange(-m0, m1), xrange(-m0, m1)):
                         if self.__in_x_limits(xo+dx) and self.__in_z_limits(zo+dz) and abs(dx*dz) < margin**2\
                                 and not self.map[xo+dx, zo+dz]:
@@ -74,3 +77,11 @@ class ObstacleMap:
         if len(item) == 2:
             x, z = item
             return self.map[x, z] == 0
+
+    @property
+    def width(self):
+        return self.map.shape[0]
+
+    @property
+    def length(self):
+        return self.map.shape[1]
