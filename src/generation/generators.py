@@ -250,6 +250,7 @@ class DoorGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
             setBlock(level, (self._resource(x, y, z, palette)), x, y, z)
+        fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Block['Air'])
 
     def _resource(self, x, y, z, palette):
         if y == self._box.miny:

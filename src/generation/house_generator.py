@@ -1,3 +1,5 @@
+from numpy import argmin
+
 from generation.building_palette import HousePalette
 from generation.generators import *
 from pymclevel import MCLevel, MCSchematic
@@ -363,34 +365,57 @@ class _WallSymbol(Generator):
 
     def generate_door(self, door_dir, door_x, door_z, level, palette):
         box = self._box
-        if not self.children:
-            if box.surface <= 2:
-                DoorGenerator(box, door_dir).generate(level, palette=palette)
-            elif self.width > 2:
-                DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
-            else:
-                is_win = [int(level.blockAt(box.minx, box.miny+1, box.minz+_) == Block[palette['window']].ID) for _ in range(box.length)]
-                door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
-                door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
-                if door_z > 0 and is_win[door_z - 1]:
-                    door_box.expand(0, 0, -1, True)
-                elif door_z < box.width - 1 and is_win[door_z + 1]:
-                    door_box.expand(0, 0, 1, True)
-                DoorGenerator(door_box, door_dir).generate(level, palette=palette)
-        elif len(self.children) == 1:
-            if self.width > 2:
-                DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
-            else:
-                self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
-            # if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
-            #     self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
-            # else:
-            #     # see wall structure, this is a part of an uneven wall -> replace window with door
-            #     door_box = TransformBox(self.origin, (1, self.height, 1))
-            #     door_box = door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
-            #     DoorGenerator(door_box, door_dir, palette['door']).generate(level, palette=palette)
+        entry = Point2D(door_x, door_z)
+        if self.length > 1:
+            is_win = [int(level.blockAt(box.minx, box.miny+1, box.minz+_) == Block[palette['window']].ID) for _ in range(box.length)]
+            door_val = [euclidean(entry, Point2D(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
+            # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
+            door_z = argmin(door_val)
+            door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
+            if door_z > 0 and is_win[door_z - 1]:
+                door_box.expand(Direction(0, 0, -1), inplace=True)
+            elif door_z < box.width - 1 and is_win[door_z + 1]:
+                door_box.expand(Direction(0, 0, 1), inplace=True)
+            DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         else:
-            choice(self.children).generate_door(door_dir, door_x, door_z, level, palette)
+            is_win = [int(level.blockAt(box.minx+_, box.miny+1, box.minz) == Block[palette['window']].ID) for _ in range(box.width)]
+            door_val = [euclidean(entry, Point2D(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.width)]
+            door_x = argmin(door_val)
+            door_box = TransformBox(box.origin + (door_x, 0, 0), (1, box.height, 1))
+            if door_x > 0 and is_win[door_x - 1]:
+                door_box.expand(Direction(-1, 0, 0), inplace=True)
+            elif door_x < box.length - 1 and is_win[door_x + 1]:
+                door_box.expand(Direction(1, 0, 0), inplace=True)
+            DoorGenerator(door_box, door_dir).generate(level, palette=palette)
+
+        # if not self.children:
+        #     if box.surface <= 2:
+        #         DoorGenerator(box, door_dir).generate(level, palette=palette)
+        #     elif self.width > 2:
+        #         DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
+        #     else:
+        #         is_win = [int(level.blockAt(box.minx, box.miny+1, box.minz+_) == Block[palette['window']].ID) for _ in range(box.length)]
+        #         door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
+        #         door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
+        #         if door_z > 0 and is_win[door_z - 1]:
+        #             door_box.expand(0, 0, -1, True)
+        #         elif door_z < box.width - 1 and is_win[door_z + 1]:
+        #             door_box.expand(0, 0, 1, True)
+        #         DoorGenerator(door_box, door_dir).generate(level, palette=palette)
+        # elif len(self.children) == 1:
+        #     if self.width > 2:
+        #         DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
+        #     else:
+        #         self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
+        #     # if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
+        #     #     self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
+        #     # else:
+        #     #     # see wall structure, this is a part of an uneven wall -> replace window with door
+        #     #     door_box = TransformBox(self.origin, (1, self.height, 1))
+        #     #     door_box = door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
+        #     #     DoorGenerator(door_box, door_dir, palette['door']).generate(level, palette=palette)
+        # else:
+        #     choice(self.children).generate_door(door_dir, door_x, door_z, level, palette)
 
 
 class _BaseSymbol(Generator):

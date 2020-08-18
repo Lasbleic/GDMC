@@ -4,15 +4,12 @@ from random import randint
 
 from building_seeding.building_pool import BuildingType
 from generation.generators import Generator
-from parameters import MAX_ROAD_WIDTH
+from parameters import *
 from pymclevel.biome_types import biome_types
 from utils import *
 import map
 
-MIN_PARCEL_SIZE = 5
-MAX_PARCEL_AREA = 150
-MIN_RATIO_SIDE = 7 / 11
-ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
+ENTRY_POINT_MARGIN = (MIN_PARCEL_SIDE + MAX_ROAD_WIDTH) // 2
 
 
 class Parcel:
@@ -43,7 +40,7 @@ class Parcel:
         if road_net.is_accessible(self.__center):
             path = road_net.path_map[self.__center.x, self.__center.z]
             nearest_road_point = path[0] if path else self.center
-            distance_threshold = MIN_PARCEL_SIZE + MAX_ROAD_WIDTH // 2
+            distance_threshold = MIN_PARCEL_SIDE + MAX_ROAD_WIDTH // 2
             if len(path) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 self.__entry_point = nearest_road_point
@@ -62,23 +59,24 @@ class Parcel:
         # this direction determines what side of the parcel will be along the road
         resid_road_x = local_road_x if local_road_dir.z else 0  # note: resid for residual
         resid_road_z = local_road_z if local_road_dir.x else 0
-        if resid_road_z * resid_road_x != 0:
+        if resid_road_z != 0 or resid_road_x != 0:
             resid_road_dir = Direction(dx=resid_road_x, dz=resid_road_z)
         else:
             resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
         self.__entry_point = self.__center + resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
-        if self.entry_x >= self.__map.width or self.entry_z >= self.__map.length:
-            self.__entry_point = self.__center - resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
+        if not (0 <= self.entry_x < self.__map.width and 0 <= self.entry_z < self.__map.length):
+            self.__entry_point = target_road_pt
 
     def __initialize_limits(self):
         # build parcel box
-        shifted_x = min(max(0, self.__center.x - MIN_PARCEL_SIZE // 2), self.__map.width - MIN_PARCEL_SIZE)  # type: int
-        shifted_z = min(max(0, self.__center.z - MIN_PARCEL_SIZE // 2), self.__map.length - MIN_PARCEL_SIZE)  # type:int
+        margin = MIN_PARCEL_SIDE // 2
+        shifted_x = pos_bound(self.__center.x - margin, self.__map.width - MIN_PARCEL_SIDE)  # type: int
+        shifted_z = pos_bound(self.__center.z - margin, self.__map.length - MIN_PARCEL_SIDE)  # type:int
         origin = (shifted_x, self.__map.height_map.altitude(shifted_x, shifted_z), shifted_z)
-        size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
+        size = (MIN_PARCEL_SIDE, 1, MIN_PARCEL_SIDE)
         self.__relative_box = TransformBox(origin, size)
-        # in case when the parcel hits the limits, does not change anything otherwise
-        self.__center = Point2D(shifted_x + MIN_PARCEL_SIZE // 2, shifted_z + MIN_PARCEL_SIZE // 2)
+        # in cases where the parcel hits the limits, does not change anything otherwise
+        self.__center = Point2D(shifted_x + margin, shifted_z + margin)
 
     def expand(self, direction):
         # type: (Direction) -> None

@@ -68,6 +68,8 @@ class TransformBox(BoundingBox):
     """
 
     def translate(self, dx=0, dy=0, dz=0, inplace=False):
+        if isinstance(dx, Direction):
+            return self.translate(dx.x, dx.y, dx.z, inplace)
         if inplace:
             self._origin += (dx, dy, dz)
             return self
@@ -291,9 +293,29 @@ def place_torch(level, x, y, z):
 
 
 def sym_range(v, dv, vmax=None):
-    v0 = max(0, v-int(dv))
-    v1 = min(vmax, v+int(ceil(dv))) if vmax is not None else v+int(ceil(dv))
-    return range(v0, v1)
+    """
+    Range of length 2 * dv centered in v. specify vmax to bound upper value
+    2 * dv must be an integer
+    sym_range(3, 1) = [2, 3, 4]
+    sym_range(3, 1.5) = [1, 2, 3, 4]
+    """
+    if dv % 1 == 0:
+        v0, v1 = v - dv, v + dv + 1
+    elif dv % 1 == .5:
+        idv = int(dv + 0.5)
+        v0, v1 = v - idv, v + idv
+    else:
+        raise ValueError("Expected dv to be half and integer, found {}".format(dv))
+    v0, v1 = pos_bound(v0, vmax), pos_bound(v1, vmax)
+    return range(int(v0), int(v1))
+
+
+def pos_bound(v, vmax=None):
+    if v < 0:
+        return 0
+    if vmax and v >= vmax:
+        return vmax
+    return v
 
 
 if __name__ == '__main__':
