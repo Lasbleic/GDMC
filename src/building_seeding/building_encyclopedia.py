@@ -11,66 +11,102 @@ BUILDING_ENCYCLOPEDIA = {
             "house-house": (10, 13, 80),
             "house-crop": (12, 20, 100),
             "house-windmill": (15, 25, 100),
-            "house-ghost": (1, 2, 100),
+            "house-ghost": (5, 10, 100),
             "crop-crop": (10, 13, 50),
             "crop-house": (10, 25, 50),
             "crop-windmill": (11, 15, 100),
-            "crop-ghost": (1, 20, 100),
+            "crop-ghost": (5, 30, 100),
             "windmill-windmill": (15, 30, 100),
             "windmill-house": (15, 25, 100),
             "windmill-crop": (10, 12, 100),
-            "windmill-ghost": (1, 30, 100),
-            "ghost-house": (1, 2, 100),
+            "windmill-ghost": (5, 40, 100),
+            "ghost-house": (5, 10, 100),
             "ghost-crop": (20, 25, 100),
-            "ghost-windmill": (20, 25, 100)
+            "ghost-windmill": (20, 25, 100),
+
+            "house-wood_tower": (16, 24, 40),
+            "crop-wood_tower": (8, 16, 30),
+            "windmill-wood_tower": (12, 20, 35),
+            "wood_tower-house": (30, 40, 50),
+            "wood_tower-crop": (12, 18, 25),
+            "wood_tower-windmill": (12, 18, 25),
+            "wood_tower-ghost": (25, 35, 60),
+            "wood_tower-wood_tower": (16, 25, 50),
+
+            "house-stone_tower": (12, 20, 40),
+            "crop-stone_tower": (12, 30, 50),
+            "windmill-stone_tower": (20, 30, 50),
+            "wood_tower-stone_tower": (24, 35, 50),
+            "stone_tower-ghost": (0, 10, 60),
+            "stone_tower-house": (12, 18, 25),
+            "stone_tower-crop": (12, 30, 50),
+            "stone_tower-windmill": (12, 30, 50),
+            "stone_tower-wood_tower": (24, 35, 50),
+            "stone_tower-stone_tower": (24, 35, 50),
         },
 
         "Accessibility": {
             "house": (6, 11, 18),
             "crop": (6, 20, 30),
-            "windmill": (6, 12, 18)
+            "windmill": (6, 12, 18),
+            "wood_tower": (6, 12, 24),
+            "stone_tower": (6, 12, 24),
         },
 
         "Altitude": {
             "house": (60, 68, 90),
             "crop": (65, 70, 80),
-            "windmill": (65, 75, 95)
+            "windmill": (65, 75, 95),
+            "wood_tower": (62, 75, 90),
+            "stone_tower": (68, 80, 95)
         },
 
         "Steepness": {
             "house": (0, 6),
-            "crop": (0, 3),
-            "windmill": (1, 5)
+            "crop": (0, 2),
+            "windmill": (0, 4),
+            "wood_tower": (0, 2.5),
+            "stone_tower": (0, 4)
         },
 
         "RiverDistance": {
             "house": (10, 120),
             "crop": (5, 80),
-            "windmill": (10, 150)
+            "windmill": (10, 150),
+            "wood_tower": (12, 150),
+            "stone_tower": (12, 150)
         },
 
         "OceanDistance": {
             "house": (10, 150),
             "crop": (30, 200),
-            "windmill": (25, 200)
+            "windmill": (25, 200),
+            "wood_tower": (20, 150),
+            "stone_tower": (12, 150)
         },
 
         "LavaObstacle": {
             "house": (10, 20),
             "crop": (8, 15),
-            "windmill": (10, 25)
+            "windmill": (10, 25),
+            "wood_tower": (10, 20),
+            "stone_tower": (6, 10)
         },
 
         # (accessibility, sociability, altitude, pure_water, sea_water, lava, steepness)
         "Weighting_factors": {
             "house": (1, 3, 2, 1, 1, 1, 1),
             "crop": (1, 3, 2, 2, 0, 1, 3),
-            "windmill": (2, 4, 2, 0, 0, 1, 2)
+            "windmill": (2, 4, 2, 0, 0, 1, 2),
+            "wood_tower": (1, 5, 3, 1.5, 1, 1, 2),
+            "stone_tower": (1, 5, 3, 1, 1.5, 1, 2)
         },
 
         "markov": {
-            "house": {"house": 10, "crop": 7},
-            "crop": {"crop": 10, "windmill": 4, "house": 6},
+            "house": {"house": 8, "stone_tower": 2, "crop": 6},
+            "stone_tower": {"house": 1},
+            "crop": {"crop": 8, "wood_tower": 2, "windmill": 4, "house": 6},
+            "wood_tower": {"crop": 1},
             "windmill": {"crop": 1}
         }
     }

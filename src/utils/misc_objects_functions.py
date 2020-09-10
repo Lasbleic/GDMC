@@ -260,30 +260,36 @@ def clear_tree_at(level, box, point):
 
     def is_tree(bid):
         block = level.materials[bid]
-        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block']
+        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block', 'vine']
 
     y = level.heightMapAt(point.x, point.z) - 1
     if not is_tree(level.blockAt(point.x, y, point.z)):
         return
 
-    possible_tree_blocks = [(point.x, y, point.z)]
-    while possible_tree_blocks:
-        x0, y0, z0 = possible_tree_blocks.pop()
+    tree_blocks = [(point.x, y, point.z)]
+    while tree_blocks:
+        x0, y0, z0 = tree_blocks.pop()
         setBlock(level, (0, 0), x0, y0, z0)
 
-        if level.materials[level.blockAt(x0, y0, z0)].stringID != 'red_mushroom_block':
+        # special case: red mushrooms
+        if level.materials[level.blockAt(x0, y0, z0)].stringID == 'red_mushroom_block':
             # explore top/bottom diagonal blocks
             for direction, dy in product(cardinal_directions(), [-1, 1]):
                 x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
                 if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box and euclidean(point, Point2D(x, z)) < 5:
-                    possible_tree_blocks.append((x, y, z))
+                    tree_blocks.append((x, y, z))
+
+        # special case: snowy trees
+        elif (level.materials[level.blockAt(x0, y0, z0)].stringID in ['leaves', 'leaves2']
+              and level.materials[level.blockAt(x0, y0+1, z0)].stringID == 'snow_layer'):
+            tree_blocks.append((x0, y0+1, z0))
 
         for direction in all_directions():
             x = x0 + direction.x
             y = y0 + direction.y
             z = z0 + direction.z
             if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
-                possible_tree_blocks.append((x, y, z))
+                tree_blocks.append((x, y, z))
 
 
 def place_torch(level, x, y, z):

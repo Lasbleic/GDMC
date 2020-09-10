@@ -10,6 +10,7 @@ from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
 
 import logging
 
+from generation.generators import WoodTower, StoneTower, Plaza
 from parameters import AVERAGE_PARCEL_SIZE
 
 
@@ -59,6 +60,19 @@ class BuildingType:
     @property
     def ghost(self):
         self.name = 'ghost'
+        self.generator = Plaza
+        return self
+
+    @property
+    def wood_tower(self):
+        self.name = 'wood_tower'
+        self.generator = WoodTower
+        return self
+
+    @property
+    def stone_tower(self):
+        self.name = 'stone_tower'
+        self.generator = StoneTower
         return self
 
     @staticmethod
@@ -71,6 +85,10 @@ class BuildingType:
             return BuildingType().ghost
         if name == 'windmill':
             return BuildingType().windmill
+        if name == 'wood_tower':
+            return BuildingType().wood_tower
+        if name == 'stone_tower':
+            return BuildingType().stone_tower
 
     def copy(self, other):
         assert isinstance(other, BuildingType)
