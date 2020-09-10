@@ -83,6 +83,7 @@ class FlatSettlement:
                 self._road_network.connect_to_network(out_connections[-1])
 
     def init_town_center(self):
+        stp_thresh = 1
         while True:
             mean_x = self.limits.width / 2
             dx = normal(mean_x, self.limits.width / 6)
@@ -94,16 +95,20 @@ class FlatSettlement:
 
             random_center = Point2D(dx, dz)
             distance = self._road_network.get_distance(random_center)
-            if distance <= SETTLEMENT_ACCESS_DIST:
-                self._center = random_center
-                logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
-                break
+            if 5 <= distance <= SETTLEMENT_ACCESS_DIST:
+                if self._maps.height_map.steepness(random_center.x, random_center.z, margin=6) < stp_thresh:
+                    self._center = random_center
+                    logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
+                    break
+                else:
+                    stp_thresh *= 1.1
+        self._parcels.append(Parcel(self._center, BuildingType().ghost, self._maps))
 
     def build_skeleton(self, time_limit):
         self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
         self._village_skeleton.grow(time_limit)
-        for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
-            self._parcels.remove(parcel)
+        # for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
+        #     self._parcels.remove(parcel)
 
     def define_parcels(self):
         """

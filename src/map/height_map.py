@@ -73,7 +73,9 @@ class HeightMap:
     def altitude(self, xr, zr):
         return self.__altitude[xr, zr]
 
-    def fluid_height(self, xr, zr):
+    def fluid_height(self, xr, zr=None):
+        if zr is None:
+            return self.fluid_height(xr.x, xr.z)
         return self.__fluid_height[xr, zr]
 
     def air_height(self, xr, zr):
@@ -85,13 +87,13 @@ class HeightMap:
         matrix = self.__fluid_height if include_fluids else self.__altitude
         return matrix[x0: (x0 + box.width), z0:(z0 + box.length)]
 
-    def steepness(self, x, z):
+    def steepness(self, x, z, margin=3):
         value = 0
-        for m in range(1, 4):
+        for m in range(1, margin + 1):
             local_height = self.__fluid_height[max(0, x - m): min(x + m, self.width),
                                                max(0, z - m): min(z + m, self.length)]
             value += local_height.std()
-        return value / 3
+        return value / margin
 
     @property
     def width(self):

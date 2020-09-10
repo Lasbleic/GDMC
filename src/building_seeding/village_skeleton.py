@@ -30,7 +30,7 @@ class VillageSkeleton:
         # self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
         self.map_stock = None
 
-        parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
+        # parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
         self.__interest = InterestSeeder(maps, parcel_list, scenario)
 
     def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None, obstacle_map=None):

@@ -300,12 +300,17 @@ class RoadNetwork:
                 return maxint
             elif fluids.is_water(dest_point):
                 return BRIDGE_UNIT_COST
+            else:
+                orig_height = self.__all_maps.height_map.fluid_height(orig_point)
+                dest_height = self.__all_maps.height_map.fluid_height(dest_point)
+                if abs(orig_height - dest_height) > 1:
+                    return maxint
             return euclidean(orig_point, dest_point)
 
         def update_distance(updated_point, neighbor, _neighbors):
             edge_cost = self.road_build_cost(updated_point, neighbor)
             edge_dist = distance(updated_point, neighbor)
-            if edge_cost == maxint:
+            if edge_cost == maxint or edge_dist == maxint:
                 return
 
             new_cost = cost_map[updated_point.x][updated_point.z] + edge_cost
