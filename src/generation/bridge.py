@@ -1,6 +1,10 @@
 from __future__ import division
-from generation.generators import Generator
-from utils import TransformBox, Point2D, euclidean
+
+from typing import List
+
+from generation.generators import Generator, Block
+from pymclevel.block_fill import fillBlocks
+from utils import TransformBox, Point2D, euclidean, sym_range, product
 from utilityFunctions import setBlock, raytrace
 
 
@@ -116,3 +120,29 @@ class Bridge(Generator):
         #     b = (o1.x * o2.z - o2.x * o1.z) / (o2.z - o1.z)
         #     self.__points = [Point2D(my_round(a*z + b), z) for z in range(o1.z, o2.z)]
         # self.__points.append(o2)  # o2 is excluded from the ranges
+
+
+class CarvedRoad(Generator):
+    def __init__(self, points, heights, origin):
+        # type: (List[Point2D], List[int], Point2D) -> None
+        x_min, x_max = min([_.x for _ in points]), max([_.x for _ in points])
+        y_min, y_max = min(heights), max(heights)
+        z_min, z_max = min([_.z for _ in points]), max([_.z for _ in points])
+        init_box = TransformBox((x_min, y_min, z_min), (x_max+1-x_min, y_max+1-y_min, z_max+1-z_min))
+        Generator.__init__(self, init_box, points[0])
+        self.__points = [_ for _ in points]  # type: List[Point2D]
+        self.__heights = [_ for _ in heights]  # type: List[int]
+        self.__origin = Point2D(origin.x, origin.z)
+
+    def generate(self, level, height_map=None, palette=None):
+        for i in range(len(self.__points)):
+            relative_road, ground_height = self.__points[i], self.__heights[i]  # type: Point2D, int
+            absolute_road = relative_road + self.__origin  # rp with absolute coordinates
+            road_height = height_map[relative_road.x, relative_road.z]
+            height = road_height + 2 - ground_height
+            if height > 2:
+                road_box = TransformBox((absolute_road.x - 1, ground_height-1, absolute_road.z - 1), (3, height, 3))
+                fillBlocks(level, road_box, Block['Stone Bricks'], [Block['Air']])
+            elif height < 2:
+                road_box = TransformBox((absolute_road.x - 1, road_height+1, absolute_road.z - 1), (3, 3, 3))
+                fillBlocks(level, road_box, Block['Air'])

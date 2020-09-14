@@ -1,5 +1,7 @@
 from time import time
 
+from typing import List
+
 from pymclevel import alphaMaterials as Materials
 from numpy import array
 
@@ -70,7 +72,9 @@ class HeightMap:
 
         print('[{}] Computed height map in {}s'.format(self.__class__, time() - t0))
 
-    def altitude(self, xr, zr):
+    def altitude(self, xr, zr=None):
+        if zr is None:
+            return self.altitude(xr.x, xr.z)
         return self.__altitude[xr, zr]
 
     def fluid_height(self, xr, zr=None):
@@ -85,7 +89,7 @@ class HeightMap:
         x0 = box.minx if use_relative_coords else box.minx - self.__origin.x
         z0 = box.minz if use_relative_coords else box.minz - self.__origin.z
         matrix = self.__fluid_height if include_fluids else self.__altitude
-        return matrix[x0: (x0 + box.width), z0:(z0 + box.length)]
+        return matrix[x0: (x0 + box.width), z0:(z0 + box.length)].astype(int)
 
     def steepness(self, x, z, margin=3):
         value = 0
@@ -102,3 +106,10 @@ class HeightMap:
     @property
     def length(self):
         return self.__air_height.shape[1]
+
+    def update(self, points, heights):
+        # type: (List[Point2D], List[int]) -> None
+        for p, h in zip(points, heights):
+            if self.altitude(p) == self.fluid_height(p):
+                self.__fluid_height[p.x, p.z] = h
+            self.__altitude[p.x, p.z] = h

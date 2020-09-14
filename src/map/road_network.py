@@ -8,7 +8,7 @@ from typing import Set, Callable
 from numpy import full, empty, mean, uint8, zeros, std, argmin
 
 import map
-from generation.bridge import Bridge
+from generation.bridge import Bridge, CarvedRoad
 from generation.generators import *
 from parameters import *
 from pymclevel import alphaMaterials as Materials
@@ -35,8 +35,9 @@ class RoadNetwork:
         self.lambda_max = MAX_LAMBDA
         self.network_node_list = []
         self.road_blocks = set()  # type: Set[Point2D]
+        self.special_road_blocks = set()  # type: Set[Point2D]
         self.network_extremities = []
-        self.__generator = RoadGenerator(self, mc_map.box, mc_map.fluid_map)
+        self.__generator = RoadGenerator(self, mc_map.box, mc_map)
         self.__all_maps = mc_map
         self.cycle_creation_condition = self.__natural_path_cycle_creation  # self.__distance_based_cycle_creation
 
@@ -94,7 +95,12 @@ class RoadNetwork:
     def __set_road_block(self, xp, z=None):
         # type: (Point2D or int, None or int) -> None
         if z is None:
-            self.road_blocks.add(xp)
+            # steep roads are not marked as road points
+            maps = self.__all_maps
+            if maps.height_map.steepness(xp.x, xp.z, margin=1) >= 0.35 or maps.fluid_map.is_water(xp):
+                self.special_road_blocks.add(xp)
+            else:
+                self.road_blocks.add(xp)
             x, z = xp.x, xp.z
             if self.network[x, z] == 0:
                 self.network[x, z] = MIN_ROAD_WIDTH
@@ -161,7 +167,8 @@ class RoadNetwork:
         """
         todo: algorithme simulationniste ? dépendance au centre ?
         """
-        return self.network[x, z]
+        # return self.network[x, z]
+        return 3
 
     # region PUBLIC INTERFACE
 
@@ -326,13 +333,15 @@ class RoadNetwork:
 
         def update_distances(updated_point):
             x, z = updated_point.x, updated_point.z
-            if x + 1 < self.width:
+            path = path_to_dest(updated_point)
+            is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
+            if (x + 1 < self.width) and (is_straight_road or path[-2].z == z):
                 update_distance(updated_point, Point2D(x + 1, z), neighbors)
-            if x - 1 >= 0:
+            if (x - 1 >= 0) and (is_straight_road or path[-2].z == z):
                 update_distance(updated_point, Point2D(x - 1, z), neighbors)
-            if z + 1 < self.length:
+            if (z + 1 < self.length) and (is_straight_road or path[-2].x == x):
                 update_distance(updated_point, Point2D(x, z + 1), neighbors)
-            if z - 1 >= 0:
+            if (z - 1 >= 0) and (is_straight_road or path[-2].x == x):
                 update_distance(updated_point, Point2D(x, z - 1), neighbors)
 
         def path_to_dest(dest_point):
@@ -410,13 +419,15 @@ class RoadNetwork:
 
         def update_distances(updated_point):
             x, z = updated_point.x, updated_point.z
-            if x + 1 < self.width:
+            path = path_to_dest(updated_point)
+            is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
+            if (x + 1 < self.width) and (is_straight_road or path[-2].z == z):
                 update_distance(updated_point, Point2D(x + 1, z), neighbors)
-            if x - 1 >= 0:
+            if (x - 1 >= 0) and (is_straight_road or path[-2].z == z):
                 update_distance(updated_point, Point2D(x - 1, z), neighbors)
-            if z + 1 < self.length:
+            if (z + 1 < self.length) and (is_straight_road or path[-2].x == x):
                 update_distance(updated_point, Point2D(x, z + 1), neighbors)
-            if z - 1 >= 0:
+            if (z - 1 >= 0) and (is_straight_road or path[-2].x == x):
                 update_distance(updated_point, Point2D(x, z - 1), neighbors)
 
         def path_to_dest(dest_point):
@@ -462,38 +473,40 @@ class RoadGenerator(Generator):
     # stony_probs = [0.75, 0.20, 0.05]
     stony_palette = {"Cobblestone": 0.7, "Gravel": 0.2, "Stone": 0.1}
 
-    def __init__(self, network, box, fluid_map):
-        # type: (RoadNetwork, TransformBox, map.FluidMap) -> None
+    def __init__(self, network, box, maps):
+        # type: (RoadNetwork, TransformBox, map.Maps) -> None
         Generator.__init__(self, box)
         self.__network = network  # type: RoadNetwork
-        self.__fluids = fluid_map
+        self.__fluids = maps.fluid_map
+        self.__maps = maps
         self.__origin = Point2D(box.minx, box.minz)
 
     def generate(self, level, height_map=None, palette=None):
         # type: (MCInfdevOldLevel, array, dict) -> None
 
-        road_height_map = zeros(height_map.shape, dtype=uint8)
-        # dimensions
-        __network = full((self.width, self.length), Materials.Air)
-        # block states
-        # stony_palette = [4, 13, 1]
-
-        x0, y0, z0 = self._box.origin
-
         print("[RoadGenerator] generating road blocks...", end='')
+        Generator.generate(self, level, height_map)  # generate bridges
+
+        road_height_map = zeros(height_map.shape, dtype=uint8)
+        __network = full((self.width, self.length), Materials.Air)
+        x0, y0, z0 = self._box.origin
         sleep(.001)
-        for road_block in self.__network.road_blocks:
+
+        for road_block in self.__network.road_blocks.union(self.__network.special_road_blocks):
             road_width = (self.__network.calculate_road_width(road_block.x, road_block.z) - 1) / 2.0
+            # road_width = 0
             # todo: flatten roads & use stairs/slabs + richer block palette
             for x in sym_range(road_block.x, road_width, self.width):
                 for z in sym_range(road_block.z, road_width, self.length):
-                    if road_height_map[x, z]:
+                    if road_height_map[x, z] or road_height_map[x, z] > 0:
+                        # if x, z is a road point or has already been computed, no need to do it now
                         continue
                     clear_tree_at(level, self._box, Point2D(x + x0, z + z0))
                     if not self.__fluids.is_water(x, z):
                         distance = abs(road_block.x - x) + abs(road_block.z - z)  # Norme 1
                         prob = distance / (8 * road_width)  # A calibrer
-                        if not bernouilli(prob):
+                        # if not bernouilli(prob):
+                        if True:
                             y, b = self.__compute_road_at(x, z, height_map, road_block)
                             __network[x, z] = b
                             road_height_map[x, z] = y
@@ -505,72 +518,135 @@ class RoadGenerator(Generator):
                     setBlock(level, (b.ID, b.blockData), x0 + x, y, z0 + z)
                     if bernouilli(0.05):
                         place_torch(level, x + x0, y + 1, z + z0)
-                    elif bernouilli(0.8) or "slab" in b.stringID:
-                        fillBlocks(level, TransformBox((x0+x, y+1, z0+z), (1, 3, 1)), Materials.Air)
-                        setBlock(level, (0, 0), x0 + x, y + 1, z0 + z)
+                    else:
+                        fillBlocks(level, TransformBox((x0+x, y+1, z0+z), (1, 2, 1)), Materials.Air)
                     h = height_map[x, z]
-                    if y > h+1 and bernouilli(1/3):
+                    if y > h:
                         pole_box = TransformBox((x, h+1, z), (1, y-1-h, 1))
-                        fillBlocks(level, pole_box, Materials["Oak Fence"])
+                        fillBlocks(level, pole_box, Materials["Stone Bricks"])
         print("OK")
-
-        Generator.generate(self, level, height_map)  # generate bridges
 
     def __compute_road_at(self, x, z, height_map, r):
         # type: (int, int, array, Point2D) -> (int, Block)
         material = choice(self.stony_palette.keys(), p=self.stony_palette.values())
 
         def inc(l):
-            return all(l[i+1] > l[i] for i in range(len(l)-1))
+            # return all(l[i+1] > l[i] for i in range(len(l)-1))
+            return l[0] <= l[1] < l[2] or l[0] < l[1] <= l[2]
 
         def dec(l):
-            return all(l[i+1] < l[i] for i in range(len(l)-1))
+            # return all(l[i+1] < l[i] for i in range(len(l)-1))
+            return l[0] > l[1] >= l[2] or l[0] >= l[1] > l[2]
+        # if abs(r.x-x) <= 1 and abs(r.z-z) <= 1:
+        #     r = Point2D(x, z)
+        # surrnd_road_xh = [height_map[_, r.z] for _ in sym_range(r.x, 1, self.width) if self.__network.is_road(_, r.z)]
+        # surrnd_road_zh = [height_map[r.x, _] for _ in sym_range(r.z, 1, self.length) if self.__network.is_road(r.x, _)]
 
-        surrnd_road_xh = [height_map[_, r.z] for _ in sym_range(r.x, 1, self.width) if self.__network.is_road(_, r.z)]
-        surrnd_road_zh = [height_map[r.x, _] for _ in sym_range(r.z, 1, self.length) if self.__network.is_road(r.x, _)]
+        # surrnd_road_xh = [height_map[_, z] for _ in sym_range(x, 1, self.width) if self.__network.is_road(_, z)]
+        # surrnd_road_zh = [height_map[x, _] for _ in sym_range(z, 1, self.length) if self.__network.is_road(x, _)]
 
-        y = height_map[x, z]
+        # y = height_map[r.x, r.z]
         stair_material = choice(["Cobblestone", "Stone Brick"])
-        lx, lz, sx, sz = len(surrnd_road_xh), len(surrnd_road_zh), std(surrnd_road_xh), std(surrnd_road_zh)
-        if (lx >= 3) and ((lx > lz) or (lx == lz and sx > sz) or (lx == lz and sx == sz and bernouilli())):
-            if inc(surrnd_road_xh):
-                return y, Materials["{} Stairs (Bottom, East)".format(stair_material)]
-            elif dec(surrnd_road_xh):
-                return y, Materials["{} Stairs (Bottom, West)".format(stair_material)]
-        elif lz >= 3:
-            if inc(surrnd_road_zh):
-                return y, Materials["{} Stairs (Bottom, South)".format(stair_material)]
-            elif dec(surrnd_road_zh):
-                return y, Materials["{} Stairs (Bottom, North)".format(stair_material)]
-
+        # lx, lz, sx, sz = len(surrnd_road_xh), len(surrnd_road_zh), std(surrnd_road_xh), std(surrnd_road_zh)
+        # if (lx >= 3) and ((lx > lz) or sx > sz or (sx == sz and bernouilli())):
+        #     y = max(surrnd_road_xh) - 1
+        #     if inc(surrnd_road_xh):
+        #         return y, Materials["{} Stairs (Bottom, East)".format(stair_material)]
+        #     elif dec(surrnd_road_xh):
+        #         return y, Materials["{} Stairs (Bottom, West)".format(stair_material)]
+        # elif lz >= 3:
+        #     y = max(surrnd_road_zh) - 1
+        #     if inc(surrnd_road_zh):
+        #         return y, Materials["{} Stairs (Bottom, South)".format(stair_material)]
+        #     elif dec(surrnd_road_zh):
+        #         return y, Materials["{} Stairs (Bottom, North)".format(stair_material)]
+        #
+        # surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
+        # surround_alt = [height_map[x1, z1] for (x1, z1) in surround_iter if self.__network.is_road(x1, z1) and ((x1 == x) ^ (z1 == z))]
+        # y = mean(surround_alt) if surround_alt else height_map[x, z]
+        # try:
+        #     if 0.25 < (y % 1) < 0.75:  # slab interval
+        #         b = Materials["{} Slab (Bottom)".format(material)]
+        #         y = int(ceil(y))
+        #     else:
+        #         b = Materials[material]
+        #         y = int(round(y))
+        # except KeyError:
+        #     b = Materials["Stone Brick Slab (Bottom)"]
+        #     y = int(ceil(y))
+        # return y, b
         surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
-        surround_alt = [height_map[x, z] for (x, z) in surround_iter if self.__network.is_road(x, z)]
-        y = mean(surround_alt) if surround_alt else 0
-        try:
-            b = Materials["{} Slab (Bottom)".format(material)] if (0.4 < (y % 1) < 0.8) else Materials[material]
-        except KeyError:
-            b = Materials["Stone Brick Slab (Bottom)"]
-        y = int(y) if (y % 1) < 0.4 else int(y) + 1
-        return y, b
+        surround_alt = [height_map[x1, z1] for (x1, z1) in surround_iter if self.__network.is_road(x1, z1) and ((x1 == x) or (z1 == z) or not self.__network.is_road(x, z))]
+        if not surround_alt:
+            return height_map[x, z], Materials[material]
+        y = mean(surround_alt)
+        h = y - min(surround_alt)
+        if h < .5:
+            return int(y), Materials[material]
+        elif h < .84:
+            try:
+                return int(ceil(y)), Materials["{} Slab (Bottom)".format(material)]
+            except KeyError:
+                return int(ceil(y)), Materials["Stone Brick Slab (Bottom)"]
+        else:
+            x, z = r.x, r.z
+            xm, xM = x-1 if x > 0 else x, x+1 if x+1 < self.width else x
+            zm, zM = z-1 if z > 0 else z, z+1 if z+1 < self.length else z
+            p = [(_x, _z) if self.__network.is_road(_x, _z) else (x, z) for _x, _z in [(xM, z), (xm, z), (x, zM), (x, zm)]]
+            # if p[0] == p[1] and p[2] == p[3]:
+            #     p = [(xM, z), (xm, z), (x, zM), (x, zm)]
+            try:
+                direction = Direction(dx=height_map[p[0]] - height_map[p[1]], dz=height_map[p[2]] - height_map[p[3]])
+                return int(round(y-0.33)), Materials["{} Stairs (Bottom, {})".format(stair_material, direction)]
+            except AssertionError:
+                return int(y), Materials[material]
 
     def handle_new_road(self, path):
         """
         Builds necessary bridges and stairs for every new path
         Assumes that it is called before the path is marked as a road in the RoadNetwork
         """
+        if len(path) < 2:
+            return
         prev_point = None
         cur_bridge = None
-        for point in path:
-            if self.__network.is_road(point):
-                cur_bridge = None
-            elif self.__fluids.is_water(point):
-                if cur_bridge is None:
-                    cur_bridge = Bridge(prev_point if prev_point is not None else point, self.__origin)
-                cur_bridge += point
-            elif cur_bridge is not None:
-                cur_bridge += point
-                self.children.append(cur_bridge)
-                cur_bridge = None
-            prev_point = point
+        if any(self.__network.is_road(_) for _ in path):
+            for point in path:
+                if self.__network.is_road(point):
+                    cur_bridge = None
+                elif self.__fluids.is_water(point):
+                    if cur_bridge is None:
+                        cur_bridge = Bridge(prev_point if prev_point is not None else point, self.origin)
+                    cur_bridge += point
+                elif cur_bridge is not None:
+                    cur_bridge += point
+                    self.children.append(cur_bridge)
+                    cur_bridge = None
+                prev_point = point
 
-        # todo: public stairs structures (/ ladders ?) in steep streets
+        # carves the new path if possible and necessary to avoid steep slopes
+        path_height = [self.__maps.height_map.fluid_height(_) for _ in path]
+        orig_path_height = [_ for _ in path_height]
+        if len(path_height) > max(path_height) - min(path_height):
+            # while there is a 2 block elevation in the path, smooth path heights
+            changed = False
+            prev_value = max([abs(h2 - h1) for h2, h1 in zip(path_height[1:], path_height[:-1])])  # max elevation, supposed to decrease
+
+            while any(abs(h2 - h1) > 1 for h2, h1 in zip(path_height[1:], path_height[:-1])):
+                changed = True
+                for i in range(2, len(path_height)-2):
+                    if not self.__fluids.is_water(path[i]):
+                        path_height[i] = sum(path_height[i-2: i+3]) / 5
+                path_height[1] = sum(path_height[:3]) / 3
+                path_height[-2] = sum(path_height[-3:]) / 3
+                new_value = max([abs(h2 - h1) for h2, h1 in zip(path_height[1:], path_height[:-1])])
+
+                if new_value >= prev_value:
+                    break
+                else:
+                    prev_value = new_value
+            if changed:
+                path_height = [int(round(_)) for _ in path_height]
+                self.__maps.height_map.update(path, path_height)
+                self.children.append(CarvedRoad(path, orig_path_height, self.origin))
+            # todo: public stairs structures (/ ladders ?) in steep streets
