@@ -32,6 +32,7 @@ def grid_thickness(map_size):
             return ACCEPTED_MAP_SIZES[map_size_ref]
     return ACCEPTED_MAP_SIZES[300]
 
+
 # Word accepted in user input
 VALID_CHOICES = {"yes": 1, "ye": 1, "y": 1, "no": 0, "n": 0, "": 0}
 
@@ -154,8 +155,6 @@ class MapStock:
             cbar.set_ticks([vmin * (1 - i/(2*n)) + vmax * i/(2*n) for i in range(1, n*2, 2)])
             cbar.set_ticklabels(map.categories)
 
-
-
         # Save the figure
         file_path = join(self.directory, map.name + ".png")
         if exists(file_path):
@@ -164,8 +163,8 @@ class MapStock:
         plt.savefig(file_path, dpi=dpi*9)    # increase dpi factor to improve quality
         plt.close()
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
 
     from map.road_network import *
     from utils import Point2D

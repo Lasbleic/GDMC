@@ -5,7 +5,7 @@ from typing import Iterable
 
 from numpy import array, argmax
 
-from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Block
+from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials
 from utilityFunctions import setBlock
 from itertools import product
 
@@ -294,7 +294,7 @@ def clear_tree_at(level, box, point):
 
 def place_torch(level, x, y, z):
     if not level.blockAt(x, y, z):
-        torch = Block["Torch (Up)"]
+        torch = Materials["Torch (Up)"]
         setBlock(level, (torch.ID, torch.blockData), x, y, z)
 
 

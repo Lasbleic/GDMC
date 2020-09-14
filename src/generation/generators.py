@@ -27,7 +27,7 @@ def paste_nbt(level, box, nbt_file_name):
         block = _structure.Blocks[xs, ys, zs]  # (id, data) tuple
         if ys == 14:
             print(xs, ys, zs, block)
-        if block != Block['Structure Void'].ID:
+        if block != Materials['Structure Void'].ID:
             xd, yd, zd = x0 + xs, y0 + ys, z0 + zs  # coordinates in the level: translation of the structure
             setBlock(level, block, xd, yd, zd)
 
@@ -119,12 +119,12 @@ class CropGenerator(Generator):
         # todo: abreuvoir + herbe + abri + terrain adaptability
         # x, z = self._box.minx, self._box.minz
         # y = height_map[x - self._box.minx, z - self._box.minz] + 1
-        # fillBlocks(level, fence_box, Block['Oak Fence'])
+        # fillBlocks(level, fence_box, Materials['Oak Fence'])
         # fence_box.expand(-1, 0, -1, True)
-        # fillBlocks(level, fence_box, Block['Air'])
+        # fillBlocks(level, fence_box, Materials['Air'])
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
-        fence_block = Block['{} Fence'.format(palette['door'])]
-        gate_block = Block['{} Fence Gate (Closed, {})'.format(palette['door'], self.entry_direction)]
+        fence_block = Materials['{} Fence'.format(palette['door'])]
+        gate_block = Materials['{} Fence Gate (Closed, {})'.format(palette['door'], self.entry_direction)]
         gate_pos, gate_dist = None, 0
 
         max_height = percentile(height_map.flatten(), 85)
@@ -170,7 +170,7 @@ class CropGenerator(Generator):
                 if height is not None:
                     y0 = height[xd-x0, zd-z0]
                     if y0 < min_height:
-                        fillBlocks(level, BoundingBox((xd-x0, y0, zd-z0), (1, min_height-y0, 1)), Block["Coarse"])
+                        fillBlocks(level, BoundingBox((xd-x0, y0, zd-z0), (1, min_height-y0, 1)), Materials["Coarse"])
                         y0 = min_height
                     elif y0 > max_height:
                         continue
@@ -188,15 +188,15 @@ class CropGenerator(Generator):
         for x, y, z in self.surface_pos(height_map):
             if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.15):
                 setBlock(level, (3, 0), x, y, z)  # dirt under hay bales
-                b = Block["Hay Bale (East/West)"]
+                b = Materials["Hay Bale (East/West)"]
                 y += 1
             else:
-                b = Block["Farmland (Dry, Moisture 6)"]
+                b = Materials["Farmland (Dry, Moisture 6)"]
             setBlock(level, (b.ID, b.blockData), x, y, z)
         h = height_map
         irrigation_height = min(h[h.shape[0]//2, h.shape[1]//2], h.max()) + 1 - self._box.miny
         irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
-        fillBlocks(level, irrigation_box, Block["Water (Still, Level 7 (Source))"])
+        fillBlocks(level, irrigation_box, Materials["Water (Still, Level 7 (Source))"])
 
 
 class HouseGenerator(Generator):
@@ -258,7 +258,7 @@ class DoorGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
             setBlock(level, (self._resource(x, y, z, palette)), x, y, z)
-        fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Block['Air'])
+        fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Materials['Air'])
 
     def _resource(self, x, y, z, palette):
         if y == self._box.miny:
@@ -276,7 +276,7 @@ class DoorGenerator(Generator):
             block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
         else:
             block_name = palette['wall']
-        block = Block[block_name]
+        block = Materials[block_name]
         return block.ID, block.blockData
 
 
@@ -287,7 +287,7 @@ class WindmillGenerator(Generator):
         x, z = box.minx + box.width // 2, box.minz + box.length // 2
         y = height_map[box.width//2, box.length//2] if height_map is not None else 15
         box = TransformBox((x-5, y-32, z-4), (11, 11, 8))
-        fillBlocks(level, box.expand(1), Block['Bedrock'])  # protective shell around windmill frames
+        fillBlocks(level, box.expand(1), Materials['Bedrock'])  # protective shell around windmill frames
         mech_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill_mech.nbt']))
         mech_sch = mech_nbt.toSchematic()
         copyBlocksFrom(level, mech_sch, mech_sch.bounds, box.origin, blocksToCopy=all_but_void)
@@ -304,19 +304,19 @@ class WindmillGenerator(Generator):
     def __activate_one_repeater(level, box):
         # type: (MCLevel, TransformBox) -> None
         repeatr_pos = []
-        repeatr_id = Block['unpowered_repeater'].ID
+        repeatr_id = Materials['unpowered_repeater'].ID
         for x, y, z in box.positions:
             block_id = level.blockAt(x, y, z)
             if block_id == repeatr_id:
                 repeatr_pos.append((x, y, z))
 
         x, y, z = box.minx + 1, box.miny, box.maxz-1
-        repeater = Block[repeatr_id, level.blockDataAt(x, y, z)]
+        repeater = Materials[repeatr_id, level.blockDataAt(x, y, z)]
         dir_str = str(repeater.Blockstate[1]['facing'])
         dir_com = Direction.from_string(dir_str)
 
         # activate a repeater and preparing its tile tick
-        block = Block['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]
+        block = Materials['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]
         WindmillGenerator.__repeater_tile_tick(level, x, y, z, True)
         setBlock(level, (block.ID, block.blockData), x, y, z)
 
