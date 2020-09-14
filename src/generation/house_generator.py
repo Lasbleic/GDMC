@@ -190,8 +190,12 @@ class _RoomSymbol(CardinalGenerator):
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2  # center of the room
         local_door_dir = Direction(dx=door_x-mean_x, dz=door_z-mean_z)  # direction of the door relative to this room
         if self[local_door_dir] is not None and isinstance(self[local_door_dir], _RoomSymbol):
-            # passes the door to an annex room
-            self[local_door_dir].generate_door(local_door_dir, door_x, door_z, level, palette)
+            try:
+                # passes the door to an annex room
+                self[local_door_dir].generate_door(local_door_dir, door_x, door_z, level, palette)
+            except RuntimeError:
+                self[local_door_dir] = None
+                self.generate_door(parcel_door_dir, door_x, door_z, level, palette)
         else:
             # passes the door to the most suited wall of the room (no annex, close to entrance & large enough)
             door_dir = local_door_dir if self.get_wall_box(local_door_dir).surface > 1 else parcel_door_dir

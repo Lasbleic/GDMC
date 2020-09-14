@@ -13,4 +13,4 @@ def perform(level, box, options):
     box = TransformBox(box)
     maps = Maps(level, box)
     gen = WindmillGenerator(box)
-    gen.generate(level, maps.height_map)
+    gen.generate(level, maps.height_map.box_height(box, False))

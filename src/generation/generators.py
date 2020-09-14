@@ -3,7 +3,7 @@ from os import sep
 from random import randint
 from typing import List
 
-from numpy import ones
+from numpy import ones, percentile
 from numpy.random import choice
 
 from generation.building_palette import HousePalette
@@ -127,9 +127,10 @@ class CropGenerator(Generator):
         gate_block = Block['{} Fence Gate (Closed, {})'.format(palette['door'], self.entry_direction)]
         gate_pos, gate_dist = None, 0
 
+        max_height = percentile(height_map.flatten(), 85)
         # place fences
         for x, y, z in self.surface_pos(height_map):
-            if self._box.is_lateral(x, z):
+            if self._box.is_lateral(x, z) and y <= max_height:
                 setBlock(level, (fence_block.ID, fence_block.blockData), x, y + 1, z)
                 new_gate_pos = Point2D(x, z)
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
@@ -154,6 +155,8 @@ class CropGenerator(Generator):
     def _gen_crop_v1(self, level, height=None):
         # dimensions
         x0, y0, z0 = self.origin
+        min_height = int(percentile(height.flatten(), 15))
+        max_height = int(percentile(height.flatten(), 85))
         # block states
         crop_ids = [141, 142, 59]
         prob = ones(len(crop_ids)) / len(crop_ids)  # uniform across the crops
@@ -166,6 +169,11 @@ class CropGenerator(Generator):
                                   xrange(max(z0, zs - 4), min(z0 + self.length, zs + 5))):
                 if height is not None:
                     y0 = height[xd-x0, zd-z0]
+                    if y0 < min_height:
+                        fillBlocks(level, BoundingBox((xd-x0, y0, zd-z0), (1, min_height-y0, 1)), Block["Coarse"])
+                        y0 = min_height
+                    elif y0 > max_height:
+                        continue
                 if (xd, zd) == (xs, zs):
                     # water source
                     setBlock(level, (9, 15), xd, y0, zd)
@@ -278,9 +286,13 @@ class WindmillGenerator(Generator):
         box = self._box
         x, z = box.minx + box.width // 2, box.minz + box.length // 2
         y = height_map[box.width//2, box.length//2] if height_map is not None else 15
-        box = TransformBox((x-5, y-14, z-4), (11, 11, 8))
+        box = TransformBox((x-5, y-32, z-4), (11, 11, 8))
         fillBlocks(level, box.expand(1), Block['Bedrock'])  # protective shell around windmill frames
+        mech_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill_mech.nbt']))
+        mech_sch = mech_nbt.toSchematic()
+        copyBlocksFrom(level, mech_sch, mech_sch.bounds, box.origin, blocksToCopy=all_but_void)
 
+        box.translate(dy=31, inplace=True)
         windmill_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
         windmill_sch = windmill_nbt.toSchematic()
         copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin, blocksToCopy=all_but_void)
@@ -345,9 +357,13 @@ class WoodTower(Generator):
 class StoneTower(Generator):
     def generate(self, level, height_map=None, palette=None):
         self._clear_trees(level)
-        origin_x = self._box.minx + randint(0, self.width - 8) if self.width > 8 else 0
-        origin_z = self._box.minz + randint(0, self.length - 8) if self.length > 8 else 0
-        origin_y = height_map[origin_x + 4 - self._box.minx, origin_z + 4 - self._box.minz] + 1
+        # relative coords
+        origin_x = randint(0, self.width - 8) if self.width > 8 else 0
+        origin_z = randint(0, self.length - 8) if self.length > 8 else 0
+        origin_y = height_map[origin_x + 4, origin_z + 4] + 1
+        # absolute coords
+        origin_x += self._box.minx
+        origin_z += self._box.minz
         nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'stone_watch_tower.nbt']))
         schem = nbt.toSchematic()
         # todo: rotate schematic to face door to entry point
