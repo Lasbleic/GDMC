@@ -66,7 +66,7 @@ class InterestSeeder:
                 cur_interest = max(0., self[cur_type].get_interest(seed, other_parcels))
                 new_interest = max(0., self[new_type].get_interest(seed, other_parcels))
 
-                if bernouilli(new_interest - cur_interest):
+                if bernouilli(0.3*(new_interest - cur_interest) + 0.7*new_interest):
                     # todo: replace with max search ?
                     self.__change_parcel_type(parcel, new_type)
                     return
@@ -287,6 +287,16 @@ class InterestMap:
     def scenario(self):
         return str(self.__scenario)
 
+    @property
+    def accessibility(self):
+        return array(self.__access)
+
+    @property
+    def sociability(self):
+        return array(self.__social)
+    @property
+    def map(self):
+        return array(self.__interest_value)
 
 # def local_interest(x, z, building_type, scenario, road_network, settlement_seeds):
 #     """DEPRECATED"""

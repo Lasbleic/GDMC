@@ -104,9 +104,9 @@ class FlatSettlement:
                     stp_thresh *= 1.1
         self._parcels.append(Parcel(self._center, BuildingType().ghost, self._maps))
 
-    def build_skeleton(self, time_limit):
+    def build_skeleton(self, time_limit, do_visu=False):
         self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
-        self._village_skeleton.grow(time_limit)
+        self._village_skeleton.grow(time_limit, do_visu)
         # for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
         #     self._parcels.remove(parcel)
 

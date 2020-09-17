@@ -34,7 +34,7 @@ class RoadNetwork:
         self.road_blocks = set()  # type: Set[Point2D]
         self.special_road_blocks = set()  # type: Set[Point2D]
         self.network_extremities = []
-        self.__generator = RoadGenerator(self, mc_map.box, mc_map)
+        self.__generator = RoadGenerator(self, mc_map.box, mc_map) if mc_map else None
         self.__all_maps = mc_map
         self.cycle_creation_condition = self.__natural_path_cycle_creation  # self.__distance_based_cycle_creation
 
@@ -94,7 +94,7 @@ class RoadNetwork:
         if z is None:
             # steep roads are not marked as road points
             maps = self.__all_maps
-            if maps.height_map.steepness(xp.x, xp.z, margin=1) >= 0.35 or maps.fluid_map.is_water(xp):
+            if maps and (maps.height_map.steepness(xp.x, xp.z, margin=1) >= 0.35 or maps.fluid_map.is_water(xp)):
                 self.special_road_blocks.add(xp)
             else:
                 self.road_blocks.add(xp)
@@ -150,7 +150,8 @@ class RoadNetwork:
             path = self.path_map[p.x, p.z]
             # path = self.a_star(path[0], path[-1])
         # else:
-        self.__generator.handle_new_road(path)
+        if self.__generator:
+            self.__generator.handle_new_road(path)
         for point in path:
             self.__set_road_block(point)
         self.__update_distance_map(path, force_update)
@@ -299,6 +300,9 @@ class RoadNetwork:
             # return neighbors[0]
 
         def distance(orig_point, dest_point):
+            if self.__all_maps is None:
+                return euclidean(orig_point, dest_point)
+
             fluids = self.__all_maps.fluid_map
             if fluids.is_lava(dest_point):
                 return maxint

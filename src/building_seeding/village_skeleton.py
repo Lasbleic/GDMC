@@ -3,22 +3,22 @@ Village skeleton growth
 """
 
 from time import time
+
 from typing import List
 
-import numpy as np
-
 import map.maps
-from building_pool import BuildingPool, BuildingType
+from building_pool import BuildingPool
+from building_seeding.interest.pre_processing import VisuHandler
 from interest import InterestSeeder
+from parameters import MIN_PARCEL_SIDE
 from parcel import Parcel
 from utils import Point2D
 
 
 class VillageSkeleton:
 
-    def __init__(self, scenario, maps, ghost_position, parcel_list, parcel_size=7):
-        # type: (str, map.maps.Maps, Point2D, List[Parcel], int) -> VillageSkeleton
-        assert(parcel_size % 2)  # assert parcel_size is odd
+    def __init__(self, scenario, maps, ghost_position, parcel_list):
+        # type: (str, map.maps.Maps, Point2D, List[Parcel]) -> VillageSkeleton
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
@@ -26,72 +26,24 @@ class VillageSkeleton:
         buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
         self.building_iterator = BuildingPool(buildable_surface)
         self.__parcel_list = parcel_list
-        self.parcel_size = parcel_size
-        # self.map_stock = MapStock("Village_skeleton_test", maps.width, clean_dir=True)
-        self.map_stock = None
+        self.parcel_size = MIN_PARCEL_SIDE
 
         # parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
         self.__interest = InterestSeeder(maps, parcel_list, scenario)
 
-    def map_log(self, interest_map=None, accessibility_map=None, sociability_map=None, building_type=None, obstacle_map=None):
-
-        iteration = len(self.__parcel_list)
-        suffix = "_{}".format(building_type.name) if building_type is not None else ""
-        N = self.size[0]
-
-        # if accessibility_map is not None:
-        #     self.map_stock.add_map(Map("{}1_accessibility_map{}".format(iteration, suffix), N, accessibility_map, "jet", (0, 1)))
-        # if sociability_map is not None:
-        #     self.map_stock.add_map(Map("{}2_sociability_map{}".format(iteration, suffix), N, sociability_map, "jet", (0, 1)))
-        # if interest_map is not None:
-        #     self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, interest_map, "jet", (0, 1)))
-        # if obstacle_map is not None:
-        #     self.map_stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), N, obstacle_map, colors.ListedColormap(['red', 'blue']), (0, 1), ['No', 'Yes']))
-
-        minecraft_map = np.copy(self.maps.road_network.network)
-
-        COLORS = {"house": 2,
-                  "crop": 3,
-                  "windmill": 4}
-
-        for parcel in self.__parcel_list:
-            xmin, xmax = parcel.minx, parcel.maxx
-            zmin, zmax = parcel.minz, parcel.maxz
-
-            minecraft_map[xmin:xmax, zmin:zmax] = COLORS[parcel.building_type.name]
-            # minecraft_map[parcel.center.x, parcel.center.z] = COLORS[parcel.building_type.name]
-
-            minecraft_map[parcel.entry_point.x, parcel.entry_point.z] = 6
-
-        village_center = self.ghost.center
-        minecraft_map[village_center.x, village_center.z] = 5
-
-        # minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple'])
-        """
-        self.map_stock.add_map(Map("{}{}_minecraft_map{}".format(iteration, 4 if iteration else 0, suffix),
-                                   N,
-                                   minecraft_map,
-                                   minecraft_cmap,
-                                   (0, 6),
-                                   ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter', 'EntryPoint']))
-        """
-
-    def grow(self, do_limit):
+    def grow(self, do_limit, do_visu):
         print("Seeding parcels")
-        # self.map_log()
+        map_plots = VisuHandler(do_visu, self.size, self.__parcel_list, self.maps.road_network)
 
         t0 = time()
         for building_type in self.building_iterator:
 
             print("\nTrying to place {} - #{} out of {}".format(building_type.name, self.building_iterator.count, self.building_iterator.size))
 
-            # try:
             # Village Element Seeding Process
             self.__interest.reuse_existing_parcel(building_type)  # If succeeds should update building_type in place
             building_position = self.__interest.get_seed(building_type)
 
-            # interest_map, accessibility_map, sociability_map = interest(building_type, self.scenario, self.maps, [self.ghost] + self.__parcel_list, self.size, self.parcel_size)
-            # building_position = random_interest(interest_map)
             if building_position is None:
                 print("No suitable position found")
                 continue
@@ -103,10 +55,7 @@ class VillageSkeleton:
 
             # Road Creation Process
             self.maps.road_network.connect_to_network(new_parcel.entry_point)
-            # self.map_log(interest_map, accessibility_map, sociability_map, building_type)
-            # except Exception:
-            #     print("Failed")
-            #     continue
+            map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
 
             if do_limit and time() - t0 >= 9 * 60:
                 print("Time limit reached: early stopping parcel seeding")
