@@ -6,7 +6,7 @@ from sys import maxint
 from numpy import full, empty, zeros, argmin
 from typing import Set, Callable
 
-import map
+import terrain_map
 from generation.generators import *
 from generation.road_generator import RoadGenerator
 from parameters import *
@@ -21,7 +21,7 @@ DIST_BETWEEN_NODES = 12
 class RoadNetwork:
 
     def __init__(self, width, length, mc_map=None):
-        # type: (int, int, map.Maps) -> RoadNetwork
+        # type: (int, int, terrain_map.Maps) -> RoadNetwork
         self.width = width
         self.length = length
         self.network = zeros((width, length), dtype=int)
@@ -94,7 +94,8 @@ class RoadNetwork:
         if z is None:
             # steep roads are not marked as road points
             maps = self.__all_maps
-            if maps and (maps.height_map.steepness(xp.x, xp.z, margin=1) >= 0.35 or maps.fluid_map.is_water(xp)):
+            if maps and (maps.height_map.steepness(xp.x, xp.z, margin=1) >= 0.35 or maps.fluid_map.is_water(xp)
+                         or not maps.obstacle_map.is_accessible(xp)):
                 self.special_road_blocks.add(xp)
             else:
                 self.road_blocks.add(xp)
@@ -171,18 +172,18 @@ class RoadNetwork:
     # region PUBLIC INTERFACE
 
     def create_road(self, root_point, ending_point):
-        # type: (Point2D, Point2D) -> None
+        # type: (Point2D, Point2D) -> List[Point2D]
         path = self.a_star(root_point, ending_point, RoadNetwork.road_build_cost)
         self.__set_road([root_point] + path)
         self.network_extremities += [root_point, ending_point]
-        return
+        return path
 
     def connect_to_network(self, point_to_connect):
-        # type: (Point2D) -> None
+        # type: (Point2D) -> List[Set[Point2D]]
         from time import time
 
         if self.is_road(point_to_connect):
-            return
+            return []
 
         if self.is_accessible(point_to_connect):
             path = self.path_map[point_to_connect.x][point_to_connect.z]
@@ -195,27 +196,27 @@ class RoadNetwork:
         if path:
             self.__set_road(path)
 
-        _t1 = None
+        _t1, cycles = None, []
         for node in self.network_node_list + self.network_extremities:
             if self.cycle_creation_condition(node, point_to_connect):
                 if _t1 is None:
                     _t1 = time()
-                self.create_road(point_to_connect, node)
-                # todo: add plazas / city blocks in the middle of road cycles
-                # todo: ajouter une condition du genre "si c'est 4x plus long d'aller par la route que tout droit, créer chemin"
+                old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
+                new_path = self.create_road(point_to_connect, node)
+                cycles.append(set(old_path).union(set(new_path)))
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 
         if path and all(euclidean(path[0], node) > DIST_BETWEEN_NODES for node in self.network_node_list):
             self.network_node_list.append(path[0])
 
-        return
+        return cycles
 
     # endregion
 
     def generate(self, level):
         # type: (MCInfdevOldLevel) -> None
-        hm = self.__all_maps.height_map  # type: map.HeightMap
+        hm = self.__all_maps.height_map  # type: terrain_map.HeightMap
         self.__generator.generate(level, hm.box_height(self.__all_maps.box, False))
 
     def __update_distance_map(self, road, force_update=False):

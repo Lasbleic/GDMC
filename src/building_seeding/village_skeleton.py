@@ -4,21 +4,23 @@ Village skeleton growth
 
 from time import time
 
+from numpy import argmin
+from statistics import mean
 from typing import List
 
-import map.maps
-from building_pool import BuildingPool
+import terrain_map.maps
+from building_pool import BuildingPool, BuildingType
 from building_seeding.interest.pre_processing import VisuHandler
 from interest import InterestSeeder
 from parameters import MIN_PARCEL_SIDE
 from parcel import Parcel
-from utils import Point2D
+from utils import Point2D, euclidean
 
 
 class VillageSkeleton:
 
     def __init__(self, scenario, maps, ghost_position, parcel_list):
-        # type: (str, map.maps.Maps, Point2D, List[Parcel]) -> VillageSkeleton
+        # type: (str, terrain_map.maps.Maps, Point2D, List[Parcel]) -> VillageSkeleton
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
@@ -30,6 +32,11 @@ class VillageSkeleton:
 
         # parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
         self.__interest = InterestSeeder(maps, parcel_list, scenario)
+
+    def __create_new_parcel(self, seed, building_type):
+        new_parcel = Parcel(seed, building_type, self.maps)
+        self.__parcel_list.append(new_parcel)
+        self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 1)
 
     def grow(self, do_limit, do_visu):
         print("Seeding parcels")
@@ -49,13 +56,26 @@ class VillageSkeleton:
                 continue
 
             print("Placed at x:{}, z:{}".format(building_position.x, building_position.z))
-            new_parcel = Parcel(building_position, building_type, self.maps)
-            self.__parcel_list.append(new_parcel)
-            self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 1)
+            self.__create_new_parcel(building_position, building_type)
 
             # Road Creation Process
-            self.maps.road_network.connect_to_network(new_parcel.entry_point)
+            cycles = self.maps.road_network.connect_to_network(self.__parcel_list[-1].entry_point)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
+
+            for city_block in cycles:
+                block_seed = Point2D(int(mean(p.x for p in city_block)), int(mean(p.z for p in city_block)))
+                block_type = self.__interest.get_optimal_type(block_seed)
+                if block_type:
+                    self.__create_new_parcel(block_seed, block_type)
+                    # parcel is considered already linked to road network
+                else:
+                    # if there already is a parcel in the block, or very close, it is moved to the block seed
+                    dist_to_parcels = list(map(lambda parcel: euclidean(parcel.center, block_seed), self.__parcel_list))
+                    if min(dist_to_parcels) <= 4:
+                        block_parcel = self.__parcel_list[int(argmin(dist_to_parcels))]
+                        block_parcel.move_center(block_seed)
+                    else:
+                        self.__create_new_parcel(block_seed, BuildingType().ghost)
 
             if do_limit and time() - t0 >= 9 * 60:
                 print("Time limit reached: early stopping parcel seeding")
@@ -65,7 +85,7 @@ class VillageSkeleton:
 if __name__ == '__main__':
 
     from utils import TransformBox
-    from map import Maps
+    from terrain_map import Maps
     from flat_settlement import FlatSettlement
 
     N = 100
@@ -90,7 +110,7 @@ if __name__ == '__main__':
     # my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
     # my_maps = Maps(None, my_bounding_box)
     # 
-    # print("Creating Flat map")
+    # print("Creating Flat terrain_map")
     # my_flat_settlement = FlatSettlement(my_maps)
     # 
     # road_cmap = colors.ListedColormap(['forestgreen', 'beige'])

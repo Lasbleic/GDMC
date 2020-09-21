@@ -258,7 +258,7 @@ class DoorGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
             setBlock(level, (self._resource(x, y, z, palette)), x, y, z)
-        fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Materials['Air'])
+        fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Materials['Air'], ground_blocks)
 
     def _resource(self, x, y, z, palette):
         if y == self._box.miny:
@@ -373,17 +373,17 @@ class StoneTower(Generator):
 class Plaza(Generator):
     def generate(self, level, height_map=None, palette=None):
         self._clear_trees(level)
-        if self.length >= 7 and self.width >= 7 and bernouilli(0.7):
-            file_name = 'romantic_booth.nbt'
-            origin_x = self._box.minx + randint(0, self.width - 7)
-            origin_z = self._box.minz + randint(0, self.length - 7)
-            origin_y = height_map[origin_x + 3 - self._box.minx, origin_z + 3 - self._box.minz] + 1
-        else:
-            file_name = 'fountain.nbt'
-            origin_x = self._box.minx + randint(0, self.width - 5)
-            origin_z = self._box.minz + randint(0, self.length - 5)
-            origin_y = height_map[origin_x + 2 - self._box.minx, origin_z + 2 - self._box.minz] + 1
-        nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', file_name]))
-        schem = nbt.toSchematic()
-        # todo: rotate schematic to face door to entry point
-        copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)
+        # if self.length >= 7 and self.width >= 7 and bernouilli(0.7):
+        #     file_name = 'romantic_booth.nbt'
+        #     origin_x = self._box.minx + randint(0, self.width - 7)
+        #     origin_z = self._box.minz + randint(0, self.length - 7)
+        #     origin_y = height_map[origin_x + 3 - self._box.minx, origin_z + 3 - self._box.minz] + 1
+        # else:
+        #     file_name = 'fountain.nbt'
+        #     origin_x = self._box.minx + randint(0, self.width - 5)
+        #     origin_z = self._box.minz + randint(0, self.length - 5)
+        #     origin_y = height_map[origin_x + 2 - self._box.minx, origin_z + 2 - self._box.minz] + 1
+        # nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', file_name]))
+        # schem = nbt.toSchematic()
+        # # todo: rotate schematic to face door to entry point
+        # copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)

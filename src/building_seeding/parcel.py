@@ -7,7 +7,7 @@ from generation.generators import Generator
 from parameters import *
 from pymclevel.biome_types import biome_types
 from utils import *
-import map
+import terrain_map
 
 ENTRY_POINT_MARGIN = (MIN_PARCEL_SIDE + MAX_ROAD_WIDTH) // 2
 
@@ -15,10 +15,10 @@ ENTRY_POINT_MARGIN = (MIN_PARCEL_SIDE + MAX_ROAD_WIDTH) // 2
 class Parcel:
 
     def __init__(self, seed, building_type, mc_map=None):
-        # type: (Point2D, BuildingType, map.Maps) -> Parcel
+        # type: (Point2D, BuildingType, terrain_map.Maps) -> Parcel
         self.__center = seed
         self.__building_type = building_type
-        self.__map = mc_map  # type: map.Maps
+        self.__map = mc_map  # type: terrain_map.Maps
         self.__entry_point = self.__center  # type: Point2D
         self.__relative_box = TransformBox((seed.x, 0, seed.z),
                                            (1, 1, 1))  # type: TransformBox
@@ -83,7 +83,7 @@ class Parcel:
         assert self.is_expendable(direction)  # trust the user
         self.__map.obstacle_map.unmark_parcel(self, 1)
         self.__relative_box.expand(direction, inplace=True)
-        # mark parcel points on obstacle map
+        # mark parcel points on obstacle terrain_map
         self.__map.obstacle_map.add_parcel_to_obstacle_map(self, 1)
 
     def is_expendable(self, direction=None):
@@ -98,7 +98,7 @@ class Parcel:
         else:
             # try:
             expanded = self.__relative_box.expand(direction)  # expanded parcel
-            obstacle = self.__map.obstacle_map  # type: map.ObstacleMap  # obstacle map
+            obstacle = self.__map.obstacle_map  # type: terrain_map.ObstacleMap  # obstacle terrain_map
             ext = expanded - self.__relative_box  # extended part of the expanded parcel
 
             if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
@@ -195,6 +195,18 @@ class Parcel:
         self.__relative_box.translate(dy=y - self.__relative_box.miny, inplace=True)
         for _ in range(h - 1):
             self.__relative_box.expand(Top, inplace=True)
+
+    def move_center(self, new_seed):
+        # type: (Point2D) -> None
+        self.__map.obstacle_map.unmark_parcel(self, 1)
+        move_x = new_seed.x - self.center.x
+        move_z = new_seed.z - self.center.z
+        self.__relative_box.translate(dx=move_x, dz=move_z, inplace=True)
+        if self.__box is not None:
+            self.__box.translate(dx=move_x, dz=move_z, inplace=True)
+        self.__center = new_seed
+        self.__entry_point += Point2D(move_x, move_z)
+        self.__map.obstacle_map.add_parcel_to_obstacle_map(self, 1)  # todo: also update interest maps
 
     def biome(self, level):
         x = randint(self.__box.minx, self.__box.maxx - 1)

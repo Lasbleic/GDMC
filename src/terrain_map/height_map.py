@@ -5,34 +5,10 @@ from typing import List
 from pymclevel import alphaMaterials as Materials
 from numpy import array
 
-from utils import Point2D
+from utils import Point2D, ground_blocks_ID, fluid_blocks_ID
 
 
 class HeightMap:
-    ground_blocks = [
-        Materials.Grass.ID,
-        Materials.Dirt.ID,
-        Materials.Stone.ID,
-        Materials.Bedrock.ID,
-        Materials.Sand.ID,
-        Materials.Gravel.ID,
-        Materials.GoldOre.ID,
-        Materials.IronOre.ID,
-        Materials.CoalOre.ID,
-        Materials.LapisLazuliOre.ID,
-        Materials.DiamondOre.ID,
-        Materials.RedstoneOre.ID,
-        Materials.RedstoneOreGlowing.ID,
-        Materials.Netherrack.ID,
-        Materials.SoulSand.ID,
-        Materials.Clay.ID,
-        Materials.Glowstone.ID
-    ]
-
-    fluid_blocks = [Materials.Water.ID, Materials.WaterActive.ID,
-                    Materials.Lava.ID, Materials.LavaActive.ID,
-                    Materials.Ice.ID, Materials.PackedIce.ID, Materials.FrostedIce.ID]
-
     def __init__(self, level, box):
         # detects highest ground or fluid block
         self.__air_height = None  # type: array
@@ -60,13 +36,13 @@ class HeightMap:
 
             self.__fluid_height = array([
                 [
-                    drill_down(x, z, self.ground_blocks + self.fluid_blocks) for z in range(zm, zM)
+                    drill_down(x, z, ground_blocks_ID + fluid_blocks_ID) for z in range(zm, zM)
                 ]
                 for x in range(xm, xM)])
 
             self.__altitude = array([
                 [
-                    drill_down(x, z, self.ground_blocks) for z in range(zm, zM)
+                    drill_down(x, z, ground_blocks_ID) for z in range(zm, zM)
                 ]
                 for x in range(xm, xM)])
 

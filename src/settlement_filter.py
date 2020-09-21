@@ -4,7 +4,7 @@ import logging
 from time import gmtime, strftime, time
 
 from flat_settlement import FlatSettlement
-from map.maps import Maps
+from terrain_map.maps import Maps
 from pymclevel import BoundingBox, MCLevel
 from utils import TransformBox
 
@@ -12,7 +12,7 @@ displayName = "Create a settlement"
 
 option_time_limit = "10' limit"
 option_debug = "Debug mode: does not catch exceptions in generation"
-option_visu = "Visualization tool: plots interest during seeding"
+option_visu = "Visualization tool: plots iterations of building placement"
 
 # Dictionary representing different options
 inputs = (
@@ -34,8 +34,8 @@ def perform(level, box, options):
     box = TransformBox(box)
     maps = Maps(level, box)
     settlement = FlatSettlement(maps)
-    settlement.init_road_network()  # define outside connections
     settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
+    settlement.init_road_network()  # define outside connections
     settlement.build_skeleton(options[option_time_limit], options[option_visu])  # define buildings list and seed them
     try:
         settlement.define_parcels()     # define parcels around seeds

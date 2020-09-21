@@ -391,35 +391,6 @@ class _WallSymbol(Generator):
                 door_box.expand(Direction(1, 0, 0), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
 
-        # if not self.children:
-        #     if box.surface <= 2:
-        #         DoorGenerator(box, door_dir).generate(level, palette=palette)
-        #     elif self.width > 2:
-        #         DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
-        #     else:
-        #         is_win = [int(level.blockAt(box.minx, box.miny+1, box.minz+_) == Materials[palette['window']].ID) for _ in range(box.length)]
-        #         door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
-        #         door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
-        #         if door_z > 0 and is_win[door_z - 1]:
-        #             door_box.expand(0, 0, -1, True)
-        #         elif door_z < box.width - 1 and is_win[door_z + 1]:
-        #             door_box.expand(0, 0, 1, True)
-        #         DoorGenerator(door_box, door_dir).generate(level, palette=palette)
-        # elif len(self.children) == 1:
-        #     if self.width > 2:
-        #         DoorGenerator(box.expand(-1, 0, 0), door_dir).generate(level, palette=palette)
-        #     else:
-        #         self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
-        #     # if self.surface == 4 or self.surface > 3 and bernouilli(1. * self.surface / self.children[0].surface):
-        #     #     self.children[0].generate_door(door_dir, door_x, door_z, level, palette)
-        #     # else:
-        #     #     # see wall structure, this is a part of an uneven wall -> replace window with door
-        #     #     door_box = TransformBox(self.origin, (1, self.height, 1))
-        #     #     door_box = door_box.translate(dx=1) if self.width > 2 else door_box.translate(dz=1)
-        #     #     DoorGenerator(door_box, door_dir, palette['door']).generate(level, palette=palette)
-        # else:
-        #     choice(self.children).generate_door(door_dir, door_x, door_z, level, palette)
-
 
 class _BaseSymbol(Generator):
     def generate(self, level, height_map=None, palette=None):

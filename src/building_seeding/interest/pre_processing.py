@@ -46,8 +46,9 @@ class VisuHandler:
         self.__count = 1
         self.__do_visu = do_visu
         self.__shape = (shape[1], shape[0])
-        now = strftime("%d%m%Y-%Hh%M", localtime())
-        self.__stock = MapStock(now, self.__shape, True)
+        if do_visu:
+            now = strftime("%d%m%Y-%Hh%M", localtime())
+            self.__stock = MapStock(now, self.__shape, True)
         self.__parcels = parcels
         self.__roads = roads
     
@@ -226,10 +227,10 @@ class MapStock:
 if __name__ == '__main__':
 
     # from matplotlib import pyplot as plt, colors
-    from map.road_network import *
+    from terrain_map.road_network import *
     from utils import Point2D
     from building_seeding.building_pool import BuildingType
-    from building_seeding.accessibility import accessibility
+    from building_seeding.interest.accessibility import accessibility
     # Accessibility example
 
     N = (7, 17)

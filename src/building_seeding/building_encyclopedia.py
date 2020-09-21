@@ -46,8 +46,8 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Accessibility": {
-            "house": (6, 11, 18),
-            "crop": (6, 20, 30),
+            "house": (6, 11, 30),
+            "crop": (6, 20, 40),
             "windmill": (6, 12, 18),
             "wood_tower": (6, 12, 24),
             "stone_tower": (6, 12, 24),
@@ -104,7 +104,7 @@ BUILDING_ENCYCLOPEDIA = {
 
         "markov": {
             "house": {"house": 10, "crop": 6},
-            "crop": {"crop": 10, "windmill": 4, "house": 6},
+            "crop": {"crop": 10, "windmill": 3, "house": 6},
             "windmill": {"crop": 1}
         }
 

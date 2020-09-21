@@ -1,7 +1,7 @@
 from building_seeding import Parcel
 from generation import CropGenerator
 from generation.building_palette import spruce_house_palette1
-from map.maps import Maps
+from terrain_map.maps import Maps
 from pymclevel import Entity, MCLevel, BoundingBox
 from utils import TransformBox, Point2D
 

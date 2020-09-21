@@ -60,7 +60,7 @@ class ObstacleMap:
                 self.__unset_obstacle(x, z)
 
     def add_network_to_obstacle_map(self):
-        from map.road_network import RoadNetwork
+        from terrain_map.road_network import RoadNetwork
         if self.__all_maps is not None:
             network = self.__all_maps.road_network  # type: RoadNetwork
             for xo, zo in product(xrange(self.__width), xrange(self.__length)):

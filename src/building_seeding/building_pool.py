@@ -26,7 +26,8 @@ class BuildingType:
             self.copy(name)
 
     def new_instance(self, box):
-        return self.generator(box)
+        if self.generator:
+            return self.generator(box)
 
     def __hash__(self):
         return hash(self.name)

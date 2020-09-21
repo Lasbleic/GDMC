@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
 from fluid_map import FluidMap
-from map.height_map import HeightMap
+from terrain_map.height_map import HeightMap
 from obstacle_map import ObstacleMap
 from pymclevel import MCLevel
 from road_network import RoadNetwork

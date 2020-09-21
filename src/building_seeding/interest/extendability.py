@@ -5,10 +5,7 @@ Function used to compute accessibility
 
 from __future__ import division
 
-
 import numpy as np
-
-import sys
 
 
 def extendability(size, parcel_size):
