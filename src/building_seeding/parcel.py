@@ -5,6 +5,7 @@ from random import randint
 from building_seeding.building_pool import BuildingType
 from generation.generators import Generator
 from parameters import *
+from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from pymclevel.biome_types import biome_types
 from utils import *
 import terrain_map
@@ -13,6 +14,8 @@ ENTRY_POINT_MARGIN = (MIN_PARCEL_SIDE + MAX_ROAD_WIDTH) // 2
 
 
 class Parcel:
+
+    max_surfaces = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["MaxSurface"]
 
     def __init__(self, seed, building_type, mc_map=None):
         # type: (Point2D, BuildingType, terrain_map.Maps) -> Parcel
@@ -115,7 +118,7 @@ class Parcel:
             # except ValueError:
             #     print("Found empty array when trying to extend {} parcel, ({}, {})".format(self.building_type, self.width, self.length))
             #     return False
-            valid_sizes = expanded.surface <= MAX_PARCEL_AREA
+            valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
             return no_obstacle and valid_sizes and valid_ratio and flat_extend
 

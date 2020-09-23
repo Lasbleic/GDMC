@@ -3,6 +3,7 @@
 Building encyclopedia contains parameters used to compute interest function for each building / scenario
 """
 
+
 BUILDING_ENCYCLOPEDIA = {
 
     "Flat_scenario": {
@@ -16,9 +17,9 @@ BUILDING_ENCYCLOPEDIA = {
             "crop-house": (10, 25, 50),
             "crop-windmill": (11, 15, 100),
             "crop-ghost": (5, 30, 100),
-            "windmill-windmill": (15, 30, 100),
-            "windmill-house": (15, 25, 100),
-            "windmill-crop": (10, 12, 100),
+            "windmill-windmill": (20, 30, 100),
+            "windmill-house": (15, 35, 100),
+            "windmill-crop": (10, 15, 100),
             "windmill-ghost": (5, 40, 100),
             "ghost-house": (5, 10, 100),
             "ghost-crop": (20, 25, 100),
@@ -102,18 +103,27 @@ BUILDING_ENCYCLOPEDIA = {
             "stone_tower": (1, 5, 3, 1, 1.5, 1, 2)
         },
 
-        "markov": {
-            "house": {"house": 10, "crop": 6},
-            "crop": {"crop": 10, "windmill": 3, "house": 6},
-            "windmill": {"crop": 1}
-        }
-
         # "markov": {
-        #     "house": {"house": 8, "stone_tower": 2, "crop": 6},
-        #     "stone_tower": {"house": 1},
-        #     "crop": {"crop": 8, "wood_tower": 2, "windmill": 4, "house": 6},
-        #     "wood_tower": {"crop": 1},
+        #     "house": {"house": 10, "crop": 6},
+        #     "crop": {"crop": 10, "windmill": 3, "house": 6},
         #     "windmill": {"crop": 1}
         # }
+
+        "markov": {
+            "house": {"house": 8, "stone_tower": 2, "crop": 6},
+            "stone_tower": {"house": 1},
+            "crop": {"crop": 8, "wood_tower": 2, "windmill": 4, "house": 6},
+            "wood_tower": {"crop": 1},
+            "windmill": {"crop": 1}
+        },
+
+        "MaxSurface": {
+            "crop": 300,
+            "ghost": 1,
+            "house": 100,
+            "stone_tower": 64,
+            "wood_tower": 49,
+            "windmill": 64
+        }
     }
 }
