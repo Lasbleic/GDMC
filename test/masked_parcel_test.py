@@ -21,7 +21,7 @@ def perform(level, box, options):
     box = TransformBox(box)
     maps = Maps(level, box)
     settlement = FlatSettlement(maps)
-    # settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
+    settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
     W, L = box.width, box.length
 
     # create road cycle

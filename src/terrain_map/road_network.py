@@ -3,14 +3,13 @@ from __future__ import division, print_function
 
 from sys import maxint
 
-from numpy import full, empty, zeros, argmin
-from typing import Set, Callable
+from numpy import empty, argmin
 
+from utils import *
 import terrain_map
 from generation.generators import *
 from generation.road_generator import RoadGenerator
 from parameters import *
-from utils import Point2D, euclidean
 
 MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 32
@@ -200,9 +199,10 @@ class RoadNetwork:
         _t1, cycles = None, []
         for node in self.network_node_list + self.network_extremities:
             if self.cycle_creation_condition(node, point_to_connect):
-                old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
-                new_path = self.create_road(point_to_connect, node)
-                if not set(new_path).issubset(old_path):
+                old_path = set(self.a_star(node, point_to_connect, RoadNetwork.road_only_cost))
+                new_path = set(self.create_road(point_to_connect, node)).difference(old_path)
+                if len(new_path) > DIST_BETWEEN_NODES:
+                    # worth building this path
                     if _t1 is None:
                         _t1 = time()
                     cycles.append(set(old_path).union(set(new_path)))
@@ -466,7 +466,7 @@ class RoadNetwork:
 
         existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost)
         current_dist = len(existing_path)
-        if current_dist / straight_dist >= 3:
+        if current_dist / straight_dist >= 2.5:
             return True
         return False
 

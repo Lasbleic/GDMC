@@ -17,6 +17,7 @@ class Maps:
         # type: (MCLevel, TransformBox) -> Maps
         self.__width = bounding_box.size.x
         self.__length = bounding_box.size.z
+        self.level = level
         self.box = bounding_box
         self.obstacle_map = ObstacleMap(self.__width, self.__length, self)  # type: ObstacleMap
         self.height_map = HeightMap(level, bounding_box)  # type: HeightMap
@@ -30,3 +31,11 @@ class Maps:
     @property
     def length(self):
         return self.__length
+
+    @property
+    def minx(self):
+        return self.box.minx
+
+    @property
+    def minz(self):
+        return self.box.minz

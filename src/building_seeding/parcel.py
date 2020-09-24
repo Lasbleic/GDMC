@@ -127,6 +127,10 @@ class Parcel:
         self._box.translate(dx=origin.x, dz=origin.z, inplace=True)
         self._entry_point += Point2D(origin.x, origin.z)
 
+    def mark_as_obstacle(self, obstacle_map):
+        # TODO: this method + override in MaskedParcel
+        pass
+
     @property
     def entry_x(self):
         return self._entry_point.x

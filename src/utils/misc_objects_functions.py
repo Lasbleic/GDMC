@@ -1,12 +1,13 @@
-from math import sqrt, ceil
+from math import sqrt
 from os.path import realpath, sep
 from random import random, shuffle
-from typing import Iterable
 
-from numpy import array, argmax
+from numpy.core.multiarray import ndarray
+from typing import Iterable, Callable, Set
+
+from numpy import array, argmax, full
 
 from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials
-from utilityFunctions import setBlock
 from itertools import product
 
 
@@ -142,18 +143,6 @@ class TransformBox(BoundingBox):
     def surface(self):
         return self.width * self.length
 
-    def is_corner(self, new_gate_pos):
-        return self.is_lateral(new_gate_pos.x) and self.is_lateral(None, new_gate_pos.z)
-
-    def is_lateral(self, x=None, z=None):
-        assert x is not None or z is not None
-        if x is None:
-            return z == self.minz or z == self.maxz - 1
-        if z is None:
-            return x == self.minx or x == self.maxx - 1
-        else:
-            return self.is_lateral(x, None) or self.is_lateral(None, z)
-
 
 class Direction:
     """
@@ -260,7 +249,8 @@ def clear_tree_at(level, box, point):
 
     def is_tree(bid):
         block = level.materials[bid]
-        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block', 'vine', 'cocoa']
+        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block',
+                                  'red_mushroom_block', 'vine', 'cocoa']
 
     y = level.heightMapAt(point.x, point.z) - 1
     if not is_tree(level.blockAt(point.x, y, point.z)):
@@ -289,13 +279,13 @@ def clear_tree_at(level, box, point):
             if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
                 tree_blocks.append((x, y, z))
 
-        setBlock(level, (0, 0), x0, y0, z0)
+        setBlock(level, Materials[0], x0, y0, z0)
 
 
 def place_torch(level, x, y, z):
     if not level.blockAt(x, y, z):
         torch = Materials["Torch (Up)"]
-        setBlock(level, (torch.ID, torch.blockData), x, y, z)
+        setBlock(level, torch, x, y, z)
 
 
 def sym_range(v, dv, vmax=None):
@@ -322,6 +312,42 @@ def pos_bound(v, vmax=None):
     if vmax and v >= vmax:
         return vmax
     return v
+
+
+def setBlock(level, block, x, y, z):
+    level.setBlockAt(int(x), int(y), int(z), block.ID)
+    level.setBlockDataAt(int(x), int(y), int(z), block.blockData)
+
+
+def connected_component(maps, source_point, connection_condition, early_stopping_condition=None, check_limits=True):
+    # type: (Maps, Point2D, Callable[[Point2D, Point2D, Maps], bool], Callable[[Set], bool]) -> (Point2D, ndarray)
+    component, points_to_explore = set(), {source_point}
+
+    # firstly, get all connected points in a set
+    while points_to_explore:
+        if early_stopping_condition and early_stopping_condition(component):
+            break
+        comp_point = points_to_explore.pop()
+        component.add(comp_point)
+
+        # explore direct neighbours for possible connected points
+        for dx, dz in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            x, z = comp_point.x + dx, comp_point.z + dz
+            neighbour = Point2D(x, z)
+            valid_x, valid_z = (0 <= x < maps.width), (0 <= z < maps.length)
+            if (not check_limits or (valid_x and valid_z)) and connection_condition(comp_point, neighbour, maps) and neighbour not in component:
+                points_to_explore.add(neighbour)
+
+    # secondly, generate a mask and a masked parcel to hold relevant info
+    min_x, max_x = min(_.x for _ in component), max(_.x for _ in component)
+    min_z, max_z = min(_.z for _ in component), max(_.z for _ in component)
+    origin = Point2D(min_x, min_z)
+    width = max_x - min_x + 1
+    length = max_z - min_z + 1
+    mask = full((width, length), False)
+    for p in component:
+        mask[p.x - min_x, p.z - min_z] = True
+    return origin, mask
 
 
 ground_blocks = [

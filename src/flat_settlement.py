@@ -1,22 +1,20 @@
 from __future__ import division
 
 import logging
-from itertools import product
 from math import exp
-from random import randint, choice
+from random import choice
 
-from numpy.random import geometric, normal
 from numpy import percentile
+from numpy.random import geometric, normal
 from typing import List
 
+from building_seeding import Parcel, VillageSkeleton, BuildingType
 from building_seeding.parcel import MaskedParcel
 from generation.building_palette import get_biome_palette
-from generation.generators import Generator
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
-from utils import Direction, TransformBox
-from building_seeding import Parcel, VillageSkeleton, BuildingType
 from terrain_map.maps import Maps
 from terrain_map.road_network import RoadNetwork
+from utils import Direction, TransformBox
 from utils import bernouilli, euclidean, Point2D
 
 MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
@@ -118,6 +116,7 @@ class FlatSettlement:
         Parcel extension from initialized parcels. Parcels are expended in place
         """
         print("Extending parcels")
+        # self._parcels = self._parcels[1:]
         obs = self._maps.obstacle_map
         obs.map[:] = 0
         obs.add_network_to_obstacle_map()
@@ -147,20 +146,20 @@ class FlatSettlement:
             expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
 
         # set parcels heights
-        def define_parcels_heights(parcel):
+        def define_parcels_heights(__parcel):
             # type: (Parcel) -> None
-            min_y = percentile(parcel.height_map, 25)
-            max_y = percentile(parcel.height_map, 75)
-            road_y = self._maps.height_map.altitude(parcel.entry_x, parcel.entry_z)
+            min_y = percentile(__parcel.height_map, 25)
+            max_y = percentile(__parcel.height_map, 75)
+            road_y = self._maps.height_map.altitude(__parcel.entry_x, __parcel.entry_z)
             y = road_y
             if road_y > max_y:
                 y = max_y
             elif road_y < min_y:
                 y = min_y
             y += 1
-            d = min(euclidean(parcel.center, _.center) for _ in filter(lambda p: p.building_type.name == "ghost", self._parcels))
+            d = min(euclidean(__parcel.center, _.center) for _ in filter(lambda p: p.building_type.name == "ghost", self._parcels))
             h = int(MAX_HEIGHT * exp(-d / BUILDING_HEIGHT_SPREAD))
-            parcel.set_height(y, h)
+            __parcel.set_height(y, h)
 
         print("Defining parcels' and buildings' heights")
         map(define_parcels_heights, self._parcels)
@@ -170,7 +169,7 @@ class FlatSettlement:
     def generate(self, level, print_stack=False):
         self._road_network.generate(level)
 
-        for parcel in self._parcels:  # type: Parcel
+        for parcel in self._parcels[1:]:  # type: Parcel
             parcel_biome = parcel.biome(level)
             palette = get_biome_palette(parcel_biome)
             if isinstance(parcel, MaskedParcel):

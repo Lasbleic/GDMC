@@ -1,35 +1,18 @@
 from math import floor
 from os import sep
 from random import randint
-from typing import List
 
-from numpy import ones, percentile, full
+from numpy import percentile
 from numpy.random import choice
 
 from generation.building_palette import HousePalette
 from pymclevel import MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
-from pymclevel.schematic import StructureNBT
 from utils import *
 from utils.structure_void_handle import VoidStructureNBT, all_but_void
 
 SURFACE_PER_ANIMAL = 16
-
-
-def paste_nbt(level, box, nbt_file_name):
-    _structure = StructureNBT(get_project_path() + '/structures/' + nbt_file_name)
-    _width, _height, _length = _structure.Size
-
-    x0, y0, z0 = box.minx, box.miny, box.minz
-    # iterates over coordinates in the structure, copy to level
-    for xs, ys, zs in product(xrange(_width), xrange(_height), xrange(_length)):
-        block = _structure.Blocks[xs, ys, zs]  # (id, data) tuple
-        if ys == 14:
-            print(xs, ys, zs, block)
-        if block != Materials['Structure Void'].ID:
-            xd, yd, zd = x0 + xs, y0 + ys, z0 + zs  # coordinates in the level: translation of the structure
-            setBlock(level, block, xd, yd, zd)
 
 
 class Generator:
@@ -63,6 +46,20 @@ class Generator:
         """
         for sub_generator in self.children:
             sub_generator.generate(level, height_map, palette)
+
+    def is_corner(self, pos):
+        return Generator.is_lateral(self, pos.x) and Generator.is_lateral(self, None, pos.z)
+
+    def is_lateral(self, x=None, z=None):
+        assert x is not None or z is not None
+        z_lateral = (z == self._box.minz or z == self._box.maxz - 1)
+        x_lateral = (x == self._box.minx or x == self._box.maxx - 1)
+        if x is None:
+            return z_lateral
+        if z is None:
+            return x_lateral
+        else:
+            return x_lateral or z_lateral
 
     @property
     def width(self):
@@ -133,17 +130,17 @@ class CropGenerator(Generator):
         max_height = percentile(height_map.flatten(), 85)
         # place fences
         for x, y, z in self.surface_pos(height_map):
-            if self._box.is_lateral(x, z) and y <= max_height:
-                setBlock(level, (fence_block.ID, fence_block.blockData), x, y + 1, z)
+            if self.is_lateral(x, z) and y <= max_height:
+                setBlock(level, fence_block, x, y + 1, z)
                 new_gate_pos = Point2D(x, z)
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
-                if (gate_pos is None or new_gate_dist < gate_dist) and not self._box.is_corner(new_gate_pos):
+                if (gate_pos is None or new_gate_dist < gate_dist) and not self.is_corner(new_gate_pos):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
 
         # place gate
         x, z = gate_pos.x, gate_pos.z
         y = height_map[x-self.origin.x, z-self.origin.z] + 1
-        setBlock(level, (gate_block.ID, gate_block.blockData), x, y, z)
+        setBlock(level, gate_block, x, y, z)
 
         # place animals
         animal_count = fence_box.surface // SURFACE_PER_ANIMAL
@@ -179,34 +176,28 @@ class CropGenerator(Generator):
                         continue
                 if (xd, zd) == (xs, zs):
                     # water source
-                    setBlock(level, (9, 15), xd, y0, zd)
+                    setBlock(level, Materials["Water (Still, Level 7 (Source))"], xd, y0, zd)
                 elif level.blockAt(xd, y0, zd) != 9:
-                    setBlock(level, (60, 7), xd, y0, zd)  # farmland
+                    setBlock(level, Materials["Farmland (Wet, Moisture 7)"], xd, y0, zd)  # farmland
                     bid = choice(crop_ids, p=prob)
                     age = randint(0, 7)
-                    setBlock(level, (bid, age), xd, y0 + 1, zd)  # crop
+                    level.setBlockAt(xd, y0+1, zd, bid)
+                    level.setBlockDataAt(xd, y0+1, zd, age)
 
     def _gen_harvested_crop(self, level, height_map):
         mx, mz = randint(0, 1), randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
-            if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.15):
-                setBlock(level, (3, 0), x, y, z)  # dirt under hay bales
+            if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.35):
+                setBlock(level, Materials["Dirt"], x, y, z)  # dirt under hay bales
                 b = Materials["Hay Bale (East/West)"]
                 y += 1
             else:
                 b = Materials["Farmland (Dry, Moisture 6)"]
-            setBlock(level, (b.ID, b.blockData), x, y, z)
+            setBlock(level, b, x, y, z)
         h = height_map
         irrigation_height = min(h[h.shape[0]//2, h.shape[1]//2], h.max()) + 1 - self._box.miny
         irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
         fillBlocks(level, irrigation_box, Materials["Water (Still, Level 7 (Source))"])
-
-
-class HouseGenerator(Generator):
-    def generate(self, level, height_map=None, palette=None):
-        if self._box.width >= 7 and self._box.length >= 9:
-            # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
-            paste_nbt(level, self._box, 'house_7x9.nbt')
 
 
 class CardinalGenerator(Generator):
@@ -260,7 +251,7 @@ class DoorGenerator(Generator):
 
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
-            setBlock(level, (self._resource(x, y, z, palette)), x, y, z)
+            setBlock(level, self._resource(x, y, z, palette), x, y, z)
         fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Materials['Air'], ground_blocks)
 
     def _resource(self, x, y, z, palette):
@@ -279,8 +270,7 @@ class DoorGenerator(Generator):
             block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
         else:
             block_name = palette['wall']
-        block = Materials[block_name]
-        return block.ID, block.blockData
+        return Materials[block_name]
 
 
 class WindmillGenerator(Generator):
@@ -321,7 +311,7 @@ class WindmillGenerator(Generator):
         # activate a repeater and preparing its tile tick
         block = Materials['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]
         WindmillGenerator.__repeater_tile_tick(level, x, y, z, True)
-        setBlock(level, (block.ID, block.blockData), x, y, z)
+        setBlock(level, block, x, y, z)
 
         # activate the command block following the previous repeater
         x += 1
@@ -412,3 +402,28 @@ class MaskedGenerator(Generator):
         for x, y, z in Generator.surface_pos(self, height_map):
             if self.is_masked(x, z, True):
                 yield x, y, z
+
+    def is_corner(self, pos):
+        if Generator.is_corner(self, pos):
+            return self.is_masked(pos, absolute_coords=True)  # box corner in mask
+        elif not self.is_masked(pos, absolute_coords=True):
+            return False
+        else:
+            # internal point to the box, could still be a corner
+            x_lateral = not (self.is_masked(pos + East.asPoint2D, absolute_coords=True)
+                             and self.is_masked(pos + West.asPoint2D, absolute_coords=True)
+                             )
+            z_lateral = not (self.is_masked(pos + South.asPoint2D, absolute_coords=True)
+                             and self.is_masked(pos + North.asPoint2D, absolute_coords=True)
+                             )
+            return x_lateral and z_lateral
+
+    def is_lateral(self, x=None, z=None):
+        if Generator.is_lateral(self, x, z):
+            return self.is_masked(x, z, True)
+        elif not self.is_masked(x, z, True):
+            return False
+        else:
+            assert x is not None and z is not None
+            pos = Point2D(x, z)
+            return any(not self.is_masked(pos + dir.asPoint2D, absolute_coords=True) for dir in cardinal_directions())

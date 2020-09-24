@@ -3,17 +3,14 @@ from __future__ import division, print_function
 from math import ceil
 from time import sleep
 
+from numpy import uint8, mean
 from numpy.random.mtrand import choice
-from typing import List
 
-from generation.generators import Generator, Materials
-from pymclevel import MCInfdevOldLevel
+from utils import *
+from generation.generators import Generator
 from pymclevel.block_fill import fillBlocks
 from pymclevel.materials import Block
-from utils import TransformBox, Point2D, euclidean, sym_range, product, clear_tree_at, bernouilli, place_torch, \
-    Direction
 from utilityFunctions import setBlock, raytrace
-from numpy import full, zeros, uint8, array, mean
 
 
 class RoadGenerator(Generator):
@@ -126,7 +123,7 @@ class RoadGenerator(Generator):
         # carves the new path if possible and necessary to avoid steep slopes
         path_height = [self.__maps.height_map.fluid_height(_) for _ in path]
         orig_path_height = [_ for _ in path_height]
-        if len(path_height) > max(path_height) - min(path_height):
+        if len(path_height) > abs(path_height[-1] - path_height[0]):
             # while there is a 2 block elevation in the path, smooth path heights
             changed = False
             prev_value = max([abs(h2 - h1) for h2, h1 in zip(path_height[1:], path_height[:-1])])  # max elevation, supposed to decrease
