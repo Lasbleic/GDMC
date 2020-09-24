@@ -3,7 +3,7 @@ from __future__ import division, print_function
 from random import randint
 
 from building_seeding.building_pool import BuildingType
-from generation.generators import Generator
+from generation.generators import Generator, MaskedGenerator
 from parameters import *
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from pymclevel.biome_types import biome_types
@@ -19,13 +19,13 @@ class Parcel:
 
     def __init__(self, seed, building_type, mc_map=None):
         # type: (Point2D, BuildingType, terrain_map.Maps) -> Parcel
-        self.__center = seed
-        self.__building_type = building_type
-        self.__map = mc_map  # type: terrain_map.Maps
-        self.__entry_point = self.__center  # type: Point2D
-        self.__relative_box = TransformBox((seed.x, 0, seed.z),
-                                           (1, 1, 1))  # type: TransformBox
-        self.__box = None  # type: TransformBox
+        self._center = seed
+        self._building_type = building_type
+        self._map = mc_map  # type: terrain_map.Maps
+        self._entry_point = self._center  # type: Point2D
+        self._relative_box = TransformBox((seed.x, 0, seed.z),
+                                          (1, 1, 1))  # type: TransformBox
+        self._box = None  # type: TransformBox
         if mc_map is not None:
             self.__initialize_limits()
             self.__compute_entry_point()
@@ -39,23 +39,23 @@ class Parcel:
         return "{} parcel at {}".format(self.building_type.name, self.center)
 
     def __compute_entry_point(self):
-        road_net = self.__map.road_network
-        if road_net.is_accessible(self.__center):
-            path = road_net.path_map[self.__center.x, self.__center.z]
+        road_net = self._map.road_network
+        if road_net.is_accessible(self._center):
+            path = road_net.path_map[self._center.x, self._center.z]
             nearest_road_point = path[0] if path else self.center
             distance_threshold = MIN_PARCEL_SIDE + MAX_ROAD_WIDTH // 2
             if len(path) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
-                self.__entry_point = nearest_road_point
+                self._entry_point = nearest_road_point
                 return
             # compute the local direction of the road
             index = max(0, len(path) - distance_threshold)
             target_road_pt = path[index]
         else:
-            target_road_pt = Point2D(self.__map.width // 2, self.__map.length // 2)
+            target_road_pt = Point2D(self._map.width // 2, self._map.length // 2)
 
-        local_road_x = target_road_pt.x - self.__center.x
-        local_road_z = target_road_pt.z - self.__center.z
+        local_road_x = target_road_pt.x - self._center.x
+        local_road_z = target_road_pt.z - self._center.z
         local_road_dir = Direction(dx=local_road_x, dz=local_road_z)
 
         # compute the secondary local direction of the road (orthogonal to the main one)
@@ -66,32 +66,32 @@ class Parcel:
             resid_road_dir = Direction(dx=resid_road_x, dz=resid_road_z)
         else:
             resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
-        self.__entry_point = self.__center + resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
-        if not (0 <= self.entry_x < self.__map.width and 0 <= self.entry_z < self.__map.length):
-            self.__entry_point = target_road_pt
+        self._entry_point = self._center + resid_road_dir.asPoint2D * ENTRY_POINT_MARGIN
+        if not (0 <= self.entry_x < self._map.width and 0 <= self.entry_z < self._map.length):
+            self._entry_point = target_road_pt
 
     def __initialize_limits(self):
         # build parcel box
         margin = MIN_PARCEL_SIDE // 2
-        shifted_x = pos_bound(self.__center.x - margin, self.__map.width - MIN_PARCEL_SIDE)  # type: int
-        shifted_z = pos_bound(self.__center.z - margin, self.__map.length - MIN_PARCEL_SIDE)  # type:int
-        origin = (shifted_x, self.__map.height_map.altitude(shifted_x, shifted_z), shifted_z)
+        shifted_x = pos_bound(self._center.x - margin, self._map.width - MIN_PARCEL_SIDE)  # type: int
+        shifted_z = pos_bound(self._center.z - margin, self._map.length - MIN_PARCEL_SIDE)  # type:int
+        origin = (shifted_x, self._map.height_map.altitude(shifted_x, shifted_z), shifted_z)
         size = (MIN_PARCEL_SIDE, 1, MIN_PARCEL_SIDE)
-        self.__relative_box = TransformBox(origin, size)
+        self._relative_box = TransformBox(origin, size)
         # in cases where the parcel hits the limits, does not change anything otherwise
-        self.__center = Point2D(shifted_x + margin, shifted_z + margin)
+        self._center = Point2D(shifted_x + margin, shifted_z + margin)
 
     def expand(self, direction):
         # type: (Direction) -> None
         assert self.is_expendable(direction)  # trust the user
-        self.__map.obstacle_map.unmark_parcel(self, 1)
-        self.__relative_box.expand(direction, inplace=True)
+        self._map.obstacle_map.unmark_parcel(self, 1)
+        self._relative_box.expand(direction, inplace=True)
         # mark parcel points on obstacle terrain_map
-        self.__map.obstacle_map.add_parcel_to_obstacle_map(self, 1)
+        self._map.obstacle_map.add_parcel_to_obstacle_map(self, 1)
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
-        if self.__map is None:
+        if self._map is None:
             return False
         if direction is None:
             for direction in cardinal_directions():
@@ -100,16 +100,16 @@ class Parcel:
             return False
         else:
             # try:
-            expanded = self.__relative_box.expand(direction)  # expanded parcel
-            obstacle = self.__map.obstacle_map  # type: terrain_map.ObstacleMap  # obstacle terrain_map
-            ext = expanded - self.__relative_box  # extended part of the expanded parcel
+            expanded = self._relative_box.expand(direction)  # expanded parcel
+            obstacle = self._map.obstacle_map  # type: terrain_map.ObstacleMap  # obstacle terrain_map
+            ext = expanded - self._relative_box  # extended part of the expanded parcel
 
             if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
                 return False
 
             obstacle.unmark_parcel(self, 1)
             no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].all()
-            h = self.__map.height_map.box_height(expanded, True)
+            h = self._map.height_map.box_height(expanded, True)
             flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
             obstacle.add_parcel_to_obstacle_map(self, 1)
             # except IndexError:
@@ -123,96 +123,121 @@ class Parcel:
             return no_obstacle and valid_sizes and valid_ratio and flat_extend
 
     def translate_to_absolute_coords(self, origin):
-        self.__box = TransformBox(self.__relative_box)
-        self.__box.translate(dx=origin.x, dz=origin.z, inplace=True)
-        self.__entry_point += Point2D(origin.x, origin.z)
+        self._box = TransformBox(self._relative_box)
+        self._box.translate(dx=origin.x, dz=origin.z, inplace=True)
+        self._entry_point += Point2D(origin.x, origin.z)
 
     @property
     def entry_x(self):
-        return self.__entry_point.x
+        return self._entry_point.x
 
     @property
     def entry_z(self):
-        return self.__entry_point.z
+        return self._entry_point.z
 
     @property
     def mean_x(self):
-        return self.__center.x
+        return self._center.x
 
     @property
     def mean_z(self):
-        return self.__center.z
+        return self._center.z
 
     @property
     def minx(self):
-        return self.__relative_box.minx
+        return self._relative_box.minx
 
     @property
     def maxx(self):
-        return self.__relative_box.maxx
+        return self._relative_box.maxx
 
     @property
     def minz(self):
-        return self.__relative_box.minz
+        return self._relative_box.minz
 
     @property
     def maxz(self):
-        return self.__relative_box.maxz
+        return self._relative_box.maxz
 
     @property
     def generator(self):
-        gen = self.__building_type.new_instance(self.__box)  # type: Generator
-        gen._entry_point = self.__entry_point
+        gen = self._building_type.new_instance(self._box)  # type: Generator
+        gen._entry_point = self._entry_point
         return gen
 
     @property
     def height_map(self):
-        box = self.__relative_box
-        return self.__map.height_map.box_height(box, True)
+        box = self._relative_box
+        return self._map.height_map.box_height(box, True)
 
     @property
     def center(self):
-        return self.__center
+        return self._center
 
     @property
     def entry_point(self):
-        return self.__entry_point
+        return self._entry_point
 
     @property
     def building_type(self):
-        return self.__building_type
+        return self._building_type
 
     @property
     def width(self):
-        return self.__relative_box.width
+        return self._relative_box.width
 
     @property
     def length(self):
-        return self.__relative_box.length
+        return self._relative_box.length
 
     @property
     def bounds(self):
-        return self.__relative_box
+        return self._relative_box
 
     def set_height(self, y, h):
-        self.__relative_box.translate(dy=y - self.__relative_box.miny, inplace=True)
+        self._relative_box.translate(dy=y - self._relative_box.miny, inplace=True)
         for _ in range(h - 1):
-            self.__relative_box.expand(Top, inplace=True)
+            self._relative_box.expand(Top, inplace=True)
 
     def move_center(self, new_seed):
         # type: (Point2D) -> None
-        self.__map.obstacle_map.unmark_parcel(self, 1)
+        self._map.obstacle_map.unmark_parcel(self, 1)
         move_x = new_seed.x - self.center.x
         move_z = new_seed.z - self.center.z
-        self.__relative_box.translate(dx=move_x, dz=move_z, inplace=True)
-        if self.__box is not None:
-            self.__box.translate(dx=move_x, dz=move_z, inplace=True)
-        self.__center = new_seed
-        self.__entry_point += Point2D(move_x, move_z)
-        self.__map.obstacle_map.add_parcel_to_obstacle_map(self, 1)  # todo: also update interest maps
+        self._relative_box.translate(dx=move_x, dz=move_z, inplace=True)
+        if self._box is not None:
+            self._box.translate(dx=move_x, dz=move_z, inplace=True)
+        self._center = new_seed
+        self._entry_point += Point2D(move_x, move_z)
+        self._map.obstacle_map.add_parcel_to_obstacle_map(self, 1)  # todo: also update interest maps
 
     def biome(self, level):
-        x = randint(self.__box.minx, self.__box.maxx - 1)
-        z = randint(self.__box.minz, self.__box.maxz - 1)
+        x = randint(self._box.minx, self._box.maxx - 1)
+        z = randint(self._box.minz, self._box.maxz - 1)
         biome = biome_types[level.getChunk(x // 16, z // 16).Biomes[x & 15, z & 15]]
         return biome
+
+
+class MaskedParcel(Parcel):
+
+    def __init__(self, origin, mask, building_type, mc_map=None):
+        # type: (Point2D, array, BuildingType, Maps) -> None
+        seed = origin + Point2D(mask.shape[0] // 2, mask.shape[1] // 2)
+        Parcel.__init__(self, seed, building_type, mc_map)
+        # for these parcels, relative box is immutable
+        self._relative_box = TransformBox((origin.x, 0, origin.z), (mask.shape[0], 1, mask.shape[1]))
+        self.__mask = mask
+
+    def is_expendable(self, direction=None):
+        return False
+
+    @property
+    def generator(self):
+        return self.building_type.generator(self._box, self.__mask, self.entry_point)  # type: MaskedGenerator
+
+    def add_mask(self, new_mask):
+        assert self.__mask.shape == new_mask.shape
+        self.__mask = self.__mask & new_mask
+
+    def move_center(self, new_seed):
+        pass

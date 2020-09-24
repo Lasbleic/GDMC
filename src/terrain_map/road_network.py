@@ -52,7 +52,8 @@ class RoadNetwork:
             # assert isinstance(x, Point2D)
             return self.get_road_width(x.x, x.z)
         else:
-            return self.network[x, z]
+            # return self.network[x, z]
+            return 1
 
     def __get_closest_node(self, point):
 
@@ -199,11 +200,12 @@ class RoadNetwork:
         _t1, cycles = None, []
         for node in self.network_node_list + self.network_extremities:
             if self.cycle_creation_condition(node, point_to_connect):
-                if _t1 is None:
-                    _t1 = time()
                 old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
                 new_path = self.create_road(point_to_connect, node)
-                cycles.append(set(old_path).union(set(new_path)))
+                if not set(new_path).issubset(old_path):
+                    if _t1 is None:
+                        _t1 = time()
+                    cycles.append(set(old_path).union(set(new_path)))
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 

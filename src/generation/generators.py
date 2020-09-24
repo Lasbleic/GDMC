@@ -3,7 +3,7 @@ from os import sep
 from random import randint
 from typing import List
 
-from numpy import ones, percentile
+from numpy import ones, percentile, full
 from numpy.random import choice
 
 from generation.building_palette import HousePalette
@@ -102,6 +102,9 @@ class Generator:
         door_x, door_z = self._entry_point.x, self._entry_point.z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
         return Direction(dx=door_x-mean_x, dz=door_z-mean_z)
+
+    def absolute_coords(self, x, z):
+        return x + self._box.minx, z + self._box.minz
 
 
 class CropGenerator(Generator):
@@ -387,3 +390,25 @@ class Plaza(Generator):
         # schem = nbt.toSchematic()
         # # todo: rotate schematic to face door to entry point
         # copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)
+
+
+class MaskedGenerator(Generator):
+    def __init__(self, box, mask=None, entry_point=None):
+        Generator.__init__(self, box, entry_point)
+        if mask is None:
+            mask = full((box.width, box.length), True)
+        self.__mask = mask
+
+    def is_masked(self, px, z=None, absolute_coords=False):
+        if z is None:
+            return self.is_masked(px.x, px.z, absolute_coords)
+        else:
+            if absolute_coords:
+                return self.is_masked(px - self.origin.x, z - self.origin.z, False)
+            else:
+                return self.__mask[px, z]
+
+    def surface_pos(self, height_map):
+        for x, y, z in Generator.surface_pos(self, height_map):
+            if self.is_masked(x, z, True):
+                yield x, y, z

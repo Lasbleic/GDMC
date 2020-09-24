@@ -3,7 +3,7 @@ from __future__ import division, print_function
 from math import floor
 
 from numpy import full, zeros
-from utils import Point2D
+from utils import Point2D, sym_range
 from itertools import product
 
 
@@ -63,15 +63,19 @@ class ObstacleMap:
         from terrain_map.road_network import RoadNetwork
         if self.__all_maps is not None:
             network = self.__all_maps.road_network  # type: RoadNetwork
-            for xo, zo in product(xrange(self.__width), xrange(self.__length)):
-                if network.is_road(xo, zo):
+            for x0, z0 in product(xrange(self.__width), xrange(self.__length)):
+                if network.is_road(x0, z0):
                     # build a circular obstacle of designated width around road point
-                    margin = network.get_road_width(xo, zo)
-                    m0, m1 = int(margin/2.), int(floor(margin/2.)) + 1
-                    for dx, dz in product(xrange(-m0, m1), xrange(-m0, m1)):
-                        if self.__in_x_limits(xo+dx) and self.__in_z_limits(zo+dz) and abs(dx*dz) < margin**2\
-                                and not self.map[xo+dx, zo+dz]:
-                            self.__set_obstacle(xo+dx, zo+dz)
+                    margin = network.get_road_width(x0, z0)
+                    for x1, z1 in product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
+                        if not self.map[x1, z1]:
+                            self.__set_obstacle(x1, z1)
+
+    def box_obstacle(self, box):
+        x0 = box.minx
+        z0 = box.minz
+        matrix = self.map[x0: (x0 + box.width), z0:(z0 + box.length)]
+        return matrix <= 1
 
     def __getitem__(self, item):
         if len(item) == 2:

@@ -11,6 +11,7 @@ from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
 import logging
 
 from generation.generators import WoodTower, StoneTower, Plaza
+from generation.plaza import PlazaGenerator
 from parameters import AVERAGE_PARCEL_SIZE
 
 
@@ -61,7 +62,7 @@ class BuildingType:
     @property
     def ghost(self):
         self.name = 'ghost'
-        self.generator = Plaza
+        self.generator = PlazaGenerator
         return self
 
     @property

@@ -9,6 +9,7 @@ from numpy.random import geometric, normal
 from numpy import percentile
 from typing import List
 
+from building_seeding.parcel import MaskedParcel
 from generation.building_palette import get_biome_palette
 from generation.generators import Generator
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
@@ -119,9 +120,9 @@ class FlatSettlement:
         print("Extending parcels")
         obs = self._maps.obstacle_map
         obs.map[:] = 0
+        obs.add_network_to_obstacle_map()
         for parcel in self._parcels:
             obs.add_parcel_to_obstacle_map(parcel, 1)
-        obs.add_network_to_obstacle_map()
         obs.map += self._maps.fluid_map.as_obstacle_array
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
         # most parcels should initially be expendable, except the ghost one
@@ -172,6 +173,9 @@ class FlatSettlement:
         for parcel in self._parcels:  # type: Parcel
             parcel_biome = parcel.biome(level)
             palette = get_biome_palette(parcel_biome)
+            if isinstance(parcel, MaskedParcel):
+                obstacle_mask = self._maps.obstacle_map.box_obstacle(parcel.bounds)
+                parcel.add_mask(obstacle_mask)
             if print_stack:
                 parcel.generator.generate(level, parcel.height_map, palette)
             else:
