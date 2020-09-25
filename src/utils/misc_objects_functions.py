@@ -13,9 +13,13 @@ from itertools import product
 
 class Point2D:
 
-    def __init__(self, x, z):
-        self.x = x
-        self.z = z
+    def __init__(self, x, z=None):
+        if z is None and isinstance(x, Point2D):
+            self.x = x.x
+            self.z = x.z
+        else:
+            self.x = x
+            self.z = z
 
     def __str__(self):
         return "(x:" + str(self.x) + "; z:" + str(self.z) + ")"

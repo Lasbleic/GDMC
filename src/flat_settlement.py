@@ -121,7 +121,7 @@ class FlatSettlement:
         obs.map[:] = 0
         obs.add_network_to_obstacle_map()
         for parcel in self._parcels:
-            obs.add_parcel_to_obstacle_map(parcel, 1)
+            parcel.mark_as_obstacle(obs)
         obs.map += self._maps.fluid_map.as_obstacle_array
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
         # most parcels should initially be expendable, except the ghost one

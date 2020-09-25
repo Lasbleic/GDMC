@@ -36,7 +36,7 @@ class VillageSkeleton:
     def __create_new_parcel(self, seed, building_type):
         new_parcel = Parcel(seed, building_type, self.maps)
         self.__parcel_list.append(new_parcel)
-        self.maps.obstacle_map.add_parcel_to_obstacle_map(new_parcel, 1)
+        new_parcel.mark_as_obstacle(self.maps.obstacle_map)
 
     def grow(self, do_limit, do_visu):
         print("Seeding parcels")
@@ -83,7 +83,7 @@ class VillageSkeleton:
                         # self.__create_new_parcel(block_seed, BuildingType().ghost)
                         block_parcel.building_type.copy(BuildingType().ghost)
                         self.__parcel_list.append(block_parcel)
-                        self.maps.obstacle_map.add_parcel_to_obstacle_map(block_parcel, 0)
+                        block_parcel.mark_as_obstacle(self.maps.obstacle_map)
 
             if do_limit and time() - t0 >= 9 * 60:
                 print("Time limit reached: early stopping parcel seeding")

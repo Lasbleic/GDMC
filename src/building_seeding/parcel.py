@@ -7,6 +7,7 @@ from generation.generators import Generator, MaskedGenerator
 from parameters import *
 from building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from pymclevel.biome_types import biome_types
+from terrain_map import ObstacleMap
 from utils import *
 import terrain_map
 
@@ -26,6 +27,7 @@ class Parcel:
         self._relative_box = TransformBox((seed.x, 0, seed.z),
                                           (1, 1, 1))  # type: TransformBox
         self._box = None  # type: TransformBox
+        self._mask = full((self.width, self.length), True)
         if mc_map is not None:
             self.__initialize_limits()
             self.__compute_entry_point()
@@ -78,16 +80,18 @@ class Parcel:
         origin = (shifted_x, self._map.height_map.altitude(shifted_x, shifted_z), shifted_z)
         size = (MIN_PARCEL_SIDE, 1, MIN_PARCEL_SIDE)
         self._relative_box = TransformBox(origin, size)
+        self._mask = full((self.width, self.length), True)
         # in cases where the parcel hits the limits, does not change anything otherwise
         self._center = Point2D(shifted_x + margin, shifted_z + margin)
 
     def expand(self, direction):
         # type: (Direction) -> None
         assert self.is_expendable(direction)  # trust the user
-        self._map.obstacle_map.unmark_parcel(self, 1)
+        self._map.obstacle_map.hide_obstacle(self.origin, self._mask, False)
         self._relative_box.expand(direction, inplace=True)
+        self._mask = full((self.width, self.length), True)
         # mark parcel points on obstacle terrain_map
-        self._map.obstacle_map.add_parcel_to_obstacle_map(self, 1)
+        self.mark_as_obstacle(self._map.obstacle_map)
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
@@ -107,11 +111,11 @@ class Parcel:
             if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
                 return False
 
-            obstacle.unmark_parcel(self, 1)
+            obstacle.hide_obstacle(self.origin, self._mask)
             no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].all()
             h = self._map.height_map.box_height(expanded, True)
             flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
-            obstacle.add_parcel_to_obstacle_map(self, 1)
+            obstacle.reveal_obstacles()
             # except IndexError:
             #     obstacle.add_parcel_to_obstacle_map(self, 1)
             #     return False
@@ -128,8 +132,9 @@ class Parcel:
         self._entry_point += Point2D(origin.x, origin.z)
 
     def mark_as_obstacle(self, obstacle_map):
+        # type: (ObstacleMap) -> None
         # TODO: this method + override in MaskedParcel
-        pass
+        obstacle_map.add_obstacle(Point2D(self.minx, self.minz), self._mask)
 
     @property
     def entry_x(self):
@@ -138,6 +143,10 @@ class Parcel:
     @property
     def entry_z(self):
         return self._entry_point.z
+
+    @property
+    def origin(self):
+        return Point2D(self.minx, self.minz)
 
     @property
     def mean_x(self):
@@ -198,6 +207,10 @@ class Parcel:
     def bounds(self):
         return self._relative_box
 
+    @property
+    def mask(self):
+        return self._mask
+
     def set_height(self, y, h):
         self._relative_box.translate(dy=y - self._relative_box.miny, inplace=True)
         for _ in range(h - 1):
@@ -205,7 +218,7 @@ class Parcel:
 
     def move_center(self, new_seed):
         # type: (Point2D) -> None
-        self._map.obstacle_map.unmark_parcel(self, 1)
+        self._map.obstacle_map.hide_obstacle(self.origin, self._mask, False)
         move_x = new_seed.x - self.center.x
         move_z = new_seed.z - self.center.z
         self._relative_box.translate(dx=move_x, dz=move_z, inplace=True)
@@ -213,7 +226,7 @@ class Parcel:
             self._box.translate(dx=move_x, dz=move_z, inplace=True)
         self._center = new_seed
         self._entry_point += Point2D(move_x, move_z)
-        self._map.obstacle_map.add_parcel_to_obstacle_map(self, 1)  # todo: also update interest maps
+        self.mark_as_obstacle(self._map.obstacle_map)  # todo: also update interest maps (sociability)
 
     def biome(self, level):
         x = randint(self._box.minx, self._box.maxx - 1)
@@ -230,18 +243,18 @@ class MaskedParcel(Parcel):
         Parcel.__init__(self, seed, building_type, mc_map)
         # for these parcels, relative box is immutable
         self._relative_box = TransformBox((origin.x, 0, origin.z), (mask.shape[0], 1, mask.shape[1]))
-        self.__mask = mask
+        self._mask = mask
 
     def is_expendable(self, direction=None):
         return False
 
     @property
     def generator(self):
-        return self.building_type.generator(self._box, self.__mask, self.entry_point)  # type: MaskedGenerator
+        return self.building_type.generator(self._box, self._mask, self.entry_point)  # type: MaskedGenerator
 
     def add_mask(self, new_mask):
-        assert self.__mask.shape == new_mask.shape
-        self.__mask = self.__mask & new_mask
+        assert self._mask.shape == new_mask.shape
+        self._mask = self._mask & new_mask
 
     def move_center(self, new_seed):
         pass

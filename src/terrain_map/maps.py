@@ -39,3 +39,9 @@ class Maps:
     @property
     def minz(self):
         return self.box.minz
+
+    def in_limits(self, point, absolute_coords):
+        if absolute_coords:
+            return (point.x, self.box.miny, point.z) in self.box
+        else:
+            return 0 <= point.x < self.width and 0 <= point.z < self.length
