@@ -18,7 +18,7 @@ BUILDING_ENCYCLOPEDIA = {
             "crop-windmill": (11, 15, 100),
             "crop-ghost": (5, 30, 100),
             "windmill-windmill": (20, 30, 100),
-            "windmill-house": (15, 35, 100),
+            "windmill-house": (25, 35, 100),
             "windmill-crop": (10, 15, 100),
             "windmill-ghost": (5, 40, 100),
             "ghost-house": (5, 10, 100),
@@ -52,6 +52,16 @@ BUILDING_ENCYCLOPEDIA = {
             "windmill": (6, 12, 18),
             "wood_tower": (6, 12, 24),
             "stone_tower": (6, 12, 24),
+        },
+
+        # represents the distance to the city centre, 0 = center, 1 = map border
+        # computed as a balance function
+        "Density": {
+            "house": (-1, 0, 1),
+            "crop": (0, 0.3, 1.5),
+            "windmill": (0, 0.4, 2),
+            "wood_tower": (0, 0.35, 1.2),
+            "stone_tower": (-1, 0.2, 1),
         },
 
         "Altitude": {
@@ -94,13 +104,13 @@ BUILDING_ENCYCLOPEDIA = {
             "stone_tower": (6, 10)
         },
 
-        # (accessibility, sociability, altitude, pure_water, sea_water, lava, steepness)
+        # (accessibility, sociability, density, altitude, pure_water, sea_water, lava, steepness)
         "Weighting_factors": {
-            "house": (1, 3, 2, 1, 1, 1, 1),
-            "crop": (1, 3, 2, 2, 0, 1, 3),
-            "windmill": (2, 4, 2, 0, 0, 1, 2),
-            "wood_tower": (1, 5, 3, 1.5, 1, 1, 2),
-            "stone_tower": (1, 5, 3, 1, 1.5, 1, 2)
+            "house": (1, 3, 3, 2, 1, 1, 1, 1),
+            "crop": (1, 3, 2, 2, 2, 0, 1, 3),
+            "windmill": (2, 4, 3, 2, 0, 0, 1, 2),
+            "wood_tower": (1, 5, 1, 3, 1.5, 1, 1, 2),
+            "stone_tower": (1, 5, 3, 3, 1, 1.5, 1, 2)
         },
 
         # "markov": {
