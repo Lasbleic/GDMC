@@ -42,4 +42,4 @@ def perform(level, box, options):
     except RuntimeWarning:
         pass
     settlement.generate(level, options[option_debug])      # build buildings on parcels
-    logging.debug('{} seconds of execution'.format(time() - t0))
+    print('{} seconds of execution'.format(time() - t0))

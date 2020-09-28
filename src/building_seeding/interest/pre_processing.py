@@ -71,13 +71,13 @@ class VisuHandler:
         COLORS = {"house": 2,
                   "crop": 3,
                   "windmill": 4,
-                  "ghost": 5}
+                  "ghost": 5, "wood_tower": 5, "stone_tower": 5}
 
         for parcel in self.__parcels:
             xmin, xmax = parcel.minx, parcel.maxx
             zmin, zmax = parcel.minz, parcel.maxz
 
-            minecraft_map[xmin:xmax, zmin:zmax] = COLORS[parcel.building_type.name]
+            minecraft_map[xmin:xmax, zmin:zmax][parcel.mask] = COLORS[parcel.building_type.name]
             # minecraft_map[parcel.center.x, parcel.center.z] = COLORS[parcel.building_type.name]
 
             minecraft_map[parcel.entry_point.x, parcel.entry_point.z] = 6
@@ -220,7 +220,7 @@ class MapStock:
         if exists(file_path):
             print("Replacing map...")
         dpi = fig.get_dpi()
-        plt.savefig(file_path, dpi=dpi*9)    # increase dpi factor to improve quality
+        plt.savefig(file_path, dpi=dpi*4)    # increase dpi factor to improve quality
         plt.close()
 
 

@@ -130,10 +130,10 @@ BUILDING_ENCYCLOPEDIA = {
         "MaxSurface": {
             "crop": 300,
             "ghost": 1,
-            "house": 100,
+            "house": 150,
             "stone_tower": 64,
             "wood_tower": 49,
-            "windmill": 64
+            "windmill": 81
         }
     }
 }

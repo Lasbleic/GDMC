@@ -112,15 +112,19 @@ class FluidMap:
                         mask = tmp_mask
                     matrix_pos = product(range(mask.shape[0]), range(mask.shape[1]))
                     out_pond_points = {pond_origin + Point2D(i, j) for i, j in matrix_pos if not mask[i, j]}
+                    out_pond_points = {_ for _ in out_pond_points if maps.in_limits(_, True)}
                     x0, z0 = maps.minx, maps.minz
 
                     if mask.sum() < MAX_POND_EXPLORATION:
                         h = maps.height_map.altitude
-                        ground_y = mean(h(p.x - x0, p.z - z0) for p in out_pond_points if maps.in_limits(p, True))
+                        ground_y = mean(h(p.x - x0, p.z - z0) for p in out_pond_points)
                         for i, j in product(range(mask.shape[0]), range(mask.shape[1])):
                             abs_coords = pond_origin + Point2D(i, j)
                             rel_coords = abs_coords - Point2D(x0, z0)
-                            cur_height = h(rel_coords)
+                            try:
+                                cur_height = h(rel_coords)
+                            except IndexError:
+                                break  # pond at the border of the settlement
 
                             if cur_height < ground_y - 1 or mask[i, j]:
                                 # sample material in surroundings to fill the hole

@@ -40,11 +40,12 @@ class HeightMap:
                 ]
                 for x in range(xm, xM)])
 
-            self.__altitude = array([
-                [
-                    drill_down(x, z, ground_blocks_ID) for z in range(zm, zM)
-                ]
-                for x in range(xm, xM)])
+            # self.__altitude = array([
+            #     [
+            #         drill_down(x, z, ground_blocks_ID) for z in range(zm, zM)
+            #     ]
+            #     for x in range(xm, xM)])
+            self.__altitude = self.__fluid_height
 
         print('[{}] Computed height map in {}s'.format(self.__class__, time() - t0))
 

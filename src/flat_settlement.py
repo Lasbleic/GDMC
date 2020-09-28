@@ -53,12 +53,12 @@ class FlatSettlement:
 
     def init_road_network(self):
         out_connections = [self.__random_border_point()]
-        self._road_network.create_road(self._center, out_connections[0])
         max_road_count = max(1, min(self.limits.width, self.limits.length) // MEAN_ROAD_COVERED_SURFACE)
         logging.debug('Max road count: {}'.format(max_road_count))
         road_count = min(geometric(1./max_road_count), max_road_count*3//2)
         logging.debug('New settlement will have {} roads B)'.format(road_count))
         logging.debug('First border point @{}'.format(str(out_connections[0])))
+        self._road_network.create_road(self._parcels[0].entry_point, out_connections[0])
 
         for road_id in xrange(road_count):
             min_distance_to_roads = min(self.limits.width, self.limits.length) / (road_id+1)
@@ -104,6 +104,7 @@ class FlatSettlement:
             else:
                 stp_thresh *= 1.1
         self._parcels.append(Parcel(self._center, BuildingType().ghost, self._maps))
+        self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
 
     def build_skeleton(self, time_limit, do_visu=False):
         self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
@@ -125,12 +126,17 @@ class FlatSettlement:
         obs.map += self._maps.fluid_map.as_obstacle_array
         expendable_parcels = self._parcels[:]  # type: List[Parcel]
         # most parcels should initially be expendable, except the ghost one
-        expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
+        expendable_parcels = filter(lambda _: _.is_expendable, expendable_parcels)
 
+        surface = sum(p.bounds.volume for p in expendable_parcels)
         while expendable_parcels:
             # extend expendables parcels while there still are some
 
             for parcel in expendable_parcels:
+                if parcel.entry_point == parcel.center:
+                    self._parcels.remove(parcel)
+                    expendable_parcels.remove(parcel)
+                    continue
                 # direction computation
                 road_dir_x = parcel.entry_x - parcel.mean_x
                 road_dir_z = parcel.entry_z - parcel.mean_z
@@ -143,8 +149,11 @@ class FlatSettlement:
                         parcel.expand(direction)
                         break
 
-            expendable_parcels = filter(Parcel.is_expendable, expendable_parcels)
-
+            expendable_parcels = filter(lambda _: _.is_expendable, expendable_parcels)
+            tmp = surface
+            surface = sum(p.bounds.volume for p in expendable_parcels)
+            if tmp >= surface:
+                break
         # set parcels heights
         def define_parcels_heights(__parcel):
             # type: (Parcel) -> None
@@ -169,17 +178,21 @@ class FlatSettlement:
     def generate(self, level, print_stack=False):
         self._road_network.generate(level)
 
-        for parcel in self._parcels[1:]:  # type: Parcel
+        for parcel in self._parcels:  # type: Parcel
             parcel_biome = parcel.biome(level)
             palette = get_biome_palette(parcel_biome)
             if isinstance(parcel, MaskedParcel):
                 obstacle_mask = self._maps.obstacle_map.box_obstacle(parcel.bounds)
                 parcel.add_mask(obstacle_mask)
             if print_stack:
-                parcel.generator.generate(level, parcel.height_map, palette)
+                gen = parcel.generator
+                gen.choose_sub_generator(self._parcels)
+                gen.generate(level, parcel.height_map, palette)
             else:
                 try:
-                    parcel.generator.generate(level, parcel.height_map, palette)
+                    gen = parcel.generator
+                    gen.choose_sub_generator(self._parcels)
+                    gen.generate(level, parcel.height_map, palette)
                 except Exception:
                     print("FAIL")
 

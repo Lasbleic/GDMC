@@ -36,6 +36,8 @@ class HousePalette(dict):
                 return Block[self['structure']]
 
 
+stony_palette = {"Cobblestone": 0.7, "Gravel": 0.2, "Stone": 0.1}
+
 oak_house_palette1 = HousePalette('Cobblestone', 'Spruce Wood Planks', 'Oak Wood', 'Oak Wood Planks',
                                   'White Stained Glass Pane', 'gable', 'Stone Brick', 'Oak')
 

@@ -182,7 +182,8 @@ class RoadNetwork:
         # type: (Point2D) -> List[Set[Point2D]]
         from time import time
 
-        if self.is_road(point_to_connect):
+        # if self.is_road(point_to_connect):
+        if self.get_distance(point_to_connect) < MAX_ROAD_WIDTH:
             return []
 
         if self.is_accessible(point_to_connect):
@@ -406,7 +407,7 @@ class RoadNetwork:
             return choice(_closest_neighbors)
 
         def heuristic(point):
-            return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2)
+            return 1.3 * euclidean(point, ending_point)
 
         def update_distance(updated_point, neighbor, _neighbors):
             edge_cost = cost_function(self, updated_point, neighbor)

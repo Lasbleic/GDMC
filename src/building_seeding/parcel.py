@@ -29,8 +29,8 @@ class Parcel:
         self._box = None  # type: TransformBox
         self._mask = full((self.width, self.length), True)
         if mc_map is not None:
-            self.__initialize_limits()
             self.__compute_entry_point()
+            self.__initialize_limits()
 
     def __eq__(self, other):
         if not isinstance(other, Parcel):
@@ -44,11 +44,12 @@ class Parcel:
         road_net = self._map.road_network
         if road_net.is_accessible(self._center):
             path = road_net.path_map[self._center.x, self._center.z]
-            nearest_road_point = path[0] if path else self.center
             distance_threshold = MIN_PARCEL_SIDE + MAX_ROAD_WIDTH // 2
-            if len(path) <= distance_threshold:
+            if len(path) <= AVERAGE_PARCEL_SIZE:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
-                self._entry_point = nearest_road_point
+                self._entry_point = path[0] if len(path) else self._center
+                if len(path) > distance_threshold:
+                    self._center = path[distance_threshold]
                 return
             # compute the local direction of the road
             index = max(0, len(path) - distance_threshold)
@@ -74,15 +75,17 @@ class Parcel:
 
     def __initialize_limits(self):
         # build parcel box
-        margin = MIN_PARCEL_SIDE // 2
-        shifted_x = pos_bound(self._center.x - margin, self._map.width - MIN_PARCEL_SIDE)  # type: int
-        shifted_z = pos_bound(self._center.z - margin, self._map.length - MIN_PARCEL_SIDE)  # type:int
-        origin = (shifted_x, self._map.height_map.altitude(shifted_x, shifted_z), shifted_z)
+        margin = AVERAGE_PARCEL_SIZE // 2
+        assert margin > (MIN_PARCEL_SIDE // 2)
+        shifted_x = max(margin, pos_bound(self._center.x - margin, self._map.width - margin))  # type: int
+        shifted_z = max(margin, pos_bound(self._center.z - margin, self._map.length - margin))  # type:int
+        self._center = Point2D(shifted_x + margin, shifted_z + margin)
+
+        origin = (self.center.x - (MIN_PARCEL_SIDE // 2), 0, self.center.z - (MIN_PARCEL_SIDE // 2))
         size = (MIN_PARCEL_SIDE, 1, MIN_PARCEL_SIDE)
         self._relative_box = TransformBox(origin, size)
         self._mask = full((self.width, self.length), True)
         # in cases where the parcel hits the limits, does not change anything otherwise
-        self._center = Point2D(shifted_x + margin, shifted_z + margin)
 
     def expand(self, direction):
         # type: (Direction) -> None
@@ -113,15 +116,10 @@ class Parcel:
 
             obstacle.hide_obstacle(self.origin, self._mask)
             no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].all()
-            h = self._map.height_map.box_height(expanded, True)
-            flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
+            # h = self._map.height_map.box_height(expanded, True)
+            # flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
+            flat_extend = True
             obstacle.reveal_obstacles()
-            # except IndexError:
-            #     obstacle.add_parcel_to_obstacle_map(self, 1)
-            #     return False
-            # except ValueError:
-            #     print("Found empty array when trying to extend {} parcel, ({}, {})".format(self.building_type, self.width, self.length))
-            #     return False
             valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
             return no_obstacle and valid_sizes and valid_ratio and flat_extend
@@ -133,16 +131,15 @@ class Parcel:
 
     def mark_as_obstacle(self, obstacle_map):
         # type: (ObstacleMap) -> None
-        # TODO: this method + override in MaskedParcel
         obstacle_map.add_obstacle(Point2D(self.minx, self.minz), self._mask)
 
     @property
     def entry_x(self):
-        return self._entry_point.x
+        return self.entry_point.x
 
     @property
     def entry_z(self):
-        return self._entry_point.z
+        return self.entry_point.z
 
     @property
     def origin(self):
@@ -186,6 +183,10 @@ class Parcel:
     @property
     def center(self):
         return self._center
+
+    @property
+    def absolute_mean(self):
+        return Point2D(self._box.minx + self.width//2, self._box.minz + self.length//2)
 
     @property
     def entry_point(self):
@@ -237,20 +238,78 @@ class Parcel:
 
 class MaskedParcel(Parcel):
 
-    def __init__(self, origin, mask, building_type, mc_map=None):
-        # type: (Point2D, array, BuildingType, Maps) -> None
-        seed = origin + Point2D(mask.shape[0] // 2, mask.shape[1] // 2)
+    def __init__(self, origin, building_type, mc_map=None, mask=None):
+        # type: (Point2D, BuildingType, Maps, array) -> None
+        seed = origin + Point2D(mask.shape[0] // 2, mask.shape[1] // 2) if mask is not None else origin
         Parcel.__init__(self, seed, building_type, mc_map)
-        # for these parcels, relative box is immutable
-        self._relative_box = TransformBox((origin.x, 0, origin.z), (mask.shape[0], 1, mask.shape[1]))
-        self._mask = mask
+
+        if mask is not None:
+            # for these parcels, relative box is immutable
+            self._relative_box = TransformBox((origin.x, 0, origin.z), (mask.shape[0], 1, mask.shape[1]))
+            self._mask = mask
+
+    def __valid_extended_point(self, x, z, direction):
+        """Can we extend the parcel to the point x, z from a given direction"""
+        obstacle = self._map.obstacle_map
+        point = Point2D(x, z)
+        source = point - direction.asPoint2D  # type: Point2D
+        return obstacle.is_accessible(source) and obstacle.is_accessible(direction)
 
     def is_expendable(self, direction=None):
-        return False
+        # type: (Direction or None) -> bool
+        if Parcel.is_expendable(self, direction):
+            return True
+        elif direction is None:
+            return any(self.is_expendable(_) for _ in cardinal_directions())
+        else:
+            """
+            Will basically try to extend the parcel's mask
+            """
+            obstacle = self._map.obstacle_map  # type: terrain_map.ObstacleMap  # obstacle terrain_map
+            expanded = self._relative_box.expand(direction)  # expanded parcel
+            ext = expanded - self._relative_box  # extended part of the expanded parcel
+
+            out_limits = ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length
+            valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
+            valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
+            if out_limits or (not valid_sizes) or (not valid_ratio):
+                return False
+
+            assert ext.height == 1
+
+            obstacle.hide_obstacle(self.origin, self._mask)
+            validity = [self.__valid_extended_point(x, z, direction) for x, y, z in ext.positions]
+            obstacle.reveal_obstacles()
+            return sum(validity) >= len(validity) // 2
+
+    def expand(self, direction):
+        # type: (Direction) -> None
+
+        if Parcel.is_expendable(self, direction):
+            Parcel.expand(self, direction)
+            return
+
+        self._map.obstacle_map.hide_obstacle(self.origin, self._mask, False)
+
+        # compute extended mask and mark it on the obstacle map
+        ext = self._relative_box.expand(direction) - self._relative_box
+        mask_extension = [self.__valid_extended_point(x, z, direction) for x, y, z in ext.positions]
+        from numpy import insert
+        index = {North: 0, East: self.width, South: self.length, West: 0}
+        axis = {North: 1, East: 0, South: 1, West: 0}
+
+        self._relative_box.expand(direction, inplace=True)
+        self._mask = insert(self._mask, index[direction], array(mask_extension), axis=axis[direction])
+        self.mark_as_obstacle(self._map.obstacle_map)
 
     @property
     def generator(self):
-        return self.building_type.generator(self._box, self._mask, self.entry_point)  # type: MaskedGenerator
+        try:
+            return self.building_type.generator(self._box, self.entry_point, self._mask)  # type: MaskedGenerator
+        except TypeError:
+            gen = self._building_type.new_instance(self._box)  # type: Generator
+            gen._entry_point = self._entry_point
+            return gen
 
     def add_mask(self, new_mask):
         assert self._mask.shape == new_mask.shape

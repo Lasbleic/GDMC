@@ -4,6 +4,7 @@ import logging
 from time import gmtime, strftime, time
 
 from building_seeding import VillageSkeleton, BuildingType
+from building_seeding.village_skeleton import CityBlock
 from flat_settlement import FlatSettlement
 from terrain_map.maps import Maps
 from pymclevel import BoundingBox, MCLevel
@@ -32,7 +33,12 @@ def perform(level, box, options):
     maps.road_network.create_road(p1, p4)
 
     skeleton = VillageSkeleton('Flat_scenario', maps, settlement.town_center, settlement._parcels)
-    skeleton._create_masked_parcel(Point2D(W//2, L//2), BuildingType().ghost)
 
+    city_block = CityBlock(maps.road_network.road_blocks, maps)
+    block_parcel = city_block.parcels()
+    skeleton.add_parcel(block_parcel, BuildingType().ghost)
+    block_parcel.mark_as_obstacle(maps.obstacle_map)
+
+    settlement._parcels.pop(0)
     settlement.define_parcels()     # define parcels around seeds
     settlement.generate(level, True)      # build buildings on parcels

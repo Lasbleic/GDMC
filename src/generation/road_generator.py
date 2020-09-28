@@ -11,18 +11,18 @@ from generation.generators import Generator
 from pymclevel.block_fill import fillBlocks
 from pymclevel.materials import Block
 from utilityFunctions import setBlock, raytrace
+from building_palette import stony_palette
 
 
 class RoadGenerator(Generator):
 
     # stony_palette_str = ["Cobblestone", "Gravel", "Stone"]
     # stony_probs = [0.75, 0.20, 0.05]
-    stony_palette = {"Cobblestone": 0.7, "Gravel": 0.2, "Stone": 0.1}
 
     def __init__(self, network, box, maps):
         # type: (RoadNetwork, TransformBox, map.Maps) -> None
         Generator.__init__(self, box)
-        self.__network = network  # type: RoadNetwork
+        self.__network = network  # type: RoadNetwork  # todo: only transfer road blocks to not having to import RoadNetwork
         self.__fluids = maps.fluid_map
         self.__maps = maps
         self.__origin = Point2D(box.minx, box.minz)  # type: Point2D
@@ -47,8 +47,8 @@ class RoadGenerator(Generator):
                         continue
                     clear_tree_at(level, self._box, Point2D(x + x0, z + z0))
                     if not self.__fluids.is_water(x, z):
-                        distance = abs(road_block.x - x) + abs(road_block.z - z)
-                        prob = distance / (8 * road_width)
+                        # distance = abs(road_block.x - x) + abs(road_block.z - z)
+                        # prob = distance / (8 * road_width)
                         # if not bernouilli(prob):
                         if True:
                             y, b = self.__compute_road_at(x, z, height_map, road_block)
@@ -73,11 +73,13 @@ class RoadGenerator(Generator):
 
     def __compute_road_at(self, x, z, height_map, r):
         # type: (int, int, array, Point2D) -> (int, Block)
-        material = choice(self.stony_palette.keys(), p=self.stony_palette.values())
+        material = choice(stony_palette.keys(), p=stony_palette.values())
 
         stair_material = choice(["Cobblestone", "Stone Brick"])
         surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
-        surround_alt = {Point2D(x1, z1): height_map[x1, z1] for (x1, z1) in surround_iter if self.__network.is_road(x1, z1) and ((x1 == x) or (z1 == z) or not self.__network.is_road(x, z))}
+        surround_alt = {Point2D(x1, z1): height_map[x1, z1] for (x1, z1) in surround_iter
+                        if self.__network.is_road(x1, z1)
+                        and ((x1 == x) or (z1 == z) or not self.__network.is_road(x, z))}
         if not surround_alt:
             return height_map[x, z], Materials[material]
         y = mean(surround_alt.values())
@@ -126,7 +128,7 @@ class RoadGenerator(Generator):
         if len(path_height) > abs(path_height[-1] - path_height[0]):
             # while there is a 2 block elevation in the path, smooth path heights
             changed = False
-            prev_value = max([abs(h2 - h1) for h2, h1 in zip(path_height[1:], path_height[:-1])])  # max elevation, supposed to decrease
+            prev_value = max([abs(h2 - h1) for h2, h1 in zip(path_height[1:], path_height[:-1])])
 
             while any(abs(h2 - h1) > 1 for h2, h1 in zip(path_height[1:], path_height[:-1])):
                 changed = True
@@ -172,7 +174,7 @@ class Bridge(Generator):
         self.translate(dx=self.__origin.x, dz=self.__origin.z)
         self.__straighten_bridge_points()
         o1, o2 = self.__points[0], self.__points[-1]  # type: Point2D, Point2D
-        om = self.__points[len(self.__points)//2]
+        # om = self.__points[len(self.__points)//2]
         length = euclidean(o1, o2) + 1
         try:
             y1, y2 = height_map[o1.x, o1.z] + 1, height_map[o2.x, o2.z] + 1
