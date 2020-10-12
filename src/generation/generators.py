@@ -230,12 +230,11 @@ class CropGenerator(MaskedGenerator):
         fence_block = Materials['{} Fence'.format(palette['door'])]
         gate_pos, gate_dist, gate_block = None, 0, None
 
-        max_height = percentile(height_map.flatten(), 85)
         # place fences
         for x, y, z in self.surface_pos(height_map):
             if not self.is_masked(x, z, True):
                 continue
-            if self.is_lateral(x, z) and y <= max_height:
+            if self.is_lateral(x, z):
                 setBlock(level, fence_block, x, y + 1, z)
                 new_gate_pos = Point2D(x, z)
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
@@ -252,14 +251,16 @@ class CropGenerator(MaskedGenerator):
             setBlock(level, gate_block, x, y, z)
 
         # place animals
-        animal_count = fence_box.surface // SURFACE_PER_ANIMAL
-        for _ in xrange(animal_count):
-            entity = Entity.Create(animal)  # type: Entity
+        animal_count = sum(self.__mask) // SURFACE_PER_ANIMAL
+        while animal_count:
             x = randint(fence_box.minx, fence_box.maxx-1)
             z = randint(fence_box.minz, fence_box.maxz-1)
             y = height_map[x-self.origin.x, z-self.origin.z] + 1
-            Entity.setpos(entity, (x, y, z))
-            level.addEntity(entity)
+            if self.is_masked(x, z) and not self.is_lateral(x, z):
+                entity = Entity.Create(animal)  # type: Entity
+                Entity.setpos(entity, (x, y, z))
+                level.addEntity(entity)
+                animal_count -= 1
 
     def _gen_crop_v1(self, level, height=None, palette=None):
         # dimensions
@@ -335,13 +336,16 @@ class CropGenerator(MaskedGenerator):
         return height_map
 
     def is_lateral(self, x=None, z=None):
-        if MaskedGenerator.is_lateral(self, x, z):
-            return True
         p = Point2D(x, z)
+        if Generator.is_lateral(self, x, z):
+            return True
         if not self.is_masked(p, absolute_coords=True):
             return False
-        b1 = sum(MaskedGenerator.is_lateral(self, x + _.asPoint2D.x, z + _.asPoint2D.z) for _ in cardinal_directions()) >= 2
-        return b1
+        x0, z0 = x - self.origin.x, z - self.origin.z
+        for x1, z1 in product(sym_range(x0, 1, self.width), sym_range(z0, 1, self.length)):
+            if not self.is_masked(x1, z1):
+                return True
+        return False
 
 
 class CardinalGenerator(Generator):
@@ -508,25 +512,6 @@ class StoneTower(Generator):
         schem = nbt.toSchematic()
         # todo: rotate schematic to face door to entry point
         copyBlocksWrap(level, schem, schem.bounds, (origin_x, origin_y, origin_z))
-
-
-class Plaza(Generator):
-    def generate(self, level, height_map=None, palette=None):
-        self._clear_trees(level)
-        # if self.length >= 7 and self.width >= 7 and bernouilli(0.7):
-        #     file_name = 'romantic_booth.nbt'
-        #     origin_x = self._box.minx + randint(0, self.width - 7)
-        #     origin_z = self._box.minz + randint(0, self.length - 7)
-        #     origin_y = height_map[origin_x + 3 - self._box.minx, origin_z + 3 - self._box.minz] + 1
-        # else:
-        #     file_name = 'fountain.nbt'
-        #     origin_x = self._box.minx + randint(0, self.width - 5)
-        #     origin_z = self._box.minz + randint(0, self.length - 5)
-        #     origin_y = height_map[origin_x + 2 - self._box.minx, origin_z + 2 - self._box.minz] + 1
-        # nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', file_name]))
-        # schem = nbt.toSchematic()
-        # # todo: rotate schematic to face door to entry point
-        # copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)
 
 
 def place_street_lamp(level, x, y, z, material):

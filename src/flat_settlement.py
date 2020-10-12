@@ -6,7 +6,6 @@ from random import choice
 
 from numpy import percentile
 from numpy.random import geometric, normal
-from typing import List
 
 from building_seeding import Parcel, VillageSkeleton, BuildingType
 from building_seeding.parcel import MaskedParcel
@@ -14,8 +13,7 @@ from generation.building_palette import get_biome_palette
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
 from terrain_map.maps import Maps
 from terrain_map.road_network import RoadNetwork
-from utils import Direction, TransformBox
-from utils import bernouilli, euclidean, Point2D
+from utils import *
 
 MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
 SETTLEMENT_ACCESS_DIST = 25  # maximum distance from settlement center to road net

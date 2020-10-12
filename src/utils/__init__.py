@@ -6,3 +6,4 @@ from pymclevel import alphaMaterials as Materials, BoundingBox
 from itertools import product
 from numpy import array, full, zeros, ones
 from typing import Callable, List, Dict
+from time import time

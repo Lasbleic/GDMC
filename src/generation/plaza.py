@@ -55,7 +55,7 @@ class PlazaGenerator(MaskedGenerator):
     def __city_park(self, level, ground_height, build_height, palette):
         for x, y, z in self.surface_pos(build_height):
             if self.is_lateral(x, z):
-                if ((x-self.origin.x+1) // 3 == self.width // 3) or ((z-self.origin.z+1) // 3 == self.length // 3):
+                if (abs(x - self.origin.x - self.width // 2) <= 1) or ((z - self.origin.z - self.length // 2) <= 1):
                     continue  # openings
                 material = Materials["Cobblestone"] if (self.is_corner(Point2D(x, z)) or (x+z) % 3 == 0) else Materials["Cobblestone Wall"]
                 setBlock(level, material, x, y+1, z)

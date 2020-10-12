@@ -47,6 +47,32 @@ class VillageSkeleton:
         self.__parcel_list.append(new_parcel)
         new_parcel.mark_as_obstacle(self.maps.obstacle_map)
 
+    def __handle_new_road_cycles(self, cycles):
+
+        for road_cycle in cycles:
+            city_block = CityBlock(road_cycle, self.maps)
+            block_parcel = city_block.parcels()
+            seed = block_parcel.center
+            # block_seed = Point2D(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
+            block_type = self.__interest.get_optimal_type(seed)
+            if block_type:
+                self.add_parcel(seed, block_type)
+                # self._create_masked_parcel(block_seed, BuildingType().ghost)
+                # parcel is considered already linked to road network
+            else:
+                # if there already is a parcel in the block, or very close, it is moved to the block seed
+                dist_to_parcels = list(map(lambda parcel: euclidean(parcel.center, seed), self.__parcel_list))
+                if min(dist_to_parcels) <= AVERAGE_PARCEL_SIZE / 2:
+                    index = int(argmin(dist_to_parcels))
+                    old_parcel = self.__parcel_list[index]
+                    self.maps.obstacle_map.hide_obstacle(old_parcel.origin, old_parcel.mask, False)
+                    block_parcel.mark_as_obstacle(self.maps.obstacle_map)
+                    block_parcel.building_type.copy(old_parcel.building_type)
+                    self.__parcel_list[index] = block_parcel
+                else:
+                    # add a park or plaza in the new cycle
+                    self.add_parcel(block_parcel, BuildingType().ghost)
+
     def grow(self, do_limit, do_visu):
         print("Seeding parcels")
         map_plots = VisuHandler(do_visu, self.size, self.__parcel_list, self.maps.road_network)
@@ -71,31 +97,7 @@ class VillageSkeleton:
             # Road Creation Process
             cycles = self.maps.road_network.connect_to_network(self.__parcel_list[-1].entry_point)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
-
-            for road_cycle in cycles:
-                city_block = CityBlock(road_cycle, self.maps)
-                block_parcel = city_block.parcels()
-                seed = block_parcel.center
-                # block_seed = Point2D(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
-                block_type = self.__interest.get_optimal_type(seed)
-                if block_type:
-                    self.add_parcel(seed, block_type)
-                    # self._create_masked_parcel(block_seed, BuildingType().ghost)
-                    # parcel is considered already linked to road network
-                else:
-                    # if there already is a parcel in the block, or very close, it is moved to the block seed
-                    dist_to_parcels = list(map(lambda parcel: euclidean(parcel.center, seed), self.__parcel_list))
-                    if min(dist_to_parcels) <= AVERAGE_PARCEL_SIZE / 2:
-                        index = int(argmin(dist_to_parcels))
-                        old_parcel = self.__parcel_list[index]
-                        self.maps.obstacle_map.hide_obstacle(old_parcel.origin, old_parcel.mask, False)
-                        block_parcel.mark_as_obstacle(self.maps.obstacle_map)
-                        block_parcel.building_type.copy(old_parcel.building_type)
-                        self.__parcel_list[index] = block_parcel
-                    else:
-                        # self.__create_new_parcel(block_seed, BuildingType().ghost)
-                        self.add_parcel(block_parcel, BuildingType().ghost)
-
+            self.__handle_new_road_cycles(cycles)
             if do_limit and time() - t0 >= 9 * 60:
                 print("Time limit reached: early stopping parcel seeding")
                 break
@@ -137,78 +139,3 @@ class CityBlock:
     @property
     def maxz(self):
         return self.__limits.z
-
-
-if __name__ == '__main__':
-    # from utils import TransformBox
-    # from terrain_map import Maps
-    # from flat_settlement import FlatSettlement
-
-    N = 100
-
-    # my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
-    # my_maps = Maps(None, my_bounding_box)
-    #
-    # print("Creating Flat map")
-    # my_flat_settlement = FlatSettlement(my_maps)
-    #
-    # print("Initializing road network")
-    # my_flat_settlement.init_road_network()
-    #
-    # print("Initializing town center")
-    # my_flat_settlement.init_town_center()
-    #
-    # print("Building skeleton")
-    # my_flat_settlement.build_skeleton(False)
-
-    # N = 50
-    #
-    # my_bounding_box = TransformBox((0, 0, 0), (N, 0, N))
-    # my_maps = Maps(None, my_bounding_box)
-    #
-    # print("Creating Flat terrain_map")
-    # my_flat_settlement = FlatSettlement(my_maps)
-    #
-    # road_cmap = colors.ListedColormap(['forestgreen', 'beige'])
-    # road_map = Map("road_network", N, np.copy(my_flat_settlement._road_network.network),
-    # road_cmap, (0, 1), ['Grass', 'Road'])
-    #
-    # print("Initializing road network")
-    # my_flat_settlement.init_road_network()
-    #
-    # road_map2 = Map("road_network_2", N, np.copy(my_flat_settlement._road_network.network),
-    # road_cmap, (0, 1), ['Grass', 'Road'])
-    #
-    # print("Initializing town center")
-    # my_flat_settlement.init_town_center()
-    #
-    # print("Building skeleton")
-    # my_flat_settlement.build_skeleton()
-    #
-    # print("Parcel list has length:", len(my_flat_settlement._parcels))
-    #
-    # minecraft_net = np.copy(my_flat_settlement._road_network.network)
-    #
-    # COLORS = {"house": 2,
-    #           "crop": 3,
-    #           "windmill": 4}
-    #
-    # minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'white'])
-    #
-    # for parcel in my_flat_settlement._parcels:
-    #     xmin, xmax = parcel.minx, parcel.maxx
-    #     zmin, zmax = parcel.minz, parcel.maxz
-    #
-    #     # minecraft_net[zmin:zmax, xmin:xmax] = COLORS[parcel.building_type.name]
-    #     minecraft_net[parcel.center.z, parcel.center.x] = COLORS[parcel.building_type.name]
-    #
-    # village_center = my_flat_settlement._village_skeleton.ghost.center
-    # minecraft_net[village_center.z, village_center.x] = 5
-    #
-    # minecraft_map = Map("minecraft_map", N, minecraft_net, minecraft_cmap, (0, 5),
-    # ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter'])
-    #
-    # the_stock = MapStock("village_skeleton_test", N, clean_dir=True)
-    # the_stock.add_map(road_map)
-    # the_stock.add_map(road_map2)
-    # the_stock.add_map(minecraft_map)

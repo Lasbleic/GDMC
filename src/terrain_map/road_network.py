@@ -206,7 +206,8 @@ class RoadNetwork:
                     # worth building this path
                     if _t1 is None:
                         _t1 = time()
-                    cycles.append(set(old_path).union(set(new_path)))
+                    if len(old_path.symmetric_difference(new_path)) >= euclidean(node, point_to_connect):
+                        cycles.append(old_path.union(new_path))
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 
