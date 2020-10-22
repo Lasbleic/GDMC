@@ -12,6 +12,9 @@ class VoidStructureNBT(StructureNBT):
         super(VoidStructureNBT, self).__init__(filename, root_tag, size, mats)
 
         self._blocks.fill((217, 0))  # fills structure bounds with void, instead of air
+        for palette_block in self._palette:
+            if 'Properties' in palette_block and 'shape' in palette_block['Properties']:
+                palette_block['Properties']['shape'] = u'outer_right'
         for block in self._root_tag["blocks"]:
             # loads blocks referenced in the nbt
             x, y, z = [p.value for p in block["pos"].value]

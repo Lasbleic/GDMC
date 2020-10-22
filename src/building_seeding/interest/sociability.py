@@ -10,8 +10,9 @@ from math import sqrt
 
 import numpy as np
 
-from building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from math_function import attraction_repulsion
+from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
+from building_seeding.interest.math_function import attraction_repulsion
+from utils import Point2D, euclidean
 
 
 def local_sociability(x, z, building_type, scenario, settlement_seeds):
@@ -22,7 +23,7 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds):
     for settlement_seed in settlement_seeds:
 
         neighbor_type, neighbor_position = settlement_seed.building_type, settlement_seed.center
-        distance_to_building = sqrt((neighbor_position.x - x) ** 2 + (neighbor_position.z - z) ** 2)
+        distance_to_building = euclidean(Point2D(x, z), neighbor_position)
         lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][
             building_type.name + "-" + neighbor_type.name]
 

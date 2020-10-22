@@ -11,15 +11,15 @@ from typing import List
 
 from generation.building_palette import get_biome_palette
 from generation.generators import Generator
-from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
+from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
 from utils import Direction, TransformBox
 from building_seeding import Parcel, VillageSkeleton, BuildingType
-from map.maps import Maps
-from map.road_network import RoadNetwork
+from terrain_map.maps import Maps
+from terrain_map.road_network import RoadNetwork
 from utils import bernouilli, euclidean, Point2D
 
 MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
-SETTLEMENT_ACCESS_DIST = 12  # maximum distance from settlement center to road net
+SETTLEMENT_ACCESS_DIST = 25  # maximum distance from settlement center to road net
 
 
 class FlatSettlement:
@@ -54,6 +54,7 @@ class FlatSettlement:
 
     def init_road_network(self):
         out_connections = [self.__random_border_point()]
+        self._road_network.create_road(self._center, out_connections[0])
         max_road_count = max(1, min(self.limits.width, self.limits.length) // MEAN_ROAD_COVERED_SURFACE)
         logging.debug('Max road count: {}'.format(max_road_count))
         road_count = min(geometric(1./max_road_count), max_road_count*3//2)
@@ -77,33 +78,39 @@ class FlatSettlement:
                     logging.debug('\tDismissed point {} at {}m < {}m'.format(*log_args))
                     min_distance_to_roads *= 0.9
             # update road network
-            if road_id == 0:
-                self._road_network.create_road(out_connections[0], out_connections[1])
-            else:
-                self._road_network.connect_to_network(out_connections[-1])
+            # if road_id == 0:
+            #     self._road_network.create_road(out_connections[0], out_connections[1])
+            # else:
+            self._road_network.connect_to_network(out_connections[-1])
 
     def init_town_center(self):
+        stp_thresh = 1
         while True:
             mean_x = self.limits.width / 2
-            dx = normal(mean_x, self.limits.width / 6)
+            dx = normal(mean_x, self.limits.width / 8)
             dx = int(min(self.limits.width-1, max(0, dx)))
 
             mean_z = self.limits.length / 2
-            dz = normal(mean_z, self.limits.length / 6)
+            dz = normal(mean_z, self.limits.length / 8)
             dz = int(min(self.limits.length-1, max(0, dz)))
 
             random_center = Point2D(dx, dz)
             distance = self._road_network.get_distance(random_center)
-            if distance <= SETTLEMENT_ACCESS_DIST:
+            if self._maps.fluid_map.is_close_to_fluid(random_center) or distance < MIN_PARCEL_SIDE:
+                continue
+            elif self._maps.height_map.steepness(random_center.x, random_center.z, margin=6) < stp_thresh:
                 self._center = random_center
                 logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
                 break
+            else:
+                stp_thresh *= 1.1
+        self._parcels.append(Parcel(self._center, BuildingType().ghost, self._maps))
 
-    def build_skeleton(self, time_limit):
+    def build_skeleton(self, time_limit, do_visu=False):
         self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
-        self._village_skeleton.grow(time_limit)
-        for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
-            self._parcels.remove(parcel)
+        self._village_skeleton.grow(time_limit, do_visu)
+        # for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
+        #     self._parcels.remove(parcel)
 
     def define_parcels(self):
         """
@@ -141,10 +148,16 @@ class FlatSettlement:
         # set parcels heights
         def define_parcels_heights(parcel):
             # type: (Parcel) -> None
-            # y = percentile(parcel.height_map, 35)
-            y = self._maps.height_map.altitude(parcel.entry_x, parcel.entry_z)
-            y = min(parcel.height_map.max(), max(parcel.height_map.min(), y))
-            d = euclidean(parcel.center, self.town_center)
+            min_y = percentile(parcel.height_map, 25)
+            max_y = percentile(parcel.height_map, 75)
+            road_y = self._maps.height_map.altitude(parcel.entry_x, parcel.entry_z)
+            y = road_y
+            if road_y > max_y:
+                y = max_y
+            elif road_y < min_y:
+                y = min_y
+            y += 1
+            d = min(euclidean(parcel.center, _.center) for _ in filter(lambda p: p.building_type.name == "ghost", self._parcels))
             h = int(MAX_HEIGHT * exp(-d / BUILDING_HEIGHT_SPREAD))
             parcel.set_height(y, h)
 

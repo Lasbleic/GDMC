@@ -1,36 +1,14 @@
 from time import time
 
+from typing import List
+
 from pymclevel import alphaMaterials as Materials
 from numpy import array
 
-from utils import Point2D
+from utils import Point2D, ground_blocks_ID, fluid_blocks_ID
 
 
 class HeightMap:
-    ground_blocks = [
-        Materials.Grass.ID,
-        Materials.Dirt.ID,
-        Materials.Stone.ID,
-        Materials.Bedrock.ID,
-        Materials.Sand.ID,
-        Materials.Gravel.ID,
-        Materials.GoldOre.ID,
-        Materials.IronOre.ID,
-        Materials.CoalOre.ID,
-        Materials.LapisLazuliOre.ID,
-        Materials.DiamondOre.ID,
-        Materials.RedstoneOre.ID,
-        Materials.RedstoneOreGlowing.ID,
-        Materials.Netherrack.ID,
-        Materials.SoulSand.ID,
-        Materials.Clay.ID,
-        Materials.Glowstone.ID
-    ]
-
-    fluid_blocks = [Materials.Water.ID, Materials.WaterActive.ID,
-                    Materials.Lava.ID, Materials.LavaActive.ID,
-                    Materials.Ice.ID, Materials.PackedIce.ID, Materials.FrostedIce.ID]
-
     def __init__(self, level, box):
         # detects highest ground or fluid block
         self.__air_height = None  # type: array
@@ -58,22 +36,26 @@ class HeightMap:
 
             self.__fluid_height = array([
                 [
-                    drill_down(x, z, self.ground_blocks + self.fluid_blocks) for z in range(zm, zM)
+                    drill_down(x, z, ground_blocks_ID + fluid_blocks_ID) for z in range(zm, zM)
                 ]
                 for x in range(xm, xM)])
 
             self.__altitude = array([
                 [
-                    drill_down(x, z, self.ground_blocks) for z in range(zm, zM)
+                    drill_down(x, z, ground_blocks_ID) for z in range(zm, zM)
                 ]
                 for x in range(xm, xM)])
 
         print('[{}] Computed height map in {}s'.format(self.__class__, time() - t0))
 
-    def altitude(self, xr, zr):
+    def altitude(self, xr, zr=None):
+        if zr is None:
+            return self.altitude(xr.x, xr.z)
         return self.__altitude[xr, zr]
 
-    def fluid_height(self, xr, zr):
+    def fluid_height(self, xr, zr=None):
+        if zr is None:
+            return self.fluid_height(xr.x, xr.z)
         return self.__fluid_height[xr, zr]
 
     def air_height(self, xr, zr):
@@ -83,15 +65,15 @@ class HeightMap:
         x0 = box.minx if use_relative_coords else box.minx - self.__origin.x
         z0 = box.minz if use_relative_coords else box.minz - self.__origin.z
         matrix = self.__fluid_height if include_fluids else self.__altitude
-        return matrix[x0: (x0 + box.width), z0:(z0 + box.length)]
+        return matrix[x0: (x0 + box.width), z0:(z0 + box.length)].astype(int)
 
-    def steepness(self, x, z):
+    def steepness(self, x, z, margin=3):
         value = 0
-        for m in range(1, 4):
+        for m in range(1, margin + 1):
             local_height = self.__fluid_height[max(0, x - m): min(x + m, self.width),
                                                max(0, z - m): min(z + m, self.length)]
             value += local_height.std()
-        return value / 3
+        return value / margin
 
     @property
     def width(self):
@@ -100,3 +82,10 @@ class HeightMap:
     @property
     def length(self):
         return self.__air_height.shape[1]
+
+    def update(self, points, heights):
+        # type: (List[Point2D], List[int]) -> None
+        for p, h in zip(points, heights):
+            if self.altitude(p) == self.fluid_height(p):
+                self.__fluid_height[p.x, p.z] = h
+            self.__altitude[p.x, p.z] = h

@@ -5,7 +5,7 @@ from typing import Iterator
 
 from numpy import array, argmax, argmin
 
-from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Block
+from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials
 from utilityFunctions import setBlock
 from itertools import product
 
@@ -284,35 +284,41 @@ def clear_tree_at(level, box, point):
 
     def is_tree(bid):
         block = level.materials[bid]
-        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block']
+        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block', 'vine', 'cocoa']
 
     y = level.heightMapAt(point.x, point.z) - 1
     if not is_tree(level.blockAt(point.x, y, point.z)):
         return
 
-    possible_tree_blocks = [(point.x, y, point.z)]
-    while possible_tree_blocks:
-        x0, y0, z0 = possible_tree_blocks.pop()
-        setBlock(level, (0, 0), x0, y0, z0)
+    tree_blocks = [(point.x, y, point.z)]
+    while tree_blocks:
+        x0, y0, z0 = tree_blocks.pop()
 
-        if level.materials[level.blockAt(x0, y0, z0)].stringID != 'red_mushroom_block':
+        # special case: red mushrooms
+        if level.materials[level.blockAt(x0, y0, z0)].stringID == 'red_mushroom_block':
             # explore top/bottom diagonal blocks
             for direction, dy in product(cardinal_directions(), [-1, 1]):
                 x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
                 if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box and euclidean(point, Point2D(x, z)) < 5:
-                    possible_tree_blocks.append((x, y, z))
+                    tree_blocks.append((x, y, z))
+        # special case: snowy trees
+        elif (level.materials[level.blockAt(x0, y0, z0)].stringID in ['leaves', 'leaves2']
+              and level.materials[level.blockAt(x0, y0+1, z0)].stringID == 'snow_layer'):
+            tree_blocks.append((x0, y0+1, z0))
 
         for direction in all_directions():
             x = x0 + direction.x
             y = y0 + direction.y
             z = z0 + direction.z
             if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
-                possible_tree_blocks.append((x, y, z))
+                tree_blocks.append((x, y, z))
+
+        setBlock(level, (0, 0), x0, y0, z0)
 
 
 def place_torch(level, x, y, z):
     if not level.blockAt(x, y, z):
-        torch = Block["Torch (Up)"]
+        torch = Materials["Torch (Up)"]
         setBlock(level, (torch.ID, torch.blockData), x, y, z)
 
 
@@ -340,6 +346,33 @@ def pos_bound(v, vmax=None):
     if vmax and v >= vmax:
         return vmax
     return v
+
+
+ground_blocks = [
+    Materials.Grass,
+    Materials.Dirt,
+    Materials.Stone,
+    Materials.Bedrock,
+    Materials.Sand,
+    Materials.Gravel,
+    Materials.GoldOre,
+    Materials.IronOre,
+    Materials.CoalOre,
+    Materials.LapisLazuliOre,
+    Materials.DiamondOre,
+    Materials.RedstoneOre,
+    Materials.RedstoneOreGlowing,
+    Materials.Netherrack,
+    Materials.SoulSand,
+    Materials.Clay,
+    Materials.Glowstone
+]
+
+ground_blocks_ID = [_.ID for _ in ground_blocks]
+
+fluid_blocks_ID = [Materials.Water.ID, Materials.WaterActive.ID,
+                   Materials.Lava.ID, Materials.LavaActive.ID,
+                   Materials.Ice.ID, Materials.PackedIce.ID, Materials.FrostedIce.ID]
 
 
 if __name__ == '__main__':
