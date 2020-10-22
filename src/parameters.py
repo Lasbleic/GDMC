@@ -3,6 +3,7 @@ MAX_ROAD_WIDTH = 7
 MIN_ROAD_WIDTH = 3
 MAX_WATER_EXPLORATION = 100
 MAX_LAVA_EXPLORATION = 50
+PARCEL_REUSE_ADVANTAGE = 2.5  # interest multiplying cost when evaluating a parcel type replacement
 
 # Each bridge costs a initial cost + linear cost on length
 BRIDGE_COST = 10

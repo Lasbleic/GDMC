@@ -1,9 +1,9 @@
-from math import sqrt, ceil
+from math import sqrt
 from os.path import realpath, sep
 from random import random, shuffle
-from typing import Iterable
+from typing import Iterator
 
-from numpy import array, argmax
+from numpy import array, argmax, argmin
 
 from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Block
 from utilityFunctions import setBlock
@@ -138,6 +138,30 @@ class TransformBox(BoundingBox):
         else:  # supposedly self.minx < other.minx
             return self.split(dz=self.length - 1)[1]
 
+    def closest_border(self, px, z=None, relative_coords=False):
+        """Gets the border point of self closer to the input point"""
+        if z is not None:
+            return self.closest_border(Point2D(px, z), None, relative_coords)
+
+        if relative_coords:
+            px = Point2D(px.x + self.minx, px.z + self.minz)
+
+        if self.is_lateral(px.x, px.z):
+            return px - Point2D(self.minx, self.minz) if relative_coords else px
+
+        xm, zm = (self.minx + self.maxx) // 2, (self.minz + self.maxz) // 2
+        corners = [Point2D(self.minx, zm), Point2D(self.maxx-1, zm), Point2D(xm, self.minz), Point2D(xm, self.maxz-1)]
+        distance = [euclidean(px, _) for _ in corners]
+        i = argmin(distance)
+        if i == 0:
+            return Point2D(0, px.z - self.minz) if relative_coords else Point2D(self.minx, px.z)
+        elif i == 1:
+            return Point2D(self.width - 1, px.z - self.minz) if relative_coords else Point2D(self.maxx - 1, px.z)
+        elif i == 2:
+            return Point2D(px.x - self.minx, 0) if relative_coords else Point2D(px.x, self.minz)
+        else:
+            return Point2D(px.x - self.minx, self.length - 1) if relative_coords else Point2D(px.x, self.maxz - 1)
+
     @property
     def surface(self):
         return self.width * self.length
@@ -242,14 +266,14 @@ Bottom = Direction(0, -1, 0)
 
 
 def cardinal_directions():
-    # type: () -> Iterable[Direction]
+    # type: () -> Iterator[Direction]
     directions = [East, South, West, North]
     shuffle(directions)
     return iter(directions)
 
 
 def all_directions():
-    # type: () -> Iterable[Direction]
+    # type: () -> Iterator[Direction]
     directions = [East, South, West, North, Top, Bottom]
     shuffle(directions)
     return iter(directions)
