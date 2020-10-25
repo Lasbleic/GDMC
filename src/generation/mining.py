@@ -1,5 +1,7 @@
 from __future__ import division
+
 from random import randint
+
 from numpy import percentile
 
 from generation import Generator, HousePalette
@@ -137,6 +139,18 @@ class Point3D:
     @property
     def z(self):
         return self._z
+
+    def __add__(self, other):
+        assert isinstance(other, Point3D) or isinstance(other, Point2D)
+        if isinstance(other, Point2D):
+            other = Point3D(other.x, 0, other.z)
+        return Point3D(self.x + other.x, self.y + other.y, self.z + other.z)
+
+    def __neg__(self):
+        return Point3D(-self.x, -self.y, -self.z)
+
+    def __sub__(self, other):
+        return self + (-other)
 
 
 class Agent:

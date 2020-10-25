@@ -1,3 +1,4 @@
+from itertools import product
 from math import sqrt
 from os.path import realpath, sep
 from random import random, shuffle
@@ -5,9 +6,9 @@ from typing import Iterator
 
 from numpy import array, argmax, argmin
 
-from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials
+from materials import Block
+from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials, MCLevel
 from utilityFunctions import setBlock
-from itertools import product
 
 
 class Point2D:
@@ -29,6 +30,9 @@ class Point2D:
         assert isinstance(other, Point2D)
         return Point2D(self.x + other.x, self.z + other.z)
 
+    def __neg__(self):
+        return Point2D(0, 0) - self
+
     def __sub__(self, other):
         assert isinstance(other, Point2D)
         return Point2D(self.x - other.x, self.z - other.z)
@@ -45,6 +49,10 @@ class Point2D:
         mult = self * other
         return mult.x + mult.z
 
+    @property
+    def toInt(self):
+        return Point2D(int(round(self.x)), int(round(self.z)))
+
 
 def bernouilli(p=.5):
     # type: (float) -> bool
@@ -54,6 +62,11 @@ def bernouilli(p=.5):
 def euclidean(p1, p2):
     # type: (Point2D, Point2D) -> float
     return sqrt((p1.x - p2.x) ** 2 + (p1.z - p2.z) ** 2)
+
+
+def manhattan(p1, p2):
+    # type: (Point2D, Point2D) -> float
+    return abs(p1.x - p2.x) + abs(p1.z - p2.z)
 
 
 def get_project_path():
@@ -256,6 +269,10 @@ class Direction:
         x, y, z = list(map(int, str_to_coord[dir_str].split(' ')))
         return Direction(x, y, z)
 
+    @classmethod
+    def from_point(cls, param):
+        return Direction(param.x, 0, param.z)
+
 
 East = Direction(1, 0, 0)
 West = Direction(-1, 0, 0)
@@ -348,6 +365,11 @@ def pos_bound(v, vmax=None):
     return v
 
 
+def setMaterial(level, x, y, z, material):
+    # type: (MCLevel, int, int, int, Block) -> None
+    setBlock(level, (material.ID, material.blockData), x, y, z)
+
+
 ground_blocks = [
     Materials.Grass,
     Materials.Dirt,
@@ -368,12 +390,24 @@ ground_blocks = [
     Materials.Glowstone
 ]
 
+plant_blocks = [Materials.Sapling, Materials.Web, Materials.UnusedShrub, Materials.TallGrass, Materials.Shrub,
+                Materials.DesertShrub2, Materials.Flower, Materials.Rose, Materials.BrownMushroom,
+                Materials.RedMushroom, Materials.SugarCane, Materials.BrewingStand, Materials.TripwireHook,
+                Materials.Tripwire, Materials.FlowerPot, Materials.TallFlowers, Materials.Wood, Materials.Leaves]
+
+water_blocks = [Materials.Water, Materials.WaterActive, Materials.Ice]
+water_blocks_id = [_.ID for _ in water_blocks]
+
+lava_blocks = [Materials.Lava, Materials.LavaActive]
+lava_blocks_id = [Materials.Lava.ID, Materials.LavaActive.ID]
+
+natural_blocks = ground_blocks + plant_blocks + water_blocks + lava_blocks
+
 ground_blocks_ID = [_.ID for _ in ground_blocks]
 
 fluid_blocks_ID = [Materials.Water.ID, Materials.WaterActive.ID,
                    Materials.Lava.ID, Materials.LavaActive.ID,
                    Materials.Ice.ID, Materials.PackedIce.ID, Materials.FrostedIce.ID]
-
 
 if __name__ == '__main__':
     assert -Direction(-3, 0, 0) == East

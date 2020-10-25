@@ -11,9 +11,9 @@ from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
 from parameters import MAX_WATER_EXPLORATION, MAX_LAVA_EXPLORATION, MIN_DIST_TO_OCEAN, MIN_DIST_TO_RIVER, \
     MIN_DIST_TO_LAVA
-from pymclevel import MCLevel, alphaMaterials as Blocks
+from pymclevel import MCLevel
 from pymclevel.biome_types import biome_types
-from utils import Point2D, cardinal_directions
+from utils import Point2D, cardinal_directions, water_blocks_id, lava_blocks_id
 
 
 class FluidMap:
@@ -40,7 +40,7 @@ class FluidMap:
         for x, z in product(range(self.__width), range(self.__length)):
             xs, zs = x + self.__other_maps.box.minx, z + self.__other_maps.box.minz
             y = self.__other_maps.height_map.fluid_height(x, z)
-            if level.blockAt(xs, y, zs) in [Blocks.Water.ID, Blocks.WaterActive.ID, Blocks.Ice.ID]:
+            if level.blockAt(xs, y, zs) in water_blocks_id:
                 cx, cz = xs // 16, zs // 16
                 biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
                 if 'Ocean' in biome_types[biome] or 'Beach' in biome_types[biome]:
@@ -53,7 +53,7 @@ class FluidMap:
                     label = -1  # yet unlabeled
                 water_points.append((x, z, label))
 
-            elif level.blockAt(xs, y, zs) in [Blocks.Lava.ID, Blocks.LavaActive.ID]:
+            elif level.blockAt(xs, y, zs) in lava_blocks_id:
                 self.__lava_map[x, z] = True
                 self.has_lava = True
 
