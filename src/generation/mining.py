@@ -1,5 +1,6 @@
 from __future__ import division
 
+from math import sqrt
 from random import randint
 
 from numpy import percentile
@@ -120,37 +121,6 @@ class MineEntry(Generator):
         fillBlocks(level, hole_box, Material[0])
         fillBlocks(level, ladder_box, block)
         fillBlocks(level, ladder_box.translate(dx=1), Material["Oak Wood (Upright)"], [Material[0]])
-
-
-class Point3D:
-    def __init__(self, x, y, z):
-        self._x = x
-        self._y = y
-        self._z = z
-
-    @property
-    def x(self):
-        return self._x
-
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def z(self):
-        return self._z
-
-    def __add__(self, other):
-        assert isinstance(other, Point3D) or isinstance(other, Point2D)
-        if isinstance(other, Point2D):
-            other = Point3D(other.x, 0, other.z)
-        return Point3D(self.x + other.x, self.y + other.y, self.z + other.z)
-
-    def __neg__(self):
-        return Point3D(-self.x, -self.y, -self.z)
-
-    def __sub__(self, other):
-        return self + (-other)
 
 
 class Agent:

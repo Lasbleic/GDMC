@@ -1,10 +1,11 @@
 # coding=utf-8
 from __future__ import division, print_function
 
+from math import sqrt
 from sys import maxint
-
-from numpy import full, empty, zeros, argmin
 from typing import Set, Callable
+
+from numpy import full, empty, zeros
 
 import terrain_map
 from generation.generators import *
