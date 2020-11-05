@@ -53,9 +53,13 @@ class Point3D(Point2D):
     def y(self):
         return self._y
 
+    @property
+    def coords(self):
+        return self.x, self.y, self.z
+
     def __add__(self, other):
         assert isinstance(other, Point3D) or isinstance(other, Point2D)
-        if isinstance(other, Point2D):
+        if not isinstance(other, Point3D):
             other = Point3D(other.x, 0, other.z)
         return Point3D(self.x + other.x, self.y + other.y, self.z + other.z)
 
@@ -65,12 +69,19 @@ class Point3D(Point2D):
     def __sub__(self, other):
         return self + (-other)
 
+    def __str__(self):
+        return "(x:{}, y:{}, z:{})".format(self.x, self.y, self.z)
+
 
 def euclidean(p1, p2):
-    # type: (Point2D, Point2D) -> float
+    # type: (Point2D or Point3D, Point2D or Point3D) -> float
+    if isinstance(p1, Point3D) and isinstance(p2, Point3D):
+        return sqrt((p1.x - p2.x) ** 2 + (p1.z - p2.z) ** 2 + (p1.y - p2.y) ** 2)
     return sqrt((p1.x - p2.x) ** 2 + (p1.z - p2.z) ** 2)
 
 
 def manhattan(p1, p2):
     # type: (Point2D or Point3D, Point2D or Point3D) -> float
+    if isinstance(p1, Point3D) and isinstance(p2, Point3D):
+        return abs(p1.x - p2.x) + abs(p1.z - p2.z) + abs(p1.y - p2.y)
     return abs(p1.x - p2.x) + abs(p1.z - p2.z)

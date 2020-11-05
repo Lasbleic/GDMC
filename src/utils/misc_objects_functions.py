@@ -4,10 +4,10 @@ from random import random, shuffle
 from typing import Iterator
 
 from numpy import array, argmax, argmin
-
-from materials import Block
-from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials, MCLevel
 from utilityFunctions import setBlock
+
+from pymclevel import BoundingBox, MCInfdevOldLevel, alphaMaterials as Materials, MCLevel
+from pymclevel.materials import Block
 from utils import Point2D, euclidean
 
 
@@ -243,12 +243,24 @@ def all_directions():
     return iter(directions)
 
 
-def clear_tree_at(level, box, point):
-    # type: (MCInfdevOldLevel, TransformBox, Point2D) -> None
+def clear_tree_at(level, box=None, point=None):
+    # type: (MCInfdevOldLevel, BoundingBox, Point2D) -> None
+
+    if box is None:
+        if point is None:
+            return
+        else:
+            box = BoundingBox((point.x, 0, point.z), (1, 256, 1))
 
     def is_tree(bid):
         block = level.materials[bid]
-        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block', 'vine', 'cocoa']
+        return block.stringID in ['leaves', 'log', 'leaves2', 'log2', 'brown_mushroom_block', 'red_mushroom_block',
+                                  'vine', 'cocoa']
+
+    def is_in_perimeter():
+        in_box = (x0, box.miny, z0) in box
+        close_to_source = euclidean(Point2D(x0, z0), point) < 5
+        return in_box and close_to_source
 
     y = level.heightMapAt(point.x, point.z) - 1
     if not is_tree(level.blockAt(point.x, y, point.z)):
@@ -257,24 +269,25 @@ def clear_tree_at(level, box, point):
     tree_blocks = [(point.x, y, point.z)]
     while tree_blocks:
         x0, y0, z0 = tree_blocks.pop()
+        if not is_in_perimeter():
+            continue
 
         # special case: red mushrooms
         if level.materials[level.blockAt(x0, y0, z0)].stringID == 'red_mushroom_block':
             # explore top/bottom diagonal blocks
             for direction, dy in product(cardinal_directions(), [-1, 1]):
                 x, y, z = x0 + direction.x, y0 + dy, z0 + direction.z
-                if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box and euclidean(point, Point2D(x, z)) < 5:
+                if is_tree(level.blockAt(x, y, z)):
                     tree_blocks.append((x, y, z))
         # special case: snowy trees
-        elif (level.materials[level.blockAt(x0, y0, z0)].stringID in ['leaves', 'leaves2']
-              and level.materials[level.blockAt(x0, y0+1, z0)].stringID == 'snow_layer'):
-            tree_blocks.append((x0, y0+1, z0))
+        elif level.materials[level.blockAt(x0, y0 + 1, z0)].stringID == 'snow_layer':
+            tree_blocks.append((x0, y0 + 1, z0))
 
         for direction in all_directions():
             x = x0 + direction.x
             y = y0 + direction.y
             z = z0 + direction.z
-            if is_tree(level.blockAt(x, y, z)) and (x, y, z) in box:
+            if is_tree(level.blockAt(x, y, z)):
                 tree_blocks.append((x, y, z))
 
         setBlock(level, (0, 0), x0, y0, z0)

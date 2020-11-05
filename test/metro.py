@@ -5,14 +5,12 @@ from typing import Dict, Set, List, Iterable
 
 import numpy as np
 
-from block_copy import copyBlocksFrom
-from generation.mining import Point3D
+from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
 from terrain_map import Maps
 from utils import *
 
 # TODO: stations -> génération des quais + entrée ?
-# TODO: accélérateurs mieux répartis (ligne droites & courbes)
 # TODO: jingles ? noms de stations ?
 
 all_but_rails = [_ for _ in Materials if ("Rail" not in str(_) and "Redstone" not in str(_))]
@@ -169,26 +167,32 @@ class RailWay(RailElement):
         d0, d1 = self._connectors[0].direction(self), self._connectors[1].direction(self)
         p0, q0 = self._connectors[0].getNodes(d0)
         p1, q1 = self._connectors[1].getNodes(d1)
+        # todo: clear the way first ? then gen tracks, then gen lights and decorations (?)
+        # generate tracks
         self._tracks.append(Rails(p0, d0, q1, d1, not self._connectors[1].other_end(self).isStraight))
         self._tracks.append(Rails(p1, d1, q0, d0, not self._connectors[0].other_end(self).isStraight))
         map(lambda way: way.generate(level, height), self._tracks)
 
+        # generate lights, clear the way
         lights = []
         distance = manhattan(self._connectors[0], self._connectors[1])
         p0, p1 = self._connectors[0], self._connectors[1]
         q0, q1 = d0.asPoint2D * (distance // 2), d1.asPoint2D * (-distance // 2)
         for curve_p in hermit_curve(p0, q0, p1, q1):
+            x, z = curve_p.x, curve_p.z
             # if there are no lights or all lights are far enough and the position is unoccupied, place torch
+            underground = level.blockAt(x, height + 3, z) in ground_blocks_ID
             if lights == [] or euclidean(curve_p, lights[-1]) > self.DIST_BTWN_LIGHTS:
-                if level.blockAt(curve_p.x, height + 3, curve_p.z) != 0:
-                    setMaterial(level, curve_p.x, height + 3, curve_p.z, Materials["Glowstone"])
-                    lights.append(curve_p)
-                elif level.blockAt(curve_p.x, height + 1, curve_p.z) == 0:
-                    setMaterial(level, curve_p.x, height + 1, curve_p.z, Materials["Oak Fence"])
-                    setMaterial(level, curve_p.x, height + 2, curve_p.z, Materials["Torch (Up)"])
-                    if level.blockAt(curve_p.x, height, curve_p.z) == 0:
-                        setMaterial(level, curve_p.x, height, curve_p.z, Materials["Oak Wood Planks"])
-                    lights.append(curve_p)
+                lights.append(curve_p)
+                if underground:
+                    setMaterial(level, x, height + 3, z, Materials["Sea Lantern"])
+                elif level.blockAt(x, height + 1, z) == 0:
+                    setMaterial(level, x, height + 1, z, Materials["Oak Fence"])
+                    setMaterial(level, x, height + 2, z, Materials["Torch (Up)"])
+                    if level.blockAt(x, height, z) == 0:
+                        setMaterial(level, x, height, z, Materials["Oak Wood Planks"])
+            if not underground:
+                clear_tree_at(level, BoundingBox((x - 5, 0, z - 5), (11, 255, 11)), curve_p)
 
 
 class Rails(RailElement):
@@ -411,7 +415,7 @@ class TrainStation(RailWay):
             fillBlocks(__level, rail_box.expand(0, 0, -1), Materials["Standing Sign (South)"])
 
             for x in [__box.minx + 3, __box.minx + 7]:
-                setMaterial(__level, x, __box.miny + 3, __box.minz + 5, Materials["Glowstone"])
+                setMaterial(__level, x, __box.miny + 3, __box.minz + 5, Materials["Sea Lantern"])
                 setMaterial(__level, x, __box.miny + 4, __box.minz + 5, Materials["Oak Fence"])
 
         if self.width < self.length:
