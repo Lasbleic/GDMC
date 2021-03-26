@@ -5,13 +5,15 @@ from math import sqrt
 from sys import maxint
 from typing import Set, Callable
 
+from numpy import empty, argmin
+
+from utils import *
 from numpy import full, empty, zeros
 
 import terrain_map
 from generation.generators import *
 from generation.road_generator import RoadGenerator
 from parameters import *
-from utils import Point2D, euclidean
 
 MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 32
@@ -200,11 +202,14 @@ class RoadNetwork:
         _t1, cycles = None, []
         for node in self.network_node_list + self.network_extremities:
             if self.cycle_creation_condition(node, point_to_connect):
-                if _t1 is None:
-                    _t1 = time()
-                old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
-                new_path = self.create_road(point_to_connect, node)
-                cycles.append(set(old_path).union(set(new_path)))
+                old_path = set(self.a_star(node, point_to_connect, RoadNetwork.road_only_cost))
+                new_path = set(self.create_road(point_to_connect, node)).difference(old_path)
+                if len(new_path) > DIST_BETWEEN_NODES:
+                    # worth building this path
+                    if _t1 is None:
+                        _t1 = time()
+                    if len(old_path.symmetric_difference(new_path)) >= euclidean(node, point_to_connect):
+                        cycles.append(old_path.union(new_path))
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 
@@ -405,7 +410,7 @@ class RoadNetwork:
             return choice(_closest_neighbors)
 
         def heuristic(point):
-            return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2)
+            return 1.3 * euclidean(point, ending_point)
 
         def update_distance(updated_point, neighbor, _neighbors):
             edge_cost = cost_function(self, updated_point, neighbor)
@@ -465,7 +470,7 @@ class RoadNetwork:
 
         existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost)
         current_dist = len(existing_path)
-        if current_dist / straight_dist >= 3:
+        if current_dist / straight_dist >= 2.5:
             return True
         return False
 

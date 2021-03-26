@@ -1,16 +1,14 @@
 from __future__ import division, print_function
 
-from math import sqrt
+import logging
 
 from numpy.random import random, choice
 from typing import Dict
 
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
-
-import logging
-
-from generation.generators import WoodTower, StoneTower, Plaza
+from generation.generators import WoodTower, StoneTower
+from generation.plaza import PlazaGenerator
 from parameters import AVERAGE_PARCEL_SIZE
 
 
@@ -61,7 +59,7 @@ class BuildingType:
     @property
     def ghost(self):
         self.name = 'ghost'
-        self.generator = Plaza
+        self.generator = PlazaGenerator
         return self
 
     @property

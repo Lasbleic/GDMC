@@ -6,7 +6,6 @@ Function used to compute sociability
 from __future__ import division
 
 from itertools import product
-from math import sqrt
 
 import numpy as np
 

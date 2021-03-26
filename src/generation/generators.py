@@ -1,45 +1,37 @@
 from math import floor
 from os import sep
 from random import randint
-from typing import List
 
-from numpy import ones, percentile
+from numpy import percentile
 from numpy.random import choice
 
 from generation.building_palette import HousePalette
 from pymclevel import MCLevel, Entity, TAG_Compound, TAG_Int, TAG_String
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
-from pymclevel.schematic import StructureNBT
 from utils import *
 from utils.structure_void_handle import VoidStructureNBT, all_but_void
 
 SURFACE_PER_ANIMAL = 16
 
 
-def paste_nbt(level, box, nbt_file_name):
-    _structure = StructureNBT(get_project_path() + '/structures/' + nbt_file_name)
-    _width, _height, _length = _structure.Size
-
-    x0, y0, z0 = box.minx, box.miny, box.minz
-    # iterates over coordinates in the structure, copy to level
-    for xs, ys, zs in product(xrange(_width), xrange(_height), xrange(_length)):
-        block = _structure.Blocks[xs, ys, zs]  # (id, data) tuple
-        if ys == 14:
-            print(xs, ys, zs, block)
-        if block != Materials['Structure Void'].ID:
-            xd, yd, zd = x0 + xs, y0 + ys, z0 + zs  # coordinates in the level: translation of the structure
-            setBlock(level, block, xd, yd, zd)
+def copyBlocksWrap(level, sch, box, origin, blocksToCopy=all_but_void):
+    try:
+        copyBlocksFrom(level, sch, box, origin, blocksToCopy=blocksToCopy)
+    except IndexError:
+        level.removeEntitiesInBox(box)
+        copyBlocksFrom(level, sch, box, origin, blocksToCopy=blocksToCopy)
 
 
 class Generator:
     _box = None  # type: TransformBox
 
-    def __init__(self, box, entry_point=None):
-        # type: (TransformBox, Point2D) -> Generator
+    def __init__(self, box, entry_point=None, mask=None):
+        # type: (TransformBox, Point2D, ndarray) -> Generator
         self._box = box
         self._entry_point = entry_point if entry_point is not None else Point2D(0, 0)
         self.children = []  # type: List[Generator]
+        self._sub_generator_function = None
 
     def _clear_trees(self, level):
         for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
@@ -48,6 +40,9 @@ class Generator:
     def surface_pos(self, height_map):
         for x, z in product(xrange(self.width), xrange(self.length)):
             yield x+self.origin.x, height_map[x, z], z+self.origin.z
+
+    def choose_sub_generator(self, parcels):
+        pass
 
     def generate(self, level, height_map=None, palette=None):
         """
@@ -63,6 +58,20 @@ class Generator:
         """
         for sub_generator in self.children:
             sub_generator.generate(level, height_map, palette)
+
+    def is_corner(self, pos):
+        return Generator.is_lateral(self, pos.x) and Generator.is_lateral(self, None, pos.z)
+
+    def is_lateral(self, x=None, z=None):
+        assert x is not None or z is not None
+        z_lateral = (z == self._box.minz or z == self._box.maxz - 1)
+        x_lateral = (x == self._box.minx or x == self._box.maxx - 1)
+        if x is None:
+            return z_lateral
+        if z is None:
+            return x_lateral
+        else:
+            return x_lateral or z_lateral
 
     @property
     def width(self):
@@ -101,58 +110,159 @@ class Generator:
     def entry_direction(self):
         door_x, door_z = self._entry_point.x, self._entry_point.z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
-        return Direction(dx=door_x-mean_x, dz=door_z-mean_z)
+        try:
+            return Direction(dx=door_x-mean_x, dz=door_z-mean_z)
+        except AssertionError:
+            return list(cardinal_directions())[0]
+
+    def absolute_coords(self, x, z):
+        return x + self._box.minx, z + self._box.minz
 
 
-class CropGenerator(Generator):
-    def generate(self, level, height_map=None, palette=None):
-        style_choice = choice(range(3), p=[0.3, 0.2, 0.5])
-        if style_choice == 0:
-            self._gen_animal_farm(level, height_map, palette)
-        elif style_choice == 1:
-            self._gen_crop_v1(level, height_map)
+class MaskedGenerator(Generator):
+    def __init__(self, box, entry_point=None, mask=None):
+        Generator.__init__(self, box, entry_point)
+        if mask is None:
+            mask = full((box.width, box.length), True)
+        self.__mask = mask
+
+    def _terraform(self, level, height_map):
+        # type: (MCLevel, array) -> ndarray
+        mean_y = int(round(height_map.mean()))
+        terraform_map = zeros(height_map.shape)
+        for x, y, z in self.surface_pos(height_map):
+            if y > mean_y:
+                vbox = BoundingBox((x, mean_y + 1, z), (1, y - mean_y, 1))
+                fillBlocks(level, vbox, Materials['Air'])
+            elif y < mean_y:
+                vbox = BoundingBox((x, y + 1, z), (1, mean_y - y, 1))
+                material = Materials["Stone Bricks"] if self.is_lateral(x, z) else Materials["Dirt"]
+                fillBlocks(level, vbox, material)
+        terraform_map[:] = mean_y
+        return terraform_map
+
+    def is_masked(self, px, z=None, absolute_coords=False):
+        if z is None:
+            return self.is_masked(px.x, px.z, absolute_coords)
         else:
-            self._gen_harvested_crop(level, height_map)
+            if absolute_coords:
+                return self.is_masked(px - self.origin.x, z - self.origin.z, False)
+            else:
+                return self.__mask[px, z]
 
-    def _gen_animal_farm(self, level, height_map, palette, animal='Cow'):
+    def surface_pos(self, height_map):
+        for x, y, z in Generator.surface_pos(self, height_map):
+            if self.is_masked(x, z, True):
+                yield x, y, z
+
+    def is_corner(self, pos):
+        if Generator.is_corner(self, pos):
+            return self.is_masked(pos, absolute_coords=True)  # box corner in mask
+        elif not self.is_masked(pos, absolute_coords=True):
+            return False
+        else:
+            # internal point to the box, could still be a corner
+            try:
+                x_lateral = not (self.is_masked(pos + East.asPoint2D, absolute_coords=True)
+                                 and self.is_masked(pos + West.asPoint2D, absolute_coords=True)
+                                 )
+            except IndexError:
+                x_lateral = False
+
+            try:
+                z_lateral = not (self.is_masked(pos + South.asPoint2D, absolute_coords=True)
+                                 and self.is_masked(pos + North.asPoint2D, absolute_coords=True)
+                                 )
+            except IndexError:
+                z_lateral = False
+            return x_lateral and z_lateral
+
+    def is_lateral(self, x=None, z=None):
+        if not (0 <= x < self.width and 0 <= z < self.length):
+            return False
+        elif Generator.is_lateral(self, x, z):
+            return self.is_masked(x, z, True)
+        elif not self.is_masked(x, z, True):
+            return False
+        else:
+            assert x is not None and z is not None
+            pos = Point2D(x, z)
+            return any(not self.is_masked(pos + dir.asPoint2D, absolute_coords=True) for dir in cardinal_directions())
+
+    def _clear_trees(self, level):
+        x0, z0 = self.origin.x, self.origin.z
+        for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
+            if self.__mask[x-x0, z-z0]:
+                clear_tree_at(level, self._box, Point2D(x, z))
+
+    def add_mask(self, height_mask):
+        assert self.__mask.shape == height_mask.shape
+        self.__mask = self.__mask & height_mask
+
+
+class CropGenerator(MaskedGenerator):
+
+    def choose_sub_generator(self, parcels):
+        # type: (List[Parcel]) -> None
+        if any(_.building_type.name == 'windmill' for _ in parcels):
+            d = min(euclidean(self.mean, _.absolute_mean) for _ in parcels if _.building_type.name == 'windmill')
+            if d <= 24:
+                self._sub_generator_function = self._gen_harvested_crop
+            elif d <= 35:
+                self._sub_generator_function = self._gen_crop_v1
+            else:
+                self._sub_generator_function = self._gen_animal_farm
+        else:
+            self._sub_generator_function = choice([self._gen_harvested_crop, self._gen_crop_v1, self._gen_animal_farm])
+
+    def generate(self, level, height_map=None, palette=None):
+        # height_map = self._terraform(level, height_map)
+        self.__terraform(level, height_map)
+        self._clear_trees(level)
+        self._sub_generator_function(level, height_map, palette)
+
+    def _gen_animal_farm(self, level, height_map, palette, animal=None):
         # type: (MCLevel, array, HousePalette, str) -> None
         # todo: abreuvoir + herbe + abri + terrain adaptability
-        # x, z = self._box.minx, self._box.minz
-        # y = height_map[x - self._box.minx, z - self._box.minz] + 1
-        # fillBlocks(level, fence_box, Materials['Oak Fence'])
-        # fence_box.expand(-1, 0, -1, True)
-        # fillBlocks(level, fence_box, Materials['Air'])
+        if not animal:
+            animal = choice(["Cow", "Pig", "Chicken", "Sheep"])
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
         fence_block = Materials['{} Fence'.format(palette['door'])]
-        gate_block = Materials['{} Fence Gate (Closed, {})'.format(palette['door'], self.entry_direction)]
-        gate_pos, gate_dist = None, 0
+        gate_pos, gate_dist, gate_block = None, 0, None
 
-        max_height = percentile(height_map.flatten(), 85)
         # place fences
         for x, y, z in self.surface_pos(height_map):
-            if self._box.is_lateral(x, z) and y <= max_height:
-                setBlock(level, (fence_block.ID, fence_block.blockData), x, y + 1, z)
+            if not self.is_masked(x, z, True):
+                continue
+            if self.is_lateral(x, z):
+                setBlock(level, fence_block, x, y + 1, z)
                 new_gate_pos = Point2D(x, z)
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
-                if (gate_pos is None or new_gate_dist < gate_dist) and not self._box.is_corner(new_gate_pos):
+                if (gate_pos is None or new_gate_dist < gate_dist) and not self.is_corner(new_gate_pos):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
+                    door_dir_vec = self._entry_point - gate_pos
+                    door_dir = Direction(dx=door_dir_vec.x, dz=door_dir_vec.z)
+                    gate_block = Materials['{} Fence Gate (Closed, {})'.format(palette['door'], door_dir)]
 
         # place gate
-        x, z = gate_pos.x, gate_pos.z
-        y = height_map[x-self.origin.x, z-self.origin.z] + 1
-        setBlock(level, (gate_block.ID, gate_block.blockData), x, y, z)
+        if gate_pos:
+            x, z = gate_pos.x, gate_pos.z
+            y = height_map[x-self.origin.x, z-self.origin.z] + 1
+            setBlock(level, gate_block, x, y, z)
 
         # place animals
-        animal_count = fence_box.surface // SURFACE_PER_ANIMAL
-        for _ in xrange(animal_count):
-            entity = Entity.Create(animal)  # type: Entity
+        animal_count = sum(self.__mask) // SURFACE_PER_ANIMAL
+        while animal_count:
             x = randint(fence_box.minx, fence_box.maxx-1)
             z = randint(fence_box.minz, fence_box.maxz-1)
             y = height_map[x-self.origin.x, z-self.origin.z] + 1
-            Entity.setpos(entity, (x, y, z))
-            level.addEntity(entity)
+            if self.is_masked(x, z) and not self.is_lateral(x, z):
+                entity = Entity.Create(animal)  # type: Entity
+                Entity.setpos(entity, (x, y, z))
+                level.addEntity(entity)
+                animal_count -= 1
 
-    def _gen_crop_v1(self, level, height=None):
+    def _gen_crop_v1(self, level, height=None, palette=None):
         # dimensions
         x0, y0, z0 = self.origin
         min_height = int(percentile(height.flatten(), 15))
@@ -174,36 +284,68 @@ class CropGenerator(Generator):
                         y0 = min_height
                     elif y0 > max_height:
                         continue
+                if not self.is_masked(xd, zd, True):
+                    continue
                 if (xd, zd) == (xs, zs):
                     # water source
-                    setBlock(level, (9, 15), xd, y0, zd)
+                    setBlock(level, Materials["Water (Still, Level 7 (Source))"], xd, y0, zd)
                 elif level.blockAt(xd, y0, zd) != 9:
-                    setBlock(level, (60, 7), xd, y0, zd)  # farmland
+                    setBlock(level, Materials["Farmland (Wet, Moisture 7)"], xd, y0, zd)  # farmland
                     bid = choice(crop_ids, p=prob)
                     age = randint(0, 7)
-                    setBlock(level, (bid, age), xd, y0 + 1, zd)  # crop
+                    level.setBlockAt(xd, y0+1, zd, bid)
+                    level.setBlockDataAt(xd, y0+1, zd, age)
 
-    def _gen_harvested_crop(self, level, height_map):
+    def _gen_harvested_crop(self, level, height_map, palette=None):
+        # TODO: fix water sources
         mx, mz = randint(0, 1), randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
-            if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.15):
-                setBlock(level, (3, 0), x, y, z)  # dirt under hay bales
+            if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.35):
+                setBlock(level, Materials["Dirt"], x, y, z)  # dirt under hay bales
                 b = Materials["Hay Bale (East/West)"]
                 y += 1
             else:
                 b = Materials["Farmland (Dry, Moisture 6)"]
-            setBlock(level, (b.ID, b.blockData), x, y, z)
+            setBlock(level, b, x, y, z)
         h = height_map
         irrigation_height = min(h[h.shape[0]//2, h.shape[1]//2], h.max()) + 1 - self._box.miny
         irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
         fillBlocks(level, irrigation_box, Materials["Water (Still, Level 7 (Source))"])
 
+    def __terraform(self, level, height_map):
+        # type: (MCLevel, ndarray) -> ndarray
+        road_dir_x, road_dir_z = self.entry_direction.x, self.entry_direction.z
+        if road_dir_x == 1:
+            road_side_height = height_map[-1, :]
+        elif road_dir_x == -1:
+            road_side_height = height_map[0, :]
+        elif road_dir_z == -1:
+            road_side_height = height_map[:, 0]
+        else:
+            road_side_height = height_map[:, -1]
+        ref_height = int(round(road_side_height.mean()))
+        height_mask = (height_map >= ref_height - 1) & (height_map <= ref_height + 1)
+        self.add_mask(height_mask)
+        for x, _, z in self.surface_pos(height_map):
+            h = height_map[x-self.origin.x, z-self.origin.z]
+            if h == (ref_height - 1):
+                setBlock(level, Materials["Dirt"], x, ref_height, z)
+            elif h == (ref_height + 1):
+                setBlock(level, Materials["Air"], x, h, z)
+        height_map[height_mask] = ref_height
+        return height_map
 
-class HouseGenerator(Generator):
-    def generate(self, level, height_map=None, palette=None):
-        if self._box.width >= 7 and self._box.length >= 9:
-            # warning: structure NBT here must have been generated in Minecraft 1.11 or below, must be tested
-            paste_nbt(level, self._box, 'house_7x9.nbt')
+    def is_lateral(self, x=None, z=None):
+        p = Point2D(x, z)
+        if Generator.is_lateral(self, x, z):
+            return True
+        if not self.is_masked(p, absolute_coords=True):
+            return False
+        x0, z0 = x - self.origin.x, z - self.origin.z
+        for x1, z1 in product(sym_range(x0, 1, self.width), sym_range(z0, 1, self.length)):
+            if not self.is_masked(x1, z1):
+                return True
+        return False
 
 
 class CardinalGenerator(Generator):
@@ -257,7 +399,7 @@ class DoorGenerator(Generator):
 
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
-            setBlock(level, (self._resource(x, y, z, palette)), x, y, z)
+            setBlock(level, self._resource(x, y, z, palette), x, y, z)
         fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], Materials['Air'], ground_blocks)
 
     def _resource(self, x, y, z, palette):
@@ -276,8 +418,7 @@ class DoorGenerator(Generator):
             block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
         else:
             block_name = palette['wall']
-        block = Materials[block_name]
-        return block.ID, block.blockData
+        return Materials[block_name]
 
 
 class WindmillGenerator(Generator):
@@ -290,12 +431,12 @@ class WindmillGenerator(Generator):
         fillBlocks(level, box.expand(1), Materials['Bedrock'])  # protective shell around windmill frames
         mech_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill_mech.nbt']))
         mech_sch = mech_nbt.toSchematic()
-        copyBlocksFrom(level, mech_sch, mech_sch.bounds, box.origin, blocksToCopy=all_but_void)
+        copyBlocksWrap(level, mech_sch, mech_sch.bounds, box.origin)
 
         box.translate(dy=31, inplace=True)
         windmill_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
         windmill_sch = windmill_nbt.toSchematic()
-        copyBlocksFrom(level, windmill_sch, windmill_sch.bounds, box.origin, blocksToCopy=all_but_void)
+        copyBlocksWrap(level, windmill_sch, windmill_sch.bounds, box.origin)
         ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
 
         self.__activate_one_repeater(level, ground_box)
@@ -318,7 +459,7 @@ class WindmillGenerator(Generator):
         # activate a repeater and preparing its tile tick
         block = Materials['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]
         WindmillGenerator.__repeater_tile_tick(level, x, y, z, True)
-        setBlock(level, (block.ID, block.blockData), x, y, z)
+        setBlock(level, block, x, y, z)
 
         # activate the command block following the previous repeater
         x += 1
@@ -351,7 +492,7 @@ class WoodTower(Generator):
         nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'wooden_watch_tower.nbt']))
         schem = nbt.toSchematic()
         # todo: rotate schematic to face door to entry point
-        copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)
+        copyBlocksWrap(level, schem, schem.bounds, (origin_x, origin_y, origin_z))
 
 
 class StoneTower(Generator):
@@ -360,30 +501,20 @@ class StoneTower(Generator):
         # relative coords
         origin_x = randint(0, self.width - 8) if self.width > 8 else 0
         origin_z = randint(0, self.length - 8) if self.length > 8 else 0
-        origin_y = height_map[origin_x + 4, origin_z + 4] + 1
+        try:
+            origin_y = height_map[origin_x + 4, origin_z + 4] + 1
+        except IndexError:
+            origin_y = int(round(height_map.mean()))
         # absolute coords
         origin_x += self._box.minx
         origin_z += self._box.minz
         nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'stone_watch_tower.nbt']))
         schem = nbt.toSchematic()
         # todo: rotate schematic to face door to entry point
-        copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)
+        copyBlocksWrap(level, schem, schem.bounds, (origin_x, origin_y, origin_z))
 
 
-class Plaza(Generator):
-    def generate(self, level, height_map=None, palette=None):
-        self._clear_trees(level)
-        # if self.length >= 7 and self.width >= 7 and bernouilli(0.7):
-        #     file_name = 'romantic_booth.nbt'
-        #     origin_x = self._box.minx + randint(0, self.width - 7)
-        #     origin_z = self._box.minz + randint(0, self.length - 7)
-        #     origin_y = height_map[origin_x + 3 - self._box.minx, origin_z + 3 - self._box.minz] + 1
-        # else:
-        #     file_name = 'fountain.nbt'
-        #     origin_x = self._box.minx + randint(0, self.width - 5)
-        #     origin_z = self._box.minz + randint(0, self.length - 5)
-        #     origin_y = height_map[origin_x + 2 - self._box.minx, origin_z + 2 - self._box.minz] + 1
-        # nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', file_name]))
-        # schem = nbt.toSchematic()
-        # # todo: rotate schematic to face door to entry point
-        # copyBlocksFrom(level, schem, schem.bounds, (origin_x, origin_y, origin_z), blocksToCopy=all_but_void)
+def place_street_lamp(level, x, y, z, material):
+    fillBlocks(level, BoundingBox((x, y+1, z), (1, 3, 1)), Materials[material+" Fence"])
+    setBlock(level, Materials["Redstone Lamp (Off)"], x, y+4, z)
+    setBlock(level, Materials["Daylight Sensor Inverted (Power 0)"], x, y+5, z)

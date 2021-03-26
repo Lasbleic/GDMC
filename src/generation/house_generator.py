@@ -193,8 +193,9 @@ class _RoomSymbol(CardinalGenerator):
                 # passes the door to an annex room
                 self[local_door_dir].generate_door(local_door_dir, door_x, door_z, level, palette)
             except RuntimeError:
-                self[local_door_dir] = None
-                self.generate_door(parcel_door_dir, door_x, door_z, level, palette)
+                local_door_dir = local_door_dir.rotate()
+                door_wall_box = self.get_wall_box(local_door_dir)
+                self[door_wall_box].generate_door(local_door_dir, door_x, door_z, level, palette)
         else:
             # passes the door to the most suited wall of the room (no annex, close to entrance & large enough)
             door_dir = local_door_dir if self.get_wall_box(local_door_dir).surface > 1 else parcel_door_dir
@@ -377,7 +378,7 @@ class _WallSymbol(Generator):
             door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
             if door_z > 0 and is_win[door_z - 1]:
                 door_box.expand(Direction(0, 0, -1), inplace=True)
-            elif door_z < box.width - 1 and is_win[door_z + 1]:
+            elif door_z < box.length - 1 and is_win[door_z + 1]:
                 door_box.expand(Direction(0, 0, 1), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         else:
@@ -387,7 +388,7 @@ class _WallSymbol(Generator):
             door_box = TransformBox(box.origin + (door_x, 0, 0), (1, box.height, 1))
             if door_x > 0 and is_win[door_x - 1]:
                 door_box.expand(Direction(-1, 0, 0), inplace=True)
-            elif door_x < box.length - 1 and is_win[door_x + 1]:
+            elif door_x < box.width - 1 and is_win[door_x + 1]:
                 door_box.expand(Direction(1, 0, 0), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
 

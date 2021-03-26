@@ -1,7 +1,10 @@
 from __future__ import print_function
 
 from itertools import product
+from random import choice
 from time import time
+
+from statistics import mean
 from typing import List
 
 from numpy import full
@@ -10,10 +13,13 @@ from numpy.ma import array
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
 from parameters import MAX_WATER_EXPLORATION, MAX_LAVA_EXPLORATION, MIN_DIST_TO_OCEAN, MIN_DIST_TO_RIVER, \
-    MIN_DIST_TO_LAVA
-from pymclevel import MCLevel
+    MIN_DIST_TO_LAVA, MAX_POND_EXPLORATION
+from pymclevel import MCLevel, alphaMaterials as Materials
+from pymclevel import MCLevel, alphaMaterials as Materials
 from pymclevel.biome_types import biome_types
 from utils import Point2D, cardinal_directions, water_blocks_id, lava_blocks_id
+from pymclevel.block_fill import fillBlocks
+from utils import Point2D, cardinal_directions, connected_component, setBlock, BoundingBox
 
 
 class FluidMap:
@@ -26,11 +32,12 @@ class FluidMap:
         self.__other_maps = mc_maps
         self.__water_limit = water_limit
         self.__lava_limit = lava_limit
-        
+
         self.__borderpts = []  # type: List[Point2D]
         self.__coastline = []  # type: List[Point2D]
 
         self.has_lava = self.has_river = self.has_ocean = False
+        self.detect_ponds_remove_ponds(level)
         self.detect_sources(level)
 
     def detect_sources(self, level, algorithm='spread', kernel='knn', param=256):
@@ -82,6 +89,54 @@ class FluidMap:
         print('Computed water map in {} seconds'.format(t1 - t0))
         self.__build_distance_maps()
         print('Computed distance maps in {} seconds'.format(time() - t1))
+
+    def detect_ponds_remove_ponds(self, level):
+        maps = self.__other_maps
+        explored_points = set()
+        for x, z in product(range(self.__width), range(self.__length)):
+            xs, zs = x + maps.box.minx, z + maps.box.minz
+            y = maps.height_map.fluid_height(x, z)
+            if level.blockAt(xs, y, zs) in [Materials.Water.ID, Materials.WaterActive.ID, Materials.Ice.ID]:
+                cx, cz = xs // 16, zs // 16
+                biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
+                # if all(_ not in biome_types[biome] for _ in ['Ocean', 'Beach', 'River', 'Swamp']):
+                if all(_ not in biome_types[biome] for _ in ['Ocean', 'River', 'Swamp']):
+                    if Point2D(xs, zs) in explored_points:
+                        continue
+
+                    condition = lambda p1, p2, _maps: _maps.level.blockAt(p2.x, y, p2.z) in [Materials.Water.ID, Materials.WaterActive.ID, Materials.Ice.ID] and _maps.in_limits(p2, True)
+                    early_stop = lambda s: len(s) >= MAX_POND_EXPLORATION
+                    pond_origin, mask = connected_component(maps, Point2D(xs, zs), condition, early_stop, False)
+                    if mask.all():
+                        pond_origin -= Point2D(1, 1)
+                        tmp_mask = full((mask.shape[0]+2, mask.shape[1]+2), False)
+                        tmp_mask[1:-1, 1:-1] = mask
+                        mask = tmp_mask
+                    matrix_pos = product(range(mask.shape[0]), range(mask.shape[1]))
+                    out_pond_points = {pond_origin + Point2D(i, j) for i, j in matrix_pos if not mask[i, j]}
+                    out_pond_points = {_ for _ in out_pond_points if maps.in_limits(_, True)}
+                    x0, z0 = maps.minx, maps.minz
+
+                    if mask.sum() < MAX_POND_EXPLORATION:
+                        h = maps.height_map.altitude
+                        ground_y = mean(h(p.x - x0, p.z - z0) for p in out_pond_points)
+                        for i, j in product(range(mask.shape[0]), range(mask.shape[1])):
+                            abs_coords = pond_origin + Point2D(i, j)
+                            rel_coords = abs_coords - Point2D(x0, z0)
+                            try:
+                                cur_height = h(rel_coords)
+                            except IndexError:
+                                break  # pond at the border of the settlement
+
+                            if cur_height < ground_y - 1 or mask[i, j]:
+                                # sample material in surroundings to fill the hole
+                                random_point = choice(list(out_pond_points))
+                                mat = level.blockAt(random_point.x, h(random_point - Point2D(x0, z0)), random_point.z)
+                                fillBlocks(level, BoundingBox((abs_coords.x, cur_height, abs_coords.z),
+                                                              (1, 1 + ground_y - cur_height, 1)), Materials[mat])
+                                maps.height_map.update([rel_coords], [ground_y])
+
+                    explored_points.update(out_pond_points)
 
     def __build_distance_maps(self):
         self.river_distance = full(self.__water_map.shape, self.__water_limit)
@@ -139,12 +194,12 @@ class FluidMap:
             def update_distances(updated_point):
                 x0, z0 = updated_point.x, updated_point.z
                 for xn, zn in product(xrange(x0 - 1, x0 + 2), xrange(z0 - 1, z0 + 2)):
-                    if (xn != x0 or zn != z0) and 0 <= xn < W and 0 <= zn < L and distance_map[xn, zn] > 0:
+                    if (xn != x0 or zn != z0) and 0 <= xn < _w and 0 <= zn < _l and distance_map[xn, zn] > 0:
                         update_distance(updated_point, Point2D(xn, zn))
 
             # Function core
-            W, L = distance_map.shape
-            neighbours = [Point2D(x1, z1) for x1, z1 in product(xrange(W), xrange(L))
+            _w, _l = distance_map.shape
+            neighbours = [Point2D(x1, z1) for x1, z1 in product(xrange(_w), xrange(_l))
                           if is_init_neigh(distance_map, x1, z1)]
 
             while len(neighbours) > 0:

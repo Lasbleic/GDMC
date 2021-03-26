@@ -1,10 +1,6 @@
 from __future__ import division, print_function
 
-from math import floor
-
-from numpy import full, zeros
-from utils import Point2D
-from itertools import product
+from utils import *
 
 
 class ObstacleMap:
@@ -17,61 +13,75 @@ class ObstacleMap:
         self.map = zeros((self.__width, self.__length))
         self.__all_maps = mc_map
         self.__init_map_with_environment(mc_map.box)
-
-    def __in_z_limits(self, z):
-        return 0 <= z < self.__length
-
-    def __in_x_limits(self, x):
-        return 0 <= x < self.__width
+        self.__hidden_obstacles = []
 
     def __init_map_with_environment(self, bounding_box):
-        # TODO: For every water/tree bloc, set bloc to un-accessible
+        # TODO: For every water/tree bloc, set bloc to un-accessible - this method should not be in this class
         pass
+
+    def add_obstacle(self, point, mask=None):
+        # type: (Point2D, ndarray) -> None
+        """
+        Main function to add an obstacle
+        Parameters
+        ----------
+        point lower bounds of the rectangular obstacle surface
+        mask boolean array indicating obstacle points in the obstacle surface
+
+        Returns None
+        -------
+
+        """
+        if mask is None:
+            mask = full((1, 1), True)
+        self.__add_obstacle(point, mask, 1)
 
     def is_accessible(self, point):
         # type: (Point2D) -> bool
-        return self.__is_accessible(point.x, point.z)
+        return self.map[point.x, point.z] == 0
 
-    def __is_accessible(self, x, z):
-        # return self.map[x, z]
-        return self.map[x, z] == 0
-
-    def __set_obstacle(self, x, z):
+    def __set_obstacle(self, x, z, cost=1):
         # self.map[x, z] = False
-        self.map[x, z] += 1
+        self.map[x, z] += cost
 
-    def __unset_obstacle(self, x, z):
-        # self.map[x, z] = True
-        self.map[x, z] -= 1
+    def __add_obstacle(self, point, mask, cost):
+        for dx, dz in product(range(mask.shape[0]), range(mask.shape[1])):
+            p = point + Point2D(dx, dz)
+            if self.__all_maps.in_limits(p, False) and mask[dx, dz]:
+                self.__set_obstacle(p.x, p.z, cost)
 
-    # size must be odd
-    def add_parcel_to_obstacle_map(self, parcel, margin):
-        # type: (generation.Parcel, int) -> None
-        parcel = parcel.bounds.expand(margin, 0, margin)
-        for x, z in product(range(parcel.minx, parcel.maxx), range(parcel.minz, parcel.maxz)):
-            if self.__in_x_limits(x) and self.__in_z_limits(z):
-                self.__set_obstacle(x, z)
+    def hide_obstacle(self, point, mask=None, store_obstacle=True):
+        """Hide an obstacle on the map, if store_obstacle, the obstacle will be stored in self._hidden_obstacles
+        and later added again with reveal_obstacles()"""
+        if mask is None:
+            mask = full((1, 1), True)
+        self.__add_obstacle(point, mask, -1)
+        if store_obstacle:
+            self.__hidden_obstacles.append((Point2D(point), array(mask)))
 
-    def unmark_parcel(self, parcel, margin):
-        # type: (generation.Parcel, int) -> None
-        parcel = parcel.bounds.expand(margin, 0, margin)
-        for x, z in product(range(parcel.minx, parcel.maxx), range(parcel.minz, parcel.maxz)):
-            if self.__in_x_limits(x) and self.__in_z_limits(z):
-                self.__unset_obstacle(x, z)
+    def reveal_obstacles(self):
+        """Adds all hidden obstacles"""
+        while self.__hidden_obstacles:
+            p, mask = self.__hidden_obstacles.pop()
+            self.__add_obstacle(p, mask, 1)
 
     def add_network_to_obstacle_map(self):
         from terrain_map.road_network import RoadNetwork
         if self.__all_maps is not None:
             network = self.__all_maps.road_network  # type: RoadNetwork
-            for xo, zo in product(xrange(self.__width), xrange(self.__length)):
-                if network.is_road(xo, zo):
+            for x0, z0 in product(xrange(self.__width), xrange(self.__length)):
+                if network.is_road(x0, z0):
                     # build a circular obstacle of designated width around road point
-                    margin = network.get_road_width(xo, zo)
-                    m0, m1 = int(margin/2.), int(floor(margin/2.)) + 1
-                    for dx, dz in product(xrange(-m0, m1), xrange(-m0, m1)):
-                        if self.__in_x_limits(xo+dx) and self.__in_z_limits(zo+dz) and abs(dx*dz) < margin**2\
-                                and not self.map[xo+dx, zo+dz]:
-                            self.__set_obstacle(xo+dx, zo+dz)
+                    margin = network.get_road_width(x0, z0)
+                    for x1, z1 in product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
+                        if not self.map[x1, z1]:
+                            self.__set_obstacle(x1, z1)
+
+    def box_obstacle(self, box):
+        x0 = box.minx
+        z0 = box.minz
+        matrix = self.map[x0: (x0 + box.width), z0:(z0 + box.length)]
+        return matrix <= 1
 
     def __getitem__(self, item):
         if len(item) == 2:
