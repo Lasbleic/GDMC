@@ -214,5 +214,5 @@ class Parcel:
     def biome(self, level):
         x = randint(self.__box.minx, self.__box.maxx - 1)
         z = randint(self.__box.minz, self.__box.maxz - 1)
-        biome = biome_types[level.getChunk(x // 16, z // 16).Biomes[x & 15, z & 15]]
+        biome = biome_types[level.getChunk(x // 16, z // 16).Biomes[z & 15, x & 15]]
         return biome

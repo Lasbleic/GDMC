@@ -146,7 +146,7 @@ class BuildingPool:
             raise StopIteration
 
         self._building_count += 1
-        return self.__current_type
+        return BuildingType(self.__current_type)
 
     @property
     def size(self):

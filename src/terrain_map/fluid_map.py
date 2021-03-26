@@ -42,7 +42,7 @@ class FluidMap:
             y = self.__other_maps.height_map.fluid_height(x, z)
             if level.blockAt(xs, y, zs) in water_blocks_id:
                 cx, cz = xs // 16, zs // 16
-                biome = level.getChunk(cx, cz).Biomes[xs & 15, zs & 15]
+                biome = level.getChunk(cx, cz).Biomes[zs & 15, xs & 15]
                 if 'Ocean' in biome_types[biome] or 'Beach' in biome_types[biome]:
                     label = 1
                 elif 'River' in biome_types[biome]:
