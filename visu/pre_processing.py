@@ -167,7 +167,7 @@ class MapStock:
 if __name__ == '__main__':
 
 
-    from terrain_map.road_network import *
+    from terrain.road_network import *
     from utils import Point2D
     from building_seeding import house_type
     from building_seeding.interest import accessibility

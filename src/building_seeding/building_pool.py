@@ -116,7 +116,7 @@ class BuildingPool:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         """
         Pick randomly a building type in the pool
         Returns a BuildingType to build next
@@ -135,7 +135,7 @@ class BuildingPool:
         if 0 < self._building_count < self._settlement_limit:
             transition_matrix = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["markov"]
             transition_states = transition_matrix[self.__current_type.name]  # type: Dict[str, int]
-            types = transition_states.keys()
+            types = list(transition_states.keys())
             probs = transition_states.values()
             probs = [p / sum(probs) for p in probs]
             next_type = choice(types, p=probs)

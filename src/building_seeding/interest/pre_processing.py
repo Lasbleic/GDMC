@@ -227,7 +227,7 @@ class MapStock:
 if __name__ == '__main__':
 
     # from matplotlib import pyplot as plt, colors
-    from terrain_map.road_network import *
+    from terrain.road_network import *
     from utils import Point2D
     from building_seeding.building_pool import BuildingType
     from building_seeding.interest.accessibility import accessibility

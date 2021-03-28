@@ -6,7 +6,7 @@ from time import gmtime, strftime, time
 from building_seeding import VillageSkeleton, BuildingType
 from building_seeding.village_skeleton import CityBlock
 from flat_settlement import FlatSettlement
-from terrain_map.maps import Maps
+from terrain.maps import Maps
 from pymclevel import BoundingBox, MCLevel
 from utils import TransformBox, Point2D
 

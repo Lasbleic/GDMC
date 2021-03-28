@@ -7,7 +7,7 @@ import numpy as np
 
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
-from terrain_map import Maps
+from terrain import Maps
 from utils import *
 
 # TODO: stations -> génération des quais + entrée ?

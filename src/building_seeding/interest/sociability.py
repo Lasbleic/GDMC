@@ -6,15 +6,19 @@ Function used to compute sociability
 from __future__ import division
 
 from itertools import product
+from typing import List
 
 import numpy as np
 
+from building_seeding import Parcel
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.interest.math_function import attraction_repulsion
-from utils import Point2D, euclidean
+from utils import Point, euclidean
 
 
-def local_sociability(x, z, building_type, scenario, settlement_seeds):
+def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parcel]):
+    if not settlement_seeds:
+        return 0
 
     _sociability = 0
     social_score = -1
@@ -22,7 +26,7 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds):
     for settlement_seed in settlement_seeds:
 
         neighbor_type, neighbor_position = settlement_seed.building_type, settlement_seed.center
-        distance_to_building = euclidean(Point2D(x, z), neighbor_position)
+        distance_to_building = euclidean(Point(x, z), neighbor_position)
         lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][
             building_type.name + "-" + neighbor_type.name]
 

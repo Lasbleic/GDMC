@@ -1,7 +1,5 @@
 from random import randint
 
-from pymclevel import alphaMaterials as Block
-
 
 class HousePalette(dict):
 
@@ -23,17 +21,17 @@ class HousePalette(dict):
             roof_block = self['roofBlock']
         else:
             roof_block = '{} Stairs ({}, {})'.format(self['roofBlock'], facing, direction)
-        return Block[roof_block]
+        return roof_block
 
     def get_structure_block(self, direction):
         try:
-            return Block['{} ({})'.format(self['structure'], direction)]
+            return '{} ({})'.format(self['structure'], direction)
         except KeyError:
             try:
                 wood_type = self['structure'][:-5]
-                return Block['{} ({}, {})'.format(self['structure'], direction, wood_type)]
+                return '{} ({}, {})'.format(self['structure'], direction, wood_type)
             except KeyError:
-                return Block[self['structure']]
+                return self['structure']
 
 
 stony_palette = {"Cobblestone": 0.7, "Gravel": 0.2, "Stone": 0.1}
@@ -67,69 +65,68 @@ terracotta_palette1 = HousePalette('Red Sandstone', 'Spruce Wood Planks', 'Oak W
 
 # Defines for each biome the acceptable palettes. Adapted from pymclevel.biome_types
 biome_palettes = {
-    '(Uncalculated)': [oak_house_palette1],
-    'Ocean': [oak_house_palette1],
-    'Plains': [oak_house_palette1],
-    'Desert': [sand_house_palette1],
-    'Extreme Hills': [oak_house_palette1],
-    'Forest': [oak_house_palette1, birch_house_palette1],
-    'Taiga': [spruce_house_palette1],
-    'Swamppland': [oak_house_palette1],
-    'River': [oak_house_palette1],
-    'Hell (Nether)': [oak_house_palette1],
-    'Sky (End)': [oak_house_palette1],
-    'Frozen Ocean': [spruce_house_palette1],
-    'Frozen River': [spruce_house_palette1],
-    'Ice Plains': [spruce_house_palette1],
-    'Ice Mountains': [spruce_house_palette1],
-    'Mushroom Island': [oak_house_palette1],
-    'Mushroom Island Shore': [oak_house_palette1],
-    'Beach': [sand_house_palette1],
-    'Desert Hills': [sand_house_palette1],
-    'Forest Hills': [oak_house_palette1, birch_house_palette1],
-    'Taiga Hills': [spruce_house_palette1],
-    'Extreme Hills Edge': [oak_house_palette1],
-    'Jungle': [jungle_house_palette1],
-    'Jungle Hills': [jungle_house_palette1],
-    'Jungle Edge': [jungle_house_palette1],
-    'Deep Ocean': [oak_house_palette1],
-    'Stone Beach': [spruce_house_palette1],
-    'Cold Beach': [spruce_house_palette1],
-    'Birch Forest': [oak_house_palette1],
-    'Birch Forest Hills': [oak_house_palette1],
-    'Roofed Forest': [dark_oak_house_palette1],
-    'Cold Taiga': [spruce_house_palette1],
-    'Cold Taiga Hills': [spruce_house_palette1],
-    'Mega Taiga': [spruce_house_palette1],
-    'Mega Taiga Hills': [spruce_house_palette1],
-    'Extreme Hills+': [oak_house_palette1, spruce_house_palette1],
-    'Savanna': [acacia_house_palette1],
-    'Savanna Plateau': [acacia_house_palette1],
-    'Messa': [red_sand_house_palette1],
-    'Messa Plateau F': [terracotta_palette1],
-    'Messa Plateau': [terracotta_palette1],
-    'Sunflower Plains': [oak_house_palette1],
-    'Desert M': [sand_house_palette1],
-    'Extreme Hills M': [oak_house_palette1],
-    'Flower Forest': [oak_house_palette1],
-    'Taiga M': [spruce_house_palette1],
-    'Swampland M': [oak_house_palette1, spruce_house_palette1],
-    'Ice Plains Spikes': [spruce_house_palette1],
-    'Ice Mountains Spikes': [spruce_house_palette1],
-    'Jungle M': [jungle_house_palette1],
-    'JungleEdge M': [oak_house_palette1],
-    'Birch Forest M': [jungle_house_palette1],
-    'Birch Forest Hills M': [birch_house_palette1],
-    'Roofed Forest M': [dark_oak_house_palette1],
-    'Cold Taiga M': [spruce_house_palette1],
-    'Mega Spruce Taiga': [spruce_house_palette1],
-    'Mega Spruce Taiga 2': [spruce_house_palette1],
-    'Extreme Hills+ M': [oak_house_palette1, spruce_house_palette1],
-    'Savanna M': [acacia_house_palette1],
-    'Savanna Plateau M': [acacia_house_palette1],
-    'Mesa (Bryce)': [terracotta_palette1],
-    'Mesa Plateau F M': [terracotta_palette1],
-    'Mesa Plateau M': [terracotta_palette1]
+    'ocean': [oak_house_palette1],
+    'plains': [oak_house_palette1],
+    'desert': [sand_house_palette1],
+    'extreme_hills': [oak_house_palette1],
+    'forest': [oak_house_palette1, birch_house_palette1],
+    'taiga': [spruce_house_palette1],
+    'swamp': [oak_house_palette1],
+    'river': [oak_house_palette1],
+    'hell_(nether)': [oak_house_palette1],
+    'sky_(end)': [oak_house_palette1],
+    'frozen_ocean': [spruce_house_palette1],
+    'frozen_river': [spruce_house_palette1],
+    'ice_plains': [spruce_house_palette1],
+    'ice_mountains': [spruce_house_palette1],
+    'mushroom_island': [oak_house_palette1],
+    'mushroom_island_shore': [oak_house_palette1],
+    'beach': [sand_house_palette1],
+    'desert_hills': [sand_house_palette1],
+    'wooded_hills': [oak_house_palette1, birch_house_palette1],
+    'taiga_hills': [spruce_house_palette1],
+    'extreme_hills_edge': [oak_house_palette1],
+    'jungle': [jungle_house_palette1],
+    'jungle_hills': [jungle_house_palette1],
+    'jungle_edge': [jungle_house_palette1],
+    'deep_ocean': [oak_house_palette1],
+    'stone_beach': [spruce_house_palette1],
+    'cold_beach': [spruce_house_palette1],
+    'birch_forest': [oak_house_palette1],
+    'birch_forest_hills': [oak_house_palette1],
+    'roofed_forest': [dark_oak_house_palette1],
+    'cold_taiga': [spruce_house_palette1],
+    'cold_taiga_hills': [spruce_house_palette1],
+    'mega_taiga': [spruce_house_palette1],
+    'mega_taiga_hills': [spruce_house_palette1],
+    'extreme_hills+': [oak_house_palette1, spruce_house_palette1],
+    'savanna': [acacia_house_palette1],
+    'savanna_plateau': [acacia_house_palette1],
+    'badlands': [red_sand_house_palette1],
+    'badlands_plateau_f': [terracotta_palette1],
+    'badlands_plateau': [terracotta_palette1],
+    'sunflower_plains': [oak_house_palette1],
+    'modified_desert': [sand_house_palette1],
+    'modified_extreme_hills': [oak_house_palette1],
+    'flower_forest': [oak_house_palette1],
+    'modified_taiga': [spruce_house_palette1],
+    'modified_swampland': [oak_house_palette1, spruce_house_palette1],
+    'ice_plains_spikes': [spruce_house_palette1],
+    'ice_mountains_spikes': [spruce_house_palette1],
+    'modified_jungle': [jungle_house_palette1],
+    'modified_birch_forest': [jungle_house_palette1],
+    'modified_birch_forest_hills': [birch_house_palette1],
+    'modified_roofed_forest': [dark_oak_house_palette1],
+    'modified_cold_taiga': [spruce_house_palette1],
+    'mega_spruce_taiga': [spruce_house_palette1],
+    'mega_spruce_taiga_2': [spruce_house_palette1],
+    'modified_extreme_hills+': [oak_house_palette1, spruce_house_palette1],
+    'modified_savanna': [acacia_house_palette1],
+    'modified_savanna_plateau': [acacia_house_palette1],
+    'badlands_(bryce)': [terracotta_palette1],
+    'modified_badlands_plateau_f': [terracotta_palette1],
+    'modified_badlands_plateau': [terracotta_palette1],
+
 }
 
 

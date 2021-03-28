@@ -11,8 +11,8 @@ from generation import Generator
 from generation.road_generator import Bridge
 from pymclevel import MCLevel, BoundingBox, MCInfdevOldLevel
 from pymclevel.block_fill import fillBlocks
-from terrain_map import HeightMap
-from terrain_map.maps import Maps
+from terrain import HeightMap
+from terrain.maps import Maps
 from utils import TransformBox, Point2D, Direction, Materials, cardinal_directions, Point3D, manhattan, euclidean, \
     clear_tree_at, product, array, place_torch
 

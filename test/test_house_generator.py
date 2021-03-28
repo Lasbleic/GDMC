@@ -1,6 +1,6 @@
 from generation import ProcHouseGenerator
 from generation.building_palette import *
-from terrain_map.maps import Maps
+from terrain.maps import Maps
 from pymclevel import BoundingBox, MCLevel
 from utils import TransformBox
 

@@ -113,19 +113,19 @@ BUILDING_ENCYCLOPEDIA = {
             "stone_tower": (1, 5, 3, 3, 1, 1.5, 1, 2)
         },
 
-        # "markov": {
-        #     "house": {"house": 10, "crop": 6},
-        #     "crop": {"crop": 10, "windmill": 3, "house": 6},
-        #     "windmill": {"crop": 1}
-        # }
-
         "markov": {
-            "house": {"house": 8, "stone_tower": 2, "crop": 6},
-            "stone_tower": {"house": 1},
-            "crop": {"crop": 8, "wood_tower": 2, "windmill": 4, "house": 6},
-            "wood_tower": {"crop": 1},
+            "house": {"house": 10, "crop": 6},
+            "crop": {"crop": 10, "windmill": 3, "house": 6},
             "windmill": {"crop": 1}
         },
+
+        # "markov": {
+        #     "house": {"house": 8, "stone_tower": 2, "crop": 6},
+        #     "stone_tower": {"house": 1},
+        #     "crop": {"crop": 8, "wood_tower": 2, "windmill": 4, "house": 6},
+        #     "wood_tower": {"crop": 1},
+        #     "windmill": {"crop": 1}
+        # },
 
         "MaxSurface": {
             "crop": 300,

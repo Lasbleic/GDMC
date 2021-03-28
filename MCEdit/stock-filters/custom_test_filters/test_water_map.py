@@ -1,7 +1,7 @@
 from itertools import product
 
 from generation import ProcHouseGenerator
-from terrain_map.maps import Maps
+from terrain.maps import Maps
 from pre_processing import Map, MapStock
 from matplotlib import colors
 from pymclevel import BoundingBox, MCLevel

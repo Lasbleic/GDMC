@@ -1,6 +1,6 @@
 from generation import MineEntry
 from pymclevel import MCLevel, BoundingBox
-from terrain_map import Maps
+from terrain import Maps
 from utils import TransformBox
 
 displayName = "Quarry generator test filter"

@@ -2,25 +2,22 @@
 Village skeleton growth
 """
 
-from time import time
-
 from numpy import argmin
 from statistics import mean
 
-import terrain_map.maps
+from terrain import TerrainMaps
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.interest.pre_processing import VisuHandler
-from building_seeding.parcel import MaskedParcel
-from interest import InterestSeeder
+from building_seeding.parcel import Parcel, MaskedParcel
+from building_seeding.interest import InterestSeeder
 from parameters import MIN_PARCEL_SIDE, AVERAGE_PARCEL_SIZE
-from parcel import Parcel
 from utils import *
 
 
 class VillageSkeleton:
 
     def __init__(self, scenario, maps, ghost_position, parcel_list):
-        # type: (str, terrain_map.maps.Maps, Point2D, List[Parcel]) -> VillageSkeleton
+        # type: (str, TerrainMaps, Point, List[Parcel]) -> VillageSkeleton
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
@@ -34,7 +31,7 @@ class VillageSkeleton:
         self.__interest = InterestSeeder(maps, parcel_list, scenario)
 
     def add_parcel(self, seed, building_type):
-        if isinstance(seed, Point2D):
+        if isinstance(seed, Point):
             if building_type.name in ["crop"]:
                 new_parcel = MaskedParcel(seed, building_type, self.maps)
             else:
@@ -43,7 +40,7 @@ class VillageSkeleton:
             new_parcel = seed
             new_parcel.building_type.copy(BuildingType().ghost)
         else:
-            raise TypeError("Expected Point2D or Parcel, found {}".format(seed.__class__))
+            raise TypeError("Expected Point or Parcel, found {}".format(seed.__class__))
         self.__parcel_list.append(new_parcel)
         new_parcel.mark_as_obstacle(self.maps.obstacle_map)
 
@@ -53,7 +50,7 @@ class VillageSkeleton:
             city_block = CityBlock(road_cycle, self.maps)
             block_parcel = city_block.parcels()
             seed = block_parcel.center
-            # block_seed = Point2D(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
+            # block_seed = Point(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
             block_type = self.__interest.get_optimal_type(seed)
             if block_type:
                 self.add_parcel(seed, block_type)
@@ -107,19 +104,19 @@ class CityBlock:
     def __init__(self, road_cycle, maps):
         self.__road_points = road_cycle
         self.__maps = maps
-        self.__origin = Point2D(min(_.x for _ in road_cycle), min(_.z for _ in road_cycle))
-        self.__limits = Point2D(max(_.x for _ in road_cycle), max(_.z for _ in road_cycle))
+        self.__origin = Point(min(_.x for _ in road_cycle), min(_.z for _ in road_cycle))
+        self.__limits = Point(max(_.x for _ in road_cycle), max(_.z for _ in road_cycle))
 
     @staticmethod
     def connection(src_point, dst_point, maps):
         return not maps.road_network.is_road(dst_point)
 
     def parcels(self):
-        seed = Point2D(int(mean(p.x for p in self.__road_points)), int(mean(p.z for p in self.__road_points)))
+        seed = Point(int(mean(p.x for p in self.__road_points)), int(mean(p.z for p in self.__road_points)))
         origin, mask = connected_component(self.__maps, seed, CityBlock.connection)
-        parcel_origin = Point2D(max(origin.x, self.minx), max(origin.z, self.minz))
-        parcel_limits = Point2D(min(origin.x+mask.shape[0], self.maxx), min(origin.z+mask.shape[1], self.maxz))
-        parcel_shapes = Point2D(1, 1) + parcel_limits - parcel_origin
+        parcel_origin = Point(max(origin.x, self.minx), max(origin.z, self.minz))
+        parcel_limits = Point(min(origin.x+mask.shape[0], self.maxx), min(origin.z+mask.shape[1], self.maxz))
+        parcel_shapes = Point(1, 1) + parcel_limits - parcel_origin
         parcel_mask = mask[(parcel_origin.x - origin.x): (parcel_origin.x - origin.x + parcel_shapes.x),
                            (parcel_origin.z - origin.z): (parcel_origin.z - origin.z + parcel_shapes.z)]
         return MaskedParcel(parcel_origin, BuildingType(), self.__maps, parcel_mask)
