@@ -26,7 +26,7 @@ def getChunks(x, z, dx, dz, rtype='text'):
 class CachedSection:
     def __init__(self, palette, blockStatesBitArray):
         self.palette = palette
-        self.blockStatesBitArray = blockStatesBitArray
+        self.blockStatesBitArray: BitArray = blockStatesBitArray
 
 
 class WorldSlice:
@@ -137,8 +137,22 @@ class WorldSlice:
         else:
             return blockCompound["Name"].value
 
-    def setBlockAt(self, blockPos, blockState):
-        pass
+    # def setBlockAt(self, blockPos, blockState):
+    #     chunkX = (blockPos[0] >> 4) - self.chunkRect[0]
+    #     chunkZ = (blockPos[2] >> 4) - self.chunkRect[1]
+    #     chunkY = blockPos[1] >> 4
+    #     section: CachedSection = self.sections[chunkX][chunkZ][chunkY]
+    #     blockIndex = (blockPos[1] % 16) * 16 * 16 + (blockPos[2] % 16) * 16 + blockPos[0] % 16
+    #     if not any(_["Name"].value.endswith(blockState) for _ in self.sections[chunkX][chunkZ][chunkY].palette):
+    #         return
+    #     paletteIndex = 0
+    #     for i, _ in enumerate(self.sections[chunkX][chunkZ][chunkY].palette):
+    #         if _["Name"].value.endswith(":air"):
+    #             paletteIndex = i
+    #             break
+    #     section.blockStatesBitArray.setAt(blockIndex, paletteIndex)
 
-    def getBlockRelativeAt(self, x, y, z):
+    def getBlockRelativeAt(self, x, y=None, z=None):
+        if y is None and z is None:
+            return self.getBlockRelativeAt(x.x, x.y, x.z)
         return self.getBlockAt((x + self.rect[0], y, z + self.rect[1]))

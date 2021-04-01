@@ -1,4 +1,5 @@
 from terrain import ObstacleMap, RoadNetwork
+from terrain.tree_map import TreesMap
 from utils import BuildArea, WorldSlice, BoundingBox
 from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
@@ -19,6 +20,7 @@ class TerrainMaps:
         self.fluid_map = FluidMap(level, area, self)
         self.obstacle_map = ObstacleMap(self.width, self.length, self)
         self.road_network = RoadNetwork(self.width, self.length, self)  # type: RoadNetwork
+        self.trees = TreesMap(level, self.height_map)
 
     @property
     def width(self):

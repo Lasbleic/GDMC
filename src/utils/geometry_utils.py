@@ -145,7 +145,8 @@ class Direction(Enum):
         #               '0 -1 0': 'Bottom', '-1 0 0': 'West'}
         # key = ' '.join(map(str, self.value.coords))
         # name = known_dirs[key] if key in known_dirs else "Unknown"
-        return "{} Direction".format(self.name)
+        # return "{} Direction".format(self.name)
+        return self.name
 
     def __hash__(self):
         return hash(str(self))

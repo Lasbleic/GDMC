@@ -12,6 +12,7 @@ class HeightMap(Map):
     def __init__(self, level: WorldSlice, area: BuildArea):
         # highest non air block
         super().__init__(self.__calcGoodHeightmap(level))
+        self.area = area
         self.__air_height: Map = Map(level.heightmaps["WORLD_SURFACE"][:])
 
         # highest solid block (below oceans)
@@ -42,7 +43,9 @@ class HeightMap(Map):
         :param zr: Z coordinate or None
         :return: Y coordinate of the highest ground block (below oceans, and trees)
         """
-        return self.__air_height[xr, zr]
+        if zr is None:
+            return self.__ocean_floor[xr]
+        return self.__ocean_floor[xr, zr]
 
     def box_height(self, box, use_relative_coords, include_fluids=False):
         x0 = box.minx if use_relative_coords else box.minx - self.__origin.x
@@ -88,4 +91,4 @@ class HeightMap(Map):
                 else:
                     break
 
-        return np.array(np.minimum(hm_mbnl, heightmapNoTrees))
+        return np.array(np.minimum(hm_mbnl, heightmapNoTrees)) - 1

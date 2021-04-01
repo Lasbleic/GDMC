@@ -75,9 +75,7 @@ class ObstacleMap:
                             self.__set_obstacle(x1, z1)
 
     def box_obstacle(self, box):
-        x0 = box.minx
-        z0 = box.minz
-        matrix = self.map[x0: (x0 + box.width), z0:(z0 + box.length)]
+        matrix = self.map[box.minx: box.maxx, box.minz:box.maxz]
         return matrix <= 1
 
     def __getitem__(self, item):

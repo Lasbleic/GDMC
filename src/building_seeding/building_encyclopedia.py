@@ -73,8 +73,8 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Steepness": {
-            "house": (0, 6),
-            "crop": (0, 2),
+            "house": (1, 2),
+            "crop": (0.5, 1),
             "windmill": (0, 4),
             "wood_tower": (0, 2.5),
             "stone_tower": (0, 4)

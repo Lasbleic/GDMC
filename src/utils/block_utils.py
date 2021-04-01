@@ -4,8 +4,10 @@
 #                 BlockAPI.block.Tripwire, BlockAPI.block.FlowerPot, BlockAPI.block.TallFlowers, BlockAPI.block.Wood, BlockAPI.block.Leaves]
 #
 # water_blocks = [BlockAPI.block.Water, BlockAPI.block.WaterActive, BlockAPI.block.Ice]
+from itertools import product
+
 from utils import Point, WorldSlice, BoundingBox, Iterable, manhattan
-from utils.gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault
+from utils.gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
 
 water_blocks = ["minecraft:water", 'minecraft:ice', 'minecraft:frosted_ice', 'minecraft:packed_ice',
                 'minecraft:blue_ice']
@@ -14,8 +16,13 @@ lava_blocks = ['minecraft:lava']
 
 fluid_blocks_ID = water_blocks + lava_blocks
 
+set_blocks = set()
+
 
 def setBlock(point: Point, blockstate: str):
+    if blockstate not in set_blocks:
+        print(blockstate)
+        set_blocks.add(blockstate)
     setBlockDefault(point.x, point.y, point.z, blockstate)
     # print(setBlockDefault(point.x, point.y, point.z, blockstate))
 
@@ -574,6 +581,7 @@ class BlockAPI:
         StoneBrickStairs = "stone_brick_stairs"
         StoneBrickWall = "stone_brick_wall"
         StoneBricks = "stone_bricks"
+        StoneBrick = "stone_brick"
         StonePressurePlate = "stone_pressure_plate"
         StoneSlab = "stone_slab"
         StoneStairs = "stone_stairs"
@@ -690,8 +698,26 @@ class BlockAPI:
 
     @staticmethod
     def getDoor(material, **kwargs):
-        # TODO: implement this
-        return ""
+        """
+        Parameters
+        ----------
+        material
+        kwargs
+            facing: north
+            half: lower, upper
+            hinge: left
+            open: false
+            powered: false
+
+        Returns
+        -------
+
+        """
+        door_state_default = {"facing": "north", "half": "lower", "hinge": "left", "open": "false", "powered": "false"}
+        if kwargs:
+            return f"{material}_door{BlockAPI.__buildBlockState(door_state_default, **kwargs)}"
+        else:
+            return f"{material}_door"
 
     @staticmethod
     def getTorch(**kwargs):
@@ -705,7 +731,8 @@ class BlockAPI:
         """
         Parameters
         ----------
-        material fence/gate material
+        material
+            fence/gate material
         kwargs
             facing = {north, east, south, west}
 
@@ -720,6 +747,17 @@ class BlockAPI:
 
     @staticmethod
     def getSlab(material, **kwargs):
+        """
+        Parameters
+        ----------
+        material
+        kwargs
+            type: bottom, top
+            waterlogger: true, false
+        Returns
+        -------
+
+        """
         return f"{material}_slab" + (BlockAPI.__buildBlockState({"type": "bottom", "waterlogged": "false"}, **kwargs))
 
 
@@ -760,7 +798,8 @@ def connected_component(maps, source_point, connection_condition, early_stopping
             x, z = comp_point.x + dx, comp_point.z + dz
             neighbour = Point(x, z)
             valid_x, valid_z = (0 <= x < maps.width), (0 <= z < maps.length)
-            if (not check_limits or (valid_x and valid_z)) and connection_condition(comp_point, neighbour, maps) and neighbour not in component:
+            if (not check_limits or (valid_x and valid_z)) and connection_condition(comp_point, neighbour,
+                                                                                    maps) and neighbour not in component:
                 points_to_explore.add(neighbour)
 
     # secondly, generate a mask and a masked parcel to hold relevant info
@@ -776,27 +815,32 @@ def connected_component(maps, source_point, connection_condition, early_stopping
 
 
 def clear_tree_at(terrain, point: Point) -> None:
-    point2d = Point(point.x, point.z)
-
-    def is_tree(bid):
-        return any(_ in bid for _ in ['leaves', 'log'])
-
-    y = terrain.height_map[point-terrain.area.origin] - 1
-    if not is_tree(terrain.level.getBlockAt((point.x, y, point.z))):
-        return
-
-    possible_tree_blocks = [(point.x, y, point.z)]
-    while possible_tree_blocks:
-        x0, y0, z0 = possible_tree_blocks.pop()
-        setBlock(Point(x0, z0, y0), BlockAPI.blocks.Air)
-        terrain.level.setBlockAt((x0, y0, z0), BlockAPI.blocks.Air)
-        from utils import all_directions
-        for dir in all_directions():  # type: Point
-            x = x0 + dir.x
-            y = y0 + dir.y
-            z = z0 + dir.z
-            if is_tree(terrain.level.getBlockAt((x, y, z))) and manhattan(point2d, Point(x, z)) <= 4:
-                possible_tree_blocks.append((x, y, z))
+    terrain.trees.remove_tree(point - terrain.area.origin)
+    # point2d = Point(point.x, point.z)
+    # from terrain import TerrainMaps
+    # terrain: TerrainMaps
+    #
+    # def is_tree(bid):
+    #     return any(_ in bid for _ in ['leaves', 'log'])
+    #
+    # if not terrain.in_limits(point, True):
+    #     return
+    #
+    # y = terrain.height_map.lower_height(point - terrain.area.origin) + 1
+    # if not is_tree(getBlock(point.x, y, point.z)):
+    #     return
+    #
+    # possible_tree_blocks = [(point.x, y, point.z)]
+    # while possible_tree_blocks:
+    #     x0, y0, z0 = possible_tree_blocks.pop()
+    #     setBlock(Point(x0, z0, y0), BlockAPI.blocks.Air)
+    #     from utils import all_directions
+    #     for dir in all_directions():  # type: Point
+    #         x = x0 + dir.x
+    #         y = y0 + dir.y
+    #         z = z0 + dir.z
+    #         if is_tree(getBlock(x, y, z)) and manhattan(point2d, Point(x, z)) <= 4:
+    #             possible_tree_blocks.append((x, y, z))
 
 
 def place_torch(level: WorldSlice, x, y, z):
@@ -824,5 +868,27 @@ def fillBlocks(level: WorldSlice, box: BoundingBox, block: str, blocksToReplace:
         blocksToReplace = {blocksToReplace}
     for x, y, z, in box.positions:
         p = Point(x, z, y)
-        if not blocksToReplace or level.getBlockAt(p) in blocksToReplace:
+        if not blocksToReplace or getBlock(x, y, z)[10:] in blocksToReplace:
             setBlock(p, block)
+
+
+def symmetric_copy(origin: Point, size: Point, destination: Point, x_sym=False, y_sym=False, z_sym=False):
+    if size.x <= 0 or size.y <= 0 or size.z <= 0:
+        print("Invalid size for symmetric copy")
+        return
+
+    for dx, dy, dz in product(range(size.x), range(size.y), range(size.z)):
+        dp = Point(dx, dy, dz)
+        destination_x = destination.x + ((size.x - dx) if x_sym else dx)
+        destination_y = destination.y + ((size.y - dy) if y_sym else dy)
+        destination_z = destination.z + ((size.z - dz) if z_sym else dz)
+
+        block = getBlock(*(origin + dp).coords, True)
+        if x_sym:
+            block = block.replace("west", "tmp").replace("east", "west").replace("tmp", "east")
+        if y_sym:
+            block = block.replace("top", "tmp").replace("bottom", "top").replace("tmp", "bottom")
+        if z_sym:
+            block = block.replace("north", "tmp").replace("south", "north").replace("tmp", "south")
+
+        setBlock(Point(destination_x, destination_z, destination_y), block)

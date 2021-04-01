@@ -36,7 +36,13 @@ class BitArray:
       j = self.longArray[i]
       k = (index - i * self.entriesPerLong) * self.bitsPerEntry
       return (j >> k & self.maxEntryValue)
-   
+
+   def setAt(self, index, palette_id):
+      inclusiveBetween(0, (self.arraySize - 1), index)
+      i = self.getPosOfLong(index)
+      # print("%i > %i" % (index, i))
+      k = int((index - i * self.entriesPerLong) * self.bitsPerEntry)
+      self.longArray[i] = (palette_id << k & self.maxEntryValue)
 
    def size(self):
       return self.arraySize

@@ -47,6 +47,14 @@ def close_distance(d, lambdas):
     return res
 
 
+def open_distance(d, lambdas):
+    lambda_min, lambda_max = lambdas
+    if d <= lambda_min:
+        return 1
+    else:
+        return close_distance(d, lambdas)
+
+
 def obstacle(d, lambdas):
     # type: (float, (float, float)) -> float
     """

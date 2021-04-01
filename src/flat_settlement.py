@@ -163,9 +163,12 @@ class FlatSettlement:
             elif road_y < min_y:
                 y = min_y
             y += 1
-            d = min(euclidean(__parcel.center, _.center) for _ in
-                    filter(lambda p: p.building_type.name == "ghost", self._parcels)
-                    )
+            try:
+                d = min(euclidean(__parcel.center, _.center) for _ in
+                        filter(lambda p: p.building_type.name == "ghost", self._parcels)
+                        )
+            except ValueError:
+                d = 0
             h = int(MAX_HEIGHT * exp(-d / BUILDING_HEIGHT_SPREAD))
             __parcel.set_height(y, h)
 

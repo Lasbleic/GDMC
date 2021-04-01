@@ -236,7 +236,7 @@ class CropGenerator(MaskedGenerator):
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
                 if (gate_pos is None or new_gate_dist < gate_dist) and not self.is_corner(new_gate_pos):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
-                    door_dir_vec = self._entry_point - gate_pos
+                    door_dir_vec = self._entry_point - self.mean
                     door_dir = Direction.of(dx=door_dir_vec.x, dz=door_dir_vec.z)
                     gate_block = BlockAPI.getFence(palette['door'], facing=str(door_dir).lower())
 
@@ -275,7 +275,7 @@ class CropGenerator(MaskedGenerator):
                 if height is not None:
                     y0 = height[xd-x0, zd-z0]
                     if y0 < min_height:
-                        fillBlocks(level, BoundingBox((xd-x0, y0, zd-z0), (1, min_height-y0, 1)), BlockAPI.blocks.CoarseDirt)
+                        fillBlocks(level, BoundingBox((xd, y0, zd), (1, min_height-y0, 1)), BlockAPI.blocks.CoarseDirt)
                         y0 = min_height
                     elif y0 > max_height:
                         continue
@@ -400,18 +400,20 @@ class DoorGenerator(Generator):
 
     def _resource(self, x, y, z, palette):
         if y == self._box.miny:
-            block_name = '{} Door (Lower, Unopened, {})'.format(self._material, -self._direction)
+            # block_name = '{} Door (Lower, Unopened, {})'.format(self._material, -self._direction)
+            block_name = BlockAPI.getDoor(palette['door'], half="lower", facing=(-self._direction).name.lower())
         elif y == self._box.miny + 1:
             if self._box.surface == 1:
-                hinge = 'Left'
+                hinge = 'left'
             else:
                 mean_x = self._box.minx + 0.5 * self._box.width
                 mean_z = self._box.minz + 0.5 * self._box.length
                 norm_dir = self._direction.rotate()
                 left_x = int(floor(mean_x + 0.5 * norm_dir.x))  # floored because int(negative float) rounds up
                 left_z = int(floor(mean_z + 0.5 * norm_dir.z))
-                hinge = 'Left' if (x == left_x and z == left_z) else 'Right'
-            block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
+                hinge = 'left' if (x == left_x and z == left_z) else 'right'
+            # block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
+            block_name = BlockAPI.getDoor(palette['door'], half="upper", hinge=hinge, facing=(-self._direction).name.lower())
         else:
             block_name = palette['wall']
         return block_name

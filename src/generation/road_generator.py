@@ -40,12 +40,12 @@ class RoadGenerator(Generator):
 
         for road_block in self.__network.road_blocks.union(self.__network.special_road_blocks):
             road_width = (self.__network.calculate_road_width(road_block.x, road_block.z) - 1) / 2.0
+            clear_tree_at(terrain, road_block + Point(x0, z0))
             for x in sym_range(road_block.x, road_width, self.width):
                 for z in sym_range(road_block.z, road_width, self.length):
-                    if road_height_map[x, z]:
+                    if road_height_map[x, z] > 0:
                         # if x, z is a road point or has already been computed, no need to do it now
                         continue
-                    clear_tree_at(terrain, Point(x + x0, z + z0))
                     if not self.__fluids.is_water(x, z):
                         distance = abs(road_block.x - x) + abs(road_block.z - z)
                         prob = distance / (8 * road_width)
@@ -82,7 +82,7 @@ class RoadGenerator(Generator):
         # type: (int, int, array, Point) -> (int, str)
         material = choice(list(self.stony_palette.keys()), p=list(self.stony_palette.values()))
 
-        stair_material = choice([BlockAPI.blocks.Cobblestone, BlockAPI.blocks.StoneBricks, BlockAPI.blocks.Stone])
+        stair_material = choice([BlockAPI.blocks.Cobblestone, BlockAPI.blocks.StoneBrick, BlockAPI.blocks.Stone])
         surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
         surround_alt = {Point(x1, z1): height_map[x1, z1] for (x1, z1) in surround_iter if
                         self.__network.is_road(x1, z1) and ((x1 == x) or (z1 == z) or not self.__network.is_road(x, z))}
@@ -93,10 +93,7 @@ class RoadGenerator(Generator):
         if h < .5:
             return int(y), material
         elif h < .84:
-            try:
-                return int(ceil(y)), BlockAPI.getSlab(material)
-            except KeyError:
-                return int(ceil(y)), BlockAPI.getSlab("stone_brick")
+            return int(ceil(y)), BlockAPI.getSlab(stair_material)
         else:
             mx, my, mz = mean([p.x for p in surround_alt.keys()]), y, mean([p.z for p in surround_alt.keys()])
             x_slope = sum((p.x - mx) * (y - my) for p, y in surround_alt.items())
@@ -244,7 +241,7 @@ class Bridge(Generator):
                 b = BlockAPI.blocks.StoneBricks
         else:
             if r1 - int(r1) == 0:
-                b = BlockAPI.getStairs("stone_bricks", facing=get_stair_orientation(x, z))
+                b = BlockAPI.getStairs("stone_brick", facing=get_stair_orientation(x, z))
             else:
                 b = BlockAPI.blocks.StoneBrickSlab
                 y += 1
@@ -310,7 +307,7 @@ class RampStairs(Generator):
         y1, y2 = height_map[p1], height_map[p2]
         if y2 < y1:
             p1, p2, y1, y2 = p2, p1, y2, y1
-        self.__direction = Direction(dx=p2.x - p1.x, dz=p2.z - p1.z)
+        self.__direction = Direction.of(dx=p2.x - p1.x, dz=p2.z - p1.z)
         self.__entry3d = Point(p1.x, p1.z, y1) + self.__direction.asPoint
         self.__exit3d = Point(p2.x, p2.z, y2) - self.__direction.asPoint
         dy = abs(height_map[p2] - height_map[p1])
@@ -339,7 +336,7 @@ class RampStairs(Generator):
         self.__stored_edge_cost = {}
 
     def __generate_stairs(self, level, p1, p2, height):
-        # type: (MCInfdevOldLevel, Point, Point, array) -> None
+        # type: (WorldSlice, Point, Point, array) -> None
         assert p1.x == p2.x or p1.z == p2.z
         if p2.y < p1.y:
             p2, p1 = p1, p2
@@ -373,7 +370,7 @@ class RampStairs(Generator):
                 material = material_def
                 material_opp = None
             box = TransformBox((x, y1, z), (width, 1, length))
-            clear_tree_at(level, box=TransformBox((x - 5, 0, z - 5), (11, 256, 11)), point=Point(x, z))
+            clear_tree_at(level, point=Point(x, z))
             fillBlocks(level, box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
             fillBlocks(level, box, material)
             y0 = min(self.__heightAt(Point(x, z), True, height) for x, _, z in box.positions)
@@ -388,7 +385,7 @@ class RampStairs(Generator):
         box = TransformBox((p1.x - e, y, p1.z - e), (w, 1+p1.y-y, w))
         fillBlocks(level, box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
         fillBlocks(level, box, BlockAPI.blocks.StoneBricks)
-        clear_tree_at(level, box, Point(box.minx, box.minz))
+        clear_tree_at(level, Point(box.minx, box.minz))
         # place_torch(level, randint(box.minx, box.maxx-1), box.maxy, randint(box.minz, box.maxz-1))
         if euclidean(p1, p2) > self.RAMP_WIDTH:
             place_torch(level, randint(box.minx, box.maxx-1), box.maxy, randint(box.minz, box.maxz-1))
@@ -397,7 +394,7 @@ class RampStairs(Generator):
         box = TransformBox((p2.x - e, y, p2.z - e), (w, 1+p2.y-y, w))
         fillBlocks(level, box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
         fillBlocks(level, box, BlockAPI.blocks.StoneBricks)
-        clear_tree_at(level, box, Point(box.minx, box.minz))
+        clear_tree_at(level, Point(box.minx, box.minz))
 
     def __heightAt(self, pos, cast_to_int=False, height_map=None):
         # type: (Point, bool, array) -> int or float
@@ -500,7 +497,7 @@ class RampStairs(Generator):
                     valid_directions = [self.__direction, self.__direction.rotate(), -self.__direction.rotate()]
                 else:
                     prev_p = _ramp_points[-2]  # previous point
-                    prev_d = Direction(dx=cur_p.x - prev_p.x, dz=cur_p.z - prev_p.z)  # previous direction
+                    prev_d = Direction.of(dx=cur_p.x - prev_p.x, dz=cur_p.z - prev_p.z)  # previous direction
                     valid_directions = set(cardinal_directions())
                     for d in {-prev_d, -self.__direction}:
                         valid_directions.remove(d)  # cannot go back
