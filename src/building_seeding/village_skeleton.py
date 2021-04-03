@@ -42,7 +42,7 @@ class VillageSkeleton:
         else:
             raise TypeError("Expected Point or Parcel, found {}".format(seed.__class__))
         self.__parcel_list.append(new_parcel)
-        new_parcel.mark_as_obstacle(self.maps.obstacle_map)
+        new_parcel.mark_as_obstacle(self.maps.obstacle_map, margin=AVERAGE_PARCEL_SIZE//3)
 
     def __handle_new_road_cycles(self, cycles):
 
@@ -89,10 +89,10 @@ class VillageSkeleton:
                 continue
 
             print("Placed at x:{}, z:{}".format(building_position.x, building_position.z))
-            self.add_parcel(building_position, building_type)
 
             # Road Creation Process
-            cycles = self.maps.road_network.connect_to_network(self.__parcel_list[-1].entry_point)
+            cycles = self.maps.road_network.connect_to_network(building_position, margin=AVERAGE_PARCEL_SIZE/2)
+            self.add_parcel(building_position, building_type)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
             # self.__handle_new_road_cycles(cycles)
             if do_limit and time() - t0 >= 9 * 60:

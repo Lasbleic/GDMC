@@ -69,7 +69,7 @@ class ObstacleMap:
             for x0, z0 in product(range(self.__width), range(self.__length)):
                 if network.is_road(x0, z0):
                     # build a circular obstacle of designated width around road point
-                    margin = network.get_road_width(x0, z0)
+                    margin = network.get_road_width(x0, z0) / 2 - .5
                     for x1, z1 in product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
                         if not self.map[x1, z1]:
                             self.__set_obstacle(x1, z1)

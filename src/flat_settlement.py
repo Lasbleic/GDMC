@@ -120,9 +120,7 @@ class FlatSettlement:
         for parcel in self._parcels:
             parcel.mark_as_obstacle(obs)
         obs.map += self._maps.fluid_map.as_obstacle_array
-        expendable_parcels: List[Parcel] = self._parcels[:]
-        # most parcels should initially be expendable, except the ghost one
-        expendable_parcels = list(filter(lambda _: _.is_expendable, expendable_parcels))
+        expendable_parcels: List[Parcel] = [p for p in self._parcels[:] if p.is_expendable()]
 
         surface = sum(p.bounds.volume for p in expendable_parcels)
         while expendable_parcels:

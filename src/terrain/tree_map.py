@@ -17,7 +17,10 @@ class TreesMap(Map):
             return all((p + direction) not in trunks for direction in all_directions())
 
         def is_tree(bid):
-            return any(_ in bid for _ in ['leaves', 'log'])
+            return is_trunk(bid) or any(_ in bid for _ in ['_leaves', 'mushroom_block'])
+
+        def is_trunk(block):
+            return any(_ in block for _ in ['log', '_stem'])
 
         # Look for tree trunks
         for x, z in product(range(height.width), range(height.length)):
@@ -55,7 +58,7 @@ class TreesMap(Map):
 
         return values
 
-    def remove_tree(self, position: Point):
+    def remove_tree_at(self, position: Point):
         if self[position] not in self.__trees:
             return
 

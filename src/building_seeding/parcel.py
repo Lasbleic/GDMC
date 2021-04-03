@@ -18,19 +18,16 @@ class Parcel:
 
     max_surfaces = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["MaxSurface"]
 
-    def __init__(self, seed, building_type, mc_map=None):
+    def __init__(self, seed, building_type, mc_map):
         # type: (Point, BuildingType, terrain.TerrainMaps) -> Parcel
         self._center = seed
         self._building_type = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
         self._entry_point = self.__compute_entry_point()  # type: Point
-        self._relative_box = TransformBox((seed.x, 0, seed.z),
-                                          (1, 1, 1))  # type: TransformBox
+        self._relative_box = None  # type: TransformBox
         self._box = None  # type: TransformBox
-        self._mask = full((self.width, self.length), True)
-        if mc_map is not None:
-            self.__compute_entry_point()
-            self.__initialize_limits()
+        self._mask = None
+        self.__initialize_limits()
 
     def __eq__(self, other):
         if not isinstance(other, Parcel):
@@ -46,7 +43,7 @@ class Parcel:
         # If path from road_net to seed has already been computed, project the entry point on this path
         if road_net.is_accessible(self._center):
             path = road_net.path_map[self._center.x, self._center.z]  # path[-1] == seed
-            distance_threshold = MIN_PARCEL_SIDE + MAX_ROAD_WIDTH // 2
+            distance_threshold = AVERAGE_PARCEL_SIZE + MAX_ROAD_WIDTH // 2
             if len(path) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
                 return path[0] if len(path) else self._center
@@ -103,10 +100,7 @@ class Parcel:
         if self._map is None:
             return False
         if direction is None:
-            for direction in cardinal_directions():
-                if self.is_expendable(direction):
-                    return True
-            return False
+            return any(self.is_expendable(direction) for direction in cardinal_directions(False))
         else:
             # try:
             expanded = self._relative_box.expand(direction)  # expanded parcel
@@ -131,9 +125,14 @@ class Parcel:
         self._box.translate(dx=origin.x, dz=origin.z, inplace=True)
         self._entry_point += Point(origin.x, origin.z)
 
-    def mark_as_obstacle(self, obstacle_map):
+    def mark_as_obstacle(self, obstacle_map, margin=0):
         # type: (ObstacleMap) -> None
-        obstacle_map.add_obstacle(Point(self.minx, self.minz), self._mask)
+        if margin > 0:
+            point = self.origin - Point(margin, margin)
+            mask = full((self.width + 2*margin, self.length + 2*margin), True)
+            obstacle_map.add_obstacle(point, mask)
+        else:
+            obstacle_map.add_obstacle(self.origin, self._mask)
 
     @property
     def entry_x(self):
@@ -262,7 +261,7 @@ class MaskedParcel(Parcel):
         if Parcel.is_expendable(self, direction):
             return True
         elif direction is None:
-            return any(self.is_expendable(_) for _ in cardinal_directions())
+            return any(self.is_expendable(_) for _ in cardinal_directions(False))
         else:
             """
             Will basically try to extend the parcel's mask

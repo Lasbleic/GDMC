@@ -16,7 +16,8 @@ from utils import *
 class RoadGenerator(Generator):
     # stony_palette_str = ["Cobblestone", "Gravel", "Stone"]
     # stony_probs = [0.75, 0.20, 0.05]
-    stony_palette = {BlockAPI.blocks.Cobblestone: 0.7, BlockAPI.blocks.Gravel: 0.2, BlockAPI.blocks.Stone: 0.1}
+    stony_palette = {BlockAPI.blocks.Cobblestone: 0.6, BlockAPI.blocks.Gravel: 0.15, BlockAPI.blocks.Stone: 0.1,
+                     BlockAPI.blocks.DeadBrainCoralBlock: 0.1, BlockAPI.blocks.DeadBubbleCoralBlock: 0.05}
 
     def __init__(self, network, box: BoundingBox, maps):
         super().__init__(box)

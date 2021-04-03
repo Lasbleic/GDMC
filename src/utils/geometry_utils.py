@@ -275,7 +275,7 @@ class TransformBox(BoundingBox):
 
     def expand(self, dx_or_dir, dy=None, dz=None, inplace=False):
         # if isinstance(dx_or_dir, Direction):
-        if dx_or_dir.__class__.__name__ == 'Direction':
+        if isinstance(dx_or_dir, Direction):
             direction = dx_or_dir
             dpos = (min(direction.x, 0), min(direction.y, 0), min(direction.z, 0))
             dsize = (abs(direction.x), abs(direction.y), abs(direction.z))

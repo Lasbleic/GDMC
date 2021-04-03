@@ -815,13 +815,13 @@ def connected_component(maps, source_point, connection_condition, early_stopping
 
 
 def clear_tree_at(terrain, point: Point) -> None:
-    terrain.trees.remove_tree(point - terrain.area.origin)
+    terrain.trees.remove_tree_at(point - terrain.area.origin)
 
 
 def place_torch(level: WorldSlice, x, y, z):
-    if not level.getBlockAt((x, y, z)):
+    if getBlock(x, y, z).endswith(":air"):
         torch = BlockAPI.getTorch()
-        setBlock(Point(x, y, z), torch)
+        setBlock(Point(x, z, y), torch)
 
 
 def fillBlocks(box: BoundingBox, block: str, blocksToReplace: str or Iterable[str] = None):

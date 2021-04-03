@@ -35,7 +35,7 @@ class Generator:
 
     def surface_pos(self, height_map):
         for x, z in product(range(self.width), range(self.length)):
-            yield x+self.origin.x, height_map[x, z], z+self.origin.z
+            yield x + self.origin.x, height_map[x, z], z + self.origin.z
 
     def choose_sub_generator(self, parcels):
         pass
@@ -107,7 +107,7 @@ class Generator:
         door_x, door_z = self._entry_point.x, self._entry_point.z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
         try:
-            return Direction.of(dx=door_x-mean_x, dz=door_z-mean_z)
+            return Direction.of(dx=door_x - mean_x, dz=door_z - mean_z)
         except AssertionError:
             return list(cardinal_directions())[0]
 
@@ -231,7 +231,7 @@ class CropGenerator(MaskedGenerator):
             if not self.is_masked(x, z, True):
                 continue
             if self.is_lateral(x, z):
-                setBlock(Point(x, z, y+1), fence_block)
+                setBlock(Point(x, z, y + 1), fence_block)
                 new_gate_pos = Point(x, z)
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
                 if (gate_pos is None or new_gate_dist < gate_dist) and not self.is_corner(new_gate_pos):
@@ -243,15 +243,15 @@ class CropGenerator(MaskedGenerator):
         # place gate
         if gate_pos:
             x, z = gate_pos.x, gate_pos.z
-            y = height_map[x-self.origin.x, z-self.origin.z] + 1
+            y = height_map[x - self.origin.x, z - self.origin.z] + 1
             setBlock(Point(x, z, y), gate_block)
 
         # place animals
         animal_count = sum(self._mask.flat) // SURFACE_PER_ANIMAL
         while animal_count:
-            x = randint(fence_box.minx, fence_box.maxx-1)
-            z = randint(fence_box.minz, fence_box.maxz-1)
-            y = height_map[x-self.origin.x, z-self.origin.z] + 1
+            x = randint(fence_box.minx, fence_box.maxx - 1)
+            z = randint(fence_box.minz, fence_box.maxz - 1)
+            y = height_map[x - self.origin.x, z - self.origin.z] + 1
             if self.is_masked(x, z, True) and not self.is_lateral(x, z):
                 interfaceUtils.runCommand(f"summon {animal} {x} {y} {z}")
                 animal_count -= 1
@@ -273,7 +273,7 @@ class CropGenerator(MaskedGenerator):
             for xd, zd in product(range(max(x0, xs - 4), min(x0 + self.width, xs + 5)),
                                   range(max(z0, zs - 4), min(z0 + self.length, zs + 5))):
                 if height is not None:
-                    y0 = height[xd-x0, zd-z0]
+                    y0 = height[xd - x0, zd - z0]
                     if y0 < min_height:
                         fillBlocks(BoundingBox((xd, y0, zd), (1, min_height - y0, 1)), BlockAPI.blocks.CoarseDirt)
                         y0 = min_height
@@ -296,7 +296,9 @@ class CropGenerator(MaskedGenerator):
         # TODO: fix water sources
         mx, mz = randint(0, 1), randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
-            if (x % 2 == mx and (z+x//2) % 3 == mz) and bernouilli(0.35):
+            if x % 9 in [5, (self.width - 4) % 9] and z % 9 in [5, (self.length - 4) % 9]:
+                b = BlockAPI.blocks.Water
+            if (x % 2 == mx and (z + x // 2) % 3 == mz) and bernouilli(0.35):
                 setBlock(Point(x, z, y), BlockAPI.blocks.Dirt)  # dirt under hay bales
                 b = BlockAPI.blocks.HayBlock
                 y += 1
@@ -304,7 +306,7 @@ class CropGenerator(MaskedGenerator):
                 b = BlockAPI.blocks.Farmland
             setBlock(Point(x, z, y), b)
         h = height_map
-        irrigation_height = min(h[h.shape[0]//2, h.shape[1]//2], h.max()) + 1 - self._box.miny
+        irrigation_height = min(h[h.shape[0] // 2, h.shape[1] // 2], h.max()) + 1 - self._box.miny
         irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
         fillBlocks(irrigation_box, BlockAPI.blocks.Water)
 
@@ -323,7 +325,7 @@ class CropGenerator(MaskedGenerator):
         height_mask = (height_map >= ref_height - 1) & (height_map <= ref_height + 1)
         self.add_mask(height_mask)
         for x, _, z in self.surface_pos(height_map):
-            h = height_map[x-self.origin.x, z-self.origin.z]
+            h = height_map[x - self.origin.x, z - self.origin.z]
             if h == (ref_height - 1):
                 setBlock(Point(x, z, ref_height), BlockAPI.blocks.Dirt)
             elif h == (ref_height + 1):
@@ -413,7 +415,8 @@ class DoorGenerator(Generator):
                 left_z = int(floor(mean_z + 0.5 * norm_dir.z))
                 hinge = 'left' if (x == left_x and z == left_z) else 'right'
             # block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
-            block_name = BlockAPI.getDoor(palette['door'], half="upper", hinge=hinge, facing=(-self._direction).name.lower())
+            block_name = BlockAPI.getDoor(palette['door'], half="upper", hinge=hinge,
+                                          facing=(-self._direction).name.lower())
         else:
             block_name = palette['wall']
         return block_name
@@ -421,6 +424,8 @@ class DoorGenerator(Generator):
 
 class WindmillGenerator(Generator):
     pass
+
+
 #     def generate(self, level, height_map=None, palette=None):
 #         # type: (MCLevel, array, dict) -> None
 #         box = self._box
@@ -483,6 +488,8 @@ class WindmillGenerator(Generator):
 
 
 class WoodTower(Generator): pass
+
+
 #     def generate(self, level, height_map=None, palette=None):
 #         self._clear_trees(level)
 #         origin_x = self._box.minx + randint(0, self.width - 4)
@@ -495,6 +502,8 @@ class WoodTower(Generator): pass
 
 
 class StoneTower(Generator): pass
+
+
 #     def generate(self, level, height_map=None, palette=None):
 #         self._clear_trees(level)
 #         # relative coords
@@ -515,5 +524,5 @@ class StoneTower(Generator): pass
 
 def place_street_lamp(level, x, y, z, material):
     fillBlocks(BoundingBox((x, y + 1, z), (1, 3, 1)), BlockAPI.getFence(material))
-    setBlock(Point(x, z, y+4), BlockAPI.blocks.RedstoneLamp)
-    setBlock(Point(x, z, y+5), f"daylight_detector[inverted=true]")
+    setBlock(Point(x, z, y + 4), BlockAPI.blocks.RedstoneLamp)
+    setBlock(Point(x, z, y + 5), f"daylight_detector[inverted=true]")

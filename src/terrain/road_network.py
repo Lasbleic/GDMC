@@ -129,21 +129,21 @@ class RoadNetwork:
     def __set_road(self, path):
         # type: ([Point]) -> None
         force_update = False
-        if any(self.__is_point_obstacle(point) for point in path):
-            force_update = True
-            p = path[-1]
-            refresh_perimeter = product(sym_range(p.x, len(path), self.width), sym_range(p.z, len(path), self.length))
-            refresh_sources = []
-            for x, z in refresh_perimeter:
-                if self.is_road(x, z):
-                    refresh_sources.append(Point(x, z))
-                else:
-                    self.distance_map[x, z] = maxint
-                    self.cost_map[x, z] = maxint
-                    self.path_map[x, z] = []
-            self.__update_distance_map(refresh_sources)
-            path = self.path_map[p.x, p.z]
-            # path = self.a_star(path[0], path[-1])
+        # if any(self.__is_point_obstacle(point) for point in path):
+        #     force_update = True
+        #     p = path[-1]
+        #     refresh_perimeter = product(sym_range(p.x, len(path), self.width), sym_range(p.z, len(path), self.length))
+        #     refresh_sources = []
+        #     for x, z in refresh_perimeter:
+        #         if self.is_road(x, z):
+        #             refresh_sources.append(Point(x, z))
+        #         else:
+        #             self.distance_map[x, z] = maxint
+        #             self.cost_map[x, z] = maxint
+        #             self.path_map[x, z] = []
+        #     self.__update_distance_map(refresh_sources)
+        #     path = self.path_map[p.x, p.z]
+        #     # path = self.a_star(path[0], path[-1])
         # else:
         if self.__generator:
             self.__generator.handle_new_road(path)
@@ -152,7 +152,8 @@ class RoadNetwork:
         self.__update_distance_map(path, force_update)
 
     def is_accessible(self, point):
-        return type(self.path_map[point.x][point.z]) == list
+        path = self.path_map[point.x][point.z]
+        return type(path) == list and (len(path) > 0 or self.is_road(point))
 
     # endregion
 
@@ -172,13 +173,15 @@ class RoadNetwork:
         self.network_extremities += [root_point, ending_point]
         return path
 
-    def connect_to_network(self, point_to_connect):
-        # type: (Point) -> List[Set[Point]]
+    def connect_to_network(self, point_to_connect, margin=0):
+        # type: (Point, int) -> List[Set[Point]]
         from time import time
 
+        # safe check: the point is already connected
         if self.is_road(point_to_connect):
             return []
 
+        # either the path is precomputed or computed with a*
         if self.is_accessible(point_to_connect):
             path = self.path_map[point_to_connect.x][point_to_connect.z]
             print("[RoadNetwork] Found existing road")
@@ -186,9 +189,19 @@ class RoadNetwork:
             _t0 = time()
             path = self.a_star(self.__get_closest_node(point_to_connect), point_to_connect, RoadNetwork.road_build_cost)
             print("[RoadNetwork] Computed road path in {:0.2f}s".format(time()-_t0))
+
+        # if a* fails, return
+        if len(path) == 0:
+            return path
+
+        # else, register new road(s)
+        if margin > 0:
+            truncate_index = next(i for i, p in enumerate(path) if manhattan(p, point_to_connect) <= margin)
+            path = path[:truncate_index]
+            if not path: return
+            point_to_connect = path[-1]
+        self.__set_road(path)
         self.network_extremities += [point_to_connect]
-        if path:
-            self.__set_road(path)
 
         _t1, cycles = None, []
         for node in self.network_node_list + self.network_extremities:
@@ -397,8 +410,8 @@ class RoadNetwork:
                     _closest_neighbors += [neighbor]
             return choice(_closest_neighbors)
 
+        from math import sqrt
         def heuristic(point):
-            from math import sqrt
             return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2)
 
         def update_distance(updated_point, neighbor, _neighbors):

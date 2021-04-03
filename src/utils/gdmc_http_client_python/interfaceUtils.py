@@ -1,5 +1,5 @@
 import requests
-from requests import ConnectionError as ConnectionError
+from requests import ConnectionError
 
 
 def setBlock(x, y, z, str):
