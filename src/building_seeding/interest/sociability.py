@@ -33,15 +33,11 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parc
         social_score = attraction_repulsion(distance_to_building, lambda_min, lambda_0, lambda_max)
 
         if social_score == -1:
-            _sociability = -1
-            break
+            return -1
 
         _sociability += social_score
 
-    if social_score != -1:
-        _sociability /= len(settlement_seeds)
-
-    return _sociability
+    return _sociability / len(settlement_seeds)
 
 
 def sociability(building_type, scenario, settlement_seeds, size):

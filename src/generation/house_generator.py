@@ -107,7 +107,7 @@ class _RoomSymbol(CardinalGenerator):
         if self._has_base:
             h = 1 if height_map is None else max(1, self.origin.y - height_map.min())
             self.children.append(_BaseSymbol(TransformBox(self.origin - (0, h, 0), (self.width, h, self.length))))
-        fillBlocks(level, self._get_box(), BlockAPI.blocks.Air)
+        fillBlocks(self._get_box(), BlockAPI.blocks.Air)
         self._generate_pillars(level, palette)
         self._create_walls(level, palette)
         self.__place_torch(level)
@@ -117,7 +117,7 @@ class _RoomSymbol(CardinalGenerator):
 
         if bernouilli(prob):
             ceiling_box = upper_box.translate(dy=-1).split(dy=1)[0]
-            fillBlocks(level, ceiling_box, palette['floor'], BlockAPI.blocks.Air)
+            fillBlocks(ceiling_box, palette['floor'], BlockAPI.blocks.Air)
             upper_room = _RoomSymbol(upper_box)
         else:
             upper_room = _RoofSymbol(upper_box, roof_type=palette['roofType'])
@@ -141,20 +141,20 @@ class _RoomSymbol(CardinalGenerator):
                         TransformBox(b.origin + (0, 0, b.length - 1), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, 0), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, b.length - 1), (1, b.height, 1))]:
-            fillBlocks(level, col_box, palette.get_structure_block('Upright'))
+            fillBlocks(col_box, palette.get_structure_block('Upright'))
 
     def _create_walls(self, level, palette):
         for direction in cardinal_directions(False):
             wall_box = self.get_wall_box(direction)
             if self[direction] is not None:
                 if isinstance(self[direction], _RoofSymbol):
-                    fillBlocks(level, wall_box, palette['wall'])
+                    fillBlocks(wall_box, palette['wall'])
                     continue
                 elif wall_box.volume < self[direction].get_wall_box(-direction).volume:
                     wall_box = wall_box.expand(direction).split(dy=3)[0]
                     wider_box = wall_box.enlarge(direction)
-                    fillBlocks(level, wider_box, palette['wall'])
-                    fillBlocks(level, wall_box, BlockAPI.blocks.Air)
+                    fillBlocks(wider_box, palette['wall'])
+                    fillBlocks(wall_box, BlockAPI.blocks.Air)
                     continue
 
             # some annexes are only one block wide or long, could generate negative dimensions
@@ -231,7 +231,7 @@ class _RoofSymbol(CardinalGenerator):
     def generate(self, level, height_map=None, palette=None):
         if self._roof_type == 'flat':
             box = self.flat_box
-            fillBlocks(level, box.split(dy=1)[0], palette['roofBlock'])
+            fillBlocks(box.split(dy=1)[0], palette['roofBlock'])
         elif self._roof_type == 'gable':
             pass
             if self._direction in [Direction.West, Direction.East]:
@@ -267,24 +267,24 @@ class _RoofSymbol(CardinalGenerator):
                                      (box.width - 2, 1, box.length - 2*(index+1)))
             north_box = TransformBox((box.minx, box.miny + index, box.maxz - index - 1), (box.width, 1, 1))
             south_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-            fillBlocks(level, north_box, palette.get_roof_block('bottom', 'north'), BlockAPI.blocks.Air)
-            fillBlocks(level, south_box, palette.get_roof_block('bottom', 'south'), BlockAPI.blocks.Air)
+            fillBlocks(north_box, palette.get_roof_block('bottom', 'north'), BlockAPI.blocks.Air)
+            fillBlocks(south_box, palette.get_roof_block('bottom', 'south'), BlockAPI.blocks.Air)
             if index != 0:
-                fillBlocks(level, attic_box, "bone_block[axis=y]")
+                fillBlocks(attic_box, "bone_block[axis=y]")
                 attic_box.expand(-1, 0, 0, inplace=True)
-                fillBlocks(level, attic_box, BlockAPI.blocks.Air)
-                fillBlocks(level, north_box.translate(dy=-1), palette.get_roof_block('top', 'south'), BlockAPI.blocks.Air)
-                fillBlocks(level, south_box.translate(dy=-1), palette.get_roof_block('top', 'north'), BlockAPI.blocks.Air)
+                fillBlocks(attic_box, BlockAPI.blocks.Air)
+                fillBlocks(north_box.translate(dy=-1), palette.get_roof_block('top', 'south'), BlockAPI.blocks.Air)
+                fillBlocks(south_box.translate(dy=-1), palette.get_roof_block('top', 'north'), BlockAPI.blocks.Air)
             else:
-                fillBlocks(level, attic_box, palette.get_structure_block('z'))
+                fillBlocks(attic_box, palette.get_structure_block('z'))
                 attic_box.expand(-1, 0, 0, inplace=True)
-                fillBlocks(level, attic_box, palette['floor'])
+                fillBlocks(attic_box, palette['floor'])
         # build roof ridge
         if box.length % 2 == 1:
             index = box.length // 2
             ridge_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-            fillBlocks(level, ridge_box, palette.get_roof_block('bottom'), BlockAPI.blocks.Air)
-            fillBlocks(level, ridge_box.translate(dy=-1), palette.get_structure_block('x'), BlockAPI.blocks.Air)
+            fillBlocks(ridge_box, palette.get_roof_block('bottom'), BlockAPI.blocks.Air)
+            fillBlocks(ridge_box.translate(dy=-1), palette.get_structure_block('x'), BlockAPI.blocks.Air)
 
     def __gen_gable_z(self, level, palette):
         real_box = self.gable_box
@@ -327,11 +327,11 @@ class _WallSymbol(Generator):
         if self.width % 2 == 0:
             # even wall: split in two
             if self.width == 2:
-                fillBlocks(level, self._box, palette['wall'])
+                fillBlocks(self._box, palette['wall'])
                 if bernouilli(0.5):
-                    fillBlocks(level, self._box.expand(0, -1, 0), palette['window'])
+                    fillBlocks(self._box.expand(0, -1, 0), palette['window'])
             elif self.width == 4:
-                fillBlocks(level, self._box, palette['wall'])
+                fillBlocks(self._box, palette['wall'])
                 box_win = TransformBox(self._box.origin + (1, 0, 0), (2, self.height, 1))
                 self.children.append(_WallSymbol(box_win))
             else:
@@ -340,12 +340,12 @@ class _WallSymbol(Generator):
         else:
             # uneven wall: derive in column | window | wall
             if self.width == 1:
-                fillBlocks(level, self._box, palette['wall'])
+                fillBlocks(self._box, palette['wall'])
             else:
                 box_col, box_wal = self._box.split(dx=2)
                 box_win = TransformBox((self._box.origin + (1, 1, 0)), (1, self.height - 2, 1))
-                fillBlocks(level, box_col, palette['wall'])
-                fillBlocks(level, box_win, palette['window'])
+                fillBlocks(box_col, palette['wall'])
+                fillBlocks(box_win, palette['window'])
                 self.children.append(_WallSymbol(box_wal))
 
     def _generate_zwall(self, level, palette):
@@ -395,4 +395,4 @@ class _WallSymbol(Generator):
 
 class _BaseSymbol(Generator):
     def generate(self, level, height_map=None, palette=None):
-        fillBlocks(level, self._box, palette['base'])
+        fillBlocks(self._box, palette['base'])

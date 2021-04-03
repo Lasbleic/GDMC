@@ -19,7 +19,7 @@ option_visu = "visualization"  # "Visualization tool: plots iterations of buildi
 if __name__ == '__main__':
     options = {
         option_time_limit: "600",
-        option_debug: True,
+        option_debug: False,
         option_visu: False
     }
     t0 = time()

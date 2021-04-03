@@ -72,13 +72,13 @@ class VillageSkeleton:
 
     def grow(self, do_limit, do_visu):
         print("Seeding parcels")
-        map_plots = VisuHandler(do_visu, self.size, self.__parcel_list, self.maps.road_network)
+        map_plots = VisuHandler(do_visu, self.maps, self.__parcel_list)
+        build_iter = self.building_iterator
 
         t0 = time()
-        for building_type in self.building_iterator:
+        for building_type in build_iter:
 
-            print("\nTrying to place {} - #{} out of {}".format(building_type.name, self.building_iterator.count,
-                                                                self.building_iterator.size))
+            print(f"\nTrying to place {building_type.name} - #{build_iter.count} out of {build_iter.size}")
 
             # Village Element Seeding Process
             self.__interest.reuse_existing_parcel(building_type)  # If succeeds should update building_type in place
@@ -94,7 +94,7 @@ class VillageSkeleton:
             # Road Creation Process
             cycles = self.maps.road_network.connect_to_network(self.__parcel_list[-1].entry_point)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
-            self.__handle_new_road_cycles(cycles)
+            # self.__handle_new_road_cycles(cycles)
             if do_limit and time() - t0 >= 9 * 60:
                 print("Time limit reached: early stopping parcel seeding")
                 break

@@ -214,7 +214,7 @@ class BuildArea:
                 build_area_json[key1], build_area_json[key2] = build_area_json[key2], build_area_json[key1]
 
         self.__origin: Point = Point(build_area_json[XFROM], build_area_json[ZFROM])
-        self.__destination: Point = Point(build_area_json[XTO], build_area_json[ZTO])
+        self.__destination: Point = Point(build_area_json[XTO], build_area_json[ZTO]) + Point(1, 1)
         self.__shape: Point = abs(self.__destination - self.__origin)
 
     def __contains__(self, item):

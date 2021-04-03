@@ -9,7 +9,7 @@ BUILDING_ENCYCLOPEDIA = {
     "Flat_scenario": {
 
         "Sociability": {
-            "house-house": (10, 13, 80),
+            "house-house": (8, 14, 80),
             "house-crop": (12, 20, 100),
             "house-windmill": (15, 25, 100),
             "house-ghost": (5, 10, 100),
@@ -81,9 +81,9 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "RiverDistance": {
-            "house": (10, 120),
-            "crop": (5, 80),
-            "windmill": (10, 150),
+            "house": (5, 120),
+            "crop": (7, 80),
+            "windmill": (12, 150),
             "wood_tower": (12, 150),
             "stone_tower": (12, 150)
         },
@@ -106,11 +106,11 @@ BUILDING_ENCYCLOPEDIA = {
 
         # (accessibility, sociability, density, altitude, pure_water, sea_water, lava, steepness)
         "Weighting_factors": {
-            "house": (1, 3, 3, 2, 1, 1, 1, 1),
-            "crop": (1, 3, 2, 2, 2, 0, 1, 3),
-            "windmill": (2, 4, 3, 2, 0, 0, 1, 2),
-            "wood_tower": (1, 5, 1, 3, 1.5, 1, 1, 2),
-            "stone_tower": (1, 5, 3, 3, 1, 1.5, 1, 2)
+            "house": (1, 3, 3, 0, 1, 1, 1, 1),
+            "crop": (1, 3, 2, 1, 2, 0, 1, 3),
+            "windmill": (2, 4, 3, 1, 0, 0, 1, 2),
+            "wood_tower": (1, 5, 1, 0, 1.5, 1, 1, 2),
+            "stone_tower": (1, 5, 3, 0, 1, 1.5, 1, 2)
         },
 
         "markov": {

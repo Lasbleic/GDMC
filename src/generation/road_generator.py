@@ -71,11 +71,11 @@ class RoadGenerator(Generator):
                     if "slab" not in b and bernouilli(0.1):
                         place_torch(terrain.level, xa, y + 1, za)
                     else:
-                        fillBlocks(terrain.level, TransformBox((xa, y + 1, za), (1, 2, 1)), BlockAPI.blocks.Air)
+                        fillBlocks(TransformBox((xa, y + 1, za), (1, 2, 1)), BlockAPI.blocks.Air)
                     h = height_map[x, z]
                     if h < y:
                         pole_box = TransformBox((xa, h, za), (1, y-h, 1))
-                        fillBlocks(terrain.level, pole_box, BlockAPI.blocks.StoneBricks)
+                        fillBlocks(pole_box, BlockAPI.blocks.StoneBricks)
         print("OK")
 
     def __compute_road_at(self, x, z, height_map, r):
@@ -157,8 +157,16 @@ class RoadGenerator(Generator):
             # todo: public stairs structures (/ ladders ?) in steep streets
 
         else:
-            begin = next(filter(lambda v: abs(path_height[v+1]-path_height[v] > 1), range(len(path_height)-1)))
-            end = next(filter(lambda v: abs(path_height[v-1]-path_height[v] > 1), range(len(path_height)-1, 0, -1)))
+            # todo: debug why end can't be computed sometimes
+            try:
+                begin = next(filter(lambda v: abs(path_height[v+1]-path_height[v] > 1), range(len(path_height)-1)))
+            except StopIteration:
+                begin = 0
+
+            try:
+                end = next(filter(lambda v: abs(path_height[v-1]-path_height[v] > 1), range(len(path_height)-1, 0, -1)))
+            except StopIteration:
+                end = len(path_height) - 1
             self.children.append(RampStairs(path[begin], path[end], self.__maps.height_map))
             for _ in range(end-begin-1):
                 path.pop(begin)
@@ -207,7 +215,7 @@ class Bridge(Generator):
             interpol1 = base_height(d) + curv_height(d)
             interpol2 = base_height(d + 1) + curv_height(d + 1)
             ap = p + self.__origin
-            self.place_block(level, ap.x, interpol1, interpol2, ap.z)
+            self.place_block(ap.x, interpol1, interpol2, ap.z)
 
     @property
     def width(self):
@@ -217,7 +225,7 @@ class Bridge(Generator):
     def length(self):
         return abs(self.__points[-1].z - self.__points[0].z)
 
-    def place_block(self, level, x, y1, y2, z):
+    def place_block(self, x, y1, y2, z):
         if y1 > y2:
             y1, y2 = y2, y1
 
@@ -295,7 +303,7 @@ class CarvedRoad(Generator):
             height = road_height + 2 - ground_height
             if height < 2:
                 road_box = TransformBox((absolute_road.x - 1, road_height + 1, absolute_road.z - 1), (3, 3, 3))
-                fillBlocks(level, road_box, BlockAPI.blocks.Air)
+                fillBlocks(road_box, BlockAPI.blocks.Air)
 
 
 class RampStairs(Generator):
@@ -307,9 +315,9 @@ class RampStairs(Generator):
         y1, y2 = height_map[p1], height_map[p2]
         if y2 < y1:
             p1, p2, y1, y2 = p2, p1, y2, y1
-        self.__direction = Direction.of(dx=p2.x - p1.x, dz=p2.z - p1.z)
-        self.__entry3d = Point(p1.x, p1.z, y1) + self.__direction.asPoint
-        self.__exit3d = Point(p2.x, p2.z, y2) - self.__direction.asPoint
+        self.__direction: Direction = Direction.of(dx=p2.x - p1.x, dz=p2.z - p1.z)
+        self.__entry3d = Point(p1.x, p1.z, y1) + self.__direction.value
+        self.__exit3d = Point(p2.x, p2.z, y2) - self.__direction.value
         dy = abs(height_map[p2] - height_map[p1])
         width = abs(p1.x - p2.x) + 1
         length = abs(p1.z - p2.z) + 1
@@ -371,20 +379,20 @@ class RampStairs(Generator):
                 material_opp = None
             box = TransformBox((x, y1, z), (width, 1, length))
             clear_tree_at(level, point=Point(x, z))
-            fillBlocks(level, box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
-            fillBlocks(level, box, material)
+            fillBlocks(box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
+            fillBlocks(box, material)
             y0 = min(self.__heightAt(Point(x, z), True, height) for x, _, z in box.positions)
             if abs(y0 - y) >= 3:
                 if material_opp is not None:
-                    fillBlocks(level, box.translate(dy=-1), material_opp, [BlockAPI.blocks.Air])
+                    fillBlocks(box.translate(dy=-1), material_opp, [BlockAPI.blocks.Air])
             else:
-                fillBlocks(level, TransformBox((box.minx, y0, box.minz), (width, 1+y-y0, length)), material_def, [BlockAPI.blocks.Air])
+                fillBlocks(TransformBox((box.minx, y0, box.minz), (width, 1 + y - y0, length)), material_def, [BlockAPI.blocks.Air])
 
         e, w = self.RAMP_WIDTH // 2, self.RAMP_WIDTH
         y = min(p1.y, min(self.__heightAt(Point(p1.x+dx, p1.z+dz), True, height) for dx, dz in product(range(-e, w-e), range(-e, w-e))))
         box = TransformBox((p1.x - e, y, p1.z - e), (w, 1+p1.y-y, w))
-        fillBlocks(level, box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
-        fillBlocks(level, box, BlockAPI.blocks.StoneBricks)
+        fillBlocks(box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
+        fillBlocks(box, BlockAPI.blocks.StoneBricks)
         clear_tree_at(level, Point(box.minx, box.minz))
         # place_torch(level, randint(box.minx, box.maxx-1), box.maxy, randint(box.minz, box.maxz-1))
         if euclidean(p1, p2) > self.RAMP_WIDTH:
@@ -392,8 +400,8 @@ class RampStairs(Generator):
 
         y = min(p2.y, min(self.__heightAt(Point(p2.x+dx, p2.z+dz), True, height) for dx, dz in product(range(-e, w-e), range(-e, w-e))))
         box = TransformBox((p2.x - e, y, p2.z - e), (w, 1+p2.y-y, w))
-        fillBlocks(level, box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
-        fillBlocks(level, box, BlockAPI.blocks.StoneBricks)
+        fillBlocks(box.translate(dy=2).expand(0, 1, 0), BlockAPI.blocks.Air)
+        fillBlocks(box, BlockAPI.blocks.StoneBricks)
         clear_tree_at(level, Point(box.minx, box.minz))
 
     def __heightAt(self, pos, cast_to_int=False, height_map=None):
@@ -447,16 +455,17 @@ class RampStairs(Generator):
         values = []
         h0 = self.__heightAt(point)
         for m in range(1, margin+1):
-            if (point + direction.asPoint * m).coords in self._box:
-                hm = self.__heightAt(point + direction.asPoint * m)
+            if (point + direction.value * m).coords in self._box:
+                hm = self.__heightAt(point + direction.value * m)
                 values.append((hm - h0) / m)
-            if (point - direction.asPoint * m).coords in self._box:
-                hm1 = self.__heightAt(point - direction.asPoint * m)
+            if (point - direction.value * m).coords in self._box:
+                hm1 = self.__heightAt(point - direction.value * m)
                 values.append((h0 - hm1) / m)
         return abs(sum(values) / len(values))
 
     def generate(self, level, height_map=None, palette=None):
         from time import time
+        return
 
         # print(self._box.size)
         # print(height_map.shape)
@@ -499,7 +508,7 @@ class RampStairs(Generator):
                     prev_p = _ramp_points[-2]  # previous point
                     prev_d = Direction.of(dx=cur_p.x - prev_p.x, dz=cur_p.z - prev_p.z)  # previous direction
                     valid_directions = set(cardinal_directions())
-                    for d in {-prev_d, -self.__direction}:
+                    for d in {-prev_d, -self.__direction}:  # todo: solve KeyError
                         valid_directions.remove(d)  # cannot go back
                     if manhattan(cur_p, prev_p) <= self.RAMP_WIDTH:
                         valid_directions.remove(prev_d)  # avoids repeated baby steps
@@ -507,18 +516,18 @@ class RampStairs(Generator):
                 # Explore all those directions
                 next_p, next_cost = None, None
                 while valid_directions:
-                    cur_d = valid_directions.pop()  # type: Direction
+                    cur_d: Direction = valid_directions.pop()
                     if self.__steepness(cur_p, cur_d, self.RAMP_WIDTH) >= 2:
                         # steep direction, add a step to turn left or right
-                        next_point_list = [cur_p + cur_d.asPoint * self.RAMP_WIDTH]
+                        next_point_list = [cur_p + cur_d.value * self.RAMP_WIDTH]
                     else:
                         # Compute random extensions in that direction
                         min_length = self.RAMP_LENGTH + self.RAMP_WIDTH
                         max_length = 1 + self.__ramp_length + self.RAMP_WIDTH
-                        next_point_list = [cur_p + cur_d.asPoint * min_length]
+                        next_point_list = [cur_p + cur_d.value * min_length]
                         while len(next_point_list) <= max_length - min_length and next_point_list[-1].coords in self._box:
-                            p = next_point_list[-1] + cur_d.asPoint  # one step ahead
-                            e = abs((p - cur_p).dot(cur_d.asPoint)) - self.RAMP_WIDTH  # max ramp height from cur_p to p
+                            p = next_point_list[-1] + cur_d.value  # one step ahead
+                            e = abs((p - cur_p).dot(cur_d.value)) - self.RAMP_WIDTH  # max ramp height from cur_p to p
                             if p.x == self.exit.x and p.z == self.exit.z and cur_p.y-e <= self.exit.y <= cur_p.y+e:
                                 return _ramp_points + [self.exit]
                             else:
@@ -541,7 +550,7 @@ class RampStairs(Generator):
                         weights = [edge_interest(cur_p, _) for _ in next_point_list]
                         if sum(weights) == 0:
                             continue
-                        index = choice(range(len(weights)), p=map(lambda _: _ / sum(weights), weights))
+                        index = choice(range(len(weights)), p=list(map(lambda _: _ / sum(weights), weights)))
                         # index = argmax(weights)
                         if next_p is None or weights[index] > next_cost:
                             next_p, next_cost = next_point_list[index], weights[index]

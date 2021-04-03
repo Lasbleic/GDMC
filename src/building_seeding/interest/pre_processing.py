@@ -18,6 +18,7 @@ from building_seeding.interest.interest import InterestMap
 
 # Sizes accepted by the visualization tool
 # with the size of the figure which is saved in a .png and the width of the grid lines
+from terrain import TerrainMaps
 
 ACCEPTED_MAP_SIZES = {10: 0.70,
                       30: 0.25,
@@ -42,31 +43,32 @@ VALID_CHOICES = {"yes": 1, "ye": 1, "y": 1, "no": 0, "n": 0, "": 0}
 
 
 class VisuHandler:
-    def __init__(self, do_visu, shape, parcels, roads):
+    def __init__(self, do_visu, terrain: TerrainMaps, parcels):
         self.__count = 1
         self.__do_visu = do_visu
-        self.__shape = (shape[1], shape[0])
+        self.__shape = (terrain.length, terrain.width)
         if do_visu:
             now = strftime("%d%m%Y-%Hh%M", localtime())
             self.__stock = MapStock(now, self.__shape, True)
         self.__parcels = parcels
-        self.__roads = roads
-    
+        self.__roads = terrain.road_network
+        self.__base_color_map = terrain.fluid_map.as_obstacle_array * 7
+
     def handle_new_parcel(self, param):
         # type: (InterestMap) -> None
         if not self.__do_visu:
             return
 
         building_type = self.__parcels[-1].building_type
-        iteration = len(self.__parcels)
+        iteration = len(self.__parcels) - 1
         suffix = "_{}".format(building_type.name) if building_type is not None else ""
 
         acc, soc, int_map = param.accessibility, param.sociability, param.map
-        self.__stock.add_map(Map("{}1_accessibility_map{}".format(iteration, suffix), acc.T, "jet", (0, 1)))
-        self.__stock.add_map(Map("{}2_sociability_map{}".format(iteration, suffix), soc.T, "jet", (0, 1)))
-        self.__stock.add_map(Map("{}3_interest_map{}".format(iteration, suffix), int_map.T, "jet", (0, 1)))
+        # self.__stock.add_map(Map("{}_accessibility_map{}".format(iteration, suffix), acc.T, "jet", (0, 1)))
+        # self.__stock.add_map(Map("{}_sociability_map{}".format(iteration, suffix), soc.T, "jet", (0, 1)))
+        self.__stock.add_map(Map("{}_interest_map{}".format(iteration, suffix), int_map.T, "jet", (0, 1)))
 
-        minecraft_map = np.copy(self.__roads.network)
+        minecraft_map = (self.__roads.network > 0).astype(int) + self.__base_color_map
 
         COLORS = {"house": 2,
                   "crop": 3,
@@ -85,12 +87,12 @@ class VisuHandler:
         # village_center = self.ghost.center
         # minecraft_map[village_center.x, village_center.z] = 5
 
-        minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple'])
-        self.__stock.add_map(Map("{}{}_minecraft_map{}".format(iteration, 4 if iteration else 0, suffix),
+        minecraft_cmap = colors.ListedColormap(['forestgreen', 'beige', 'indianred', 'darkkhaki', 'orange', 'red', 'purple', 'aqua'])
+        self.__stock.add_map(Map("{}_minecraft_map{}".format(iteration, suffix),
                                  minecraft_map.T,
                                  minecraft_cmap,
-                                 (0, 6),
-                                 ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter', 'EntryPoint']))
+                                 (0, 7),
+                                 ['Grass', 'Road', 'House', 'Crop', 'Windmill', 'VillageCenter', 'EntryPoint', 'Water/Lava']))
         self.__count += 1
 
 

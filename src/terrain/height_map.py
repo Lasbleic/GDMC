@@ -55,7 +55,7 @@ class HeightMap(Map):
 
     def steepness(self, x, z=None, norm=True):
         if isinstance(x, Point):
-            return self.steepness(x.x, x.z)
+            return self.steepness(x.x, x.z, norm)
         steepness_vector = Point(self.__steepness_x[x, z], self.__steepness_z[x, z])
         return steepness_vector.norm if norm else steepness_vector
 

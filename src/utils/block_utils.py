@@ -816,31 +816,6 @@ def connected_component(maps, source_point, connection_condition, early_stopping
 
 def clear_tree_at(terrain, point: Point) -> None:
     terrain.trees.remove_tree(point - terrain.area.origin)
-    # point2d = Point(point.x, point.z)
-    # from terrain import TerrainMaps
-    # terrain: TerrainMaps
-    #
-    # def is_tree(bid):
-    #     return any(_ in bid for _ in ['leaves', 'log'])
-    #
-    # if not terrain.in_limits(point, True):
-    #     return
-    #
-    # y = terrain.height_map.lower_height(point - terrain.area.origin) + 1
-    # if not is_tree(getBlock(point.x, y, point.z)):
-    #     return
-    #
-    # possible_tree_blocks = [(point.x, y, point.z)]
-    # while possible_tree_blocks:
-    #     x0, y0, z0 = possible_tree_blocks.pop()
-    #     setBlock(Point(x0, z0, y0), BlockAPI.blocks.Air)
-    #     from utils import all_directions
-    #     for dir in all_directions():  # type: Point
-    #         x = x0 + dir.x
-    #         y = y0 + dir.y
-    #         z = z0 + dir.z
-    #         if is_tree(getBlock(x, y, z)) and manhattan(point2d, Point(x, z)) <= 4:
-    #             possible_tree_blocks.append((x, y, z))
 
 
 def place_torch(level: WorldSlice, x, y, z):
@@ -849,17 +824,10 @@ def place_torch(level: WorldSlice, x, y, z):
         setBlock(Point(x, y, z), torch)
 
 
-# if __name__ == '__main__':
-#     assert -Direction(-3, 0, 0) == East
-#     assert -North == Direction(0, 0, 1)
-#     assert str(-Direction(0, 1, 0)) == str(Bottom) == 'Bottom'
-#     assert Direction.from_string('east') == East
-
-def fillBlocks(level: WorldSlice, box: BoundingBox, block: str, blocksToReplace: str or Iterable[str] = None):
+def fillBlocks(box: BoundingBox, block: str, blocksToReplace: str or Iterable[str] = None):
     """
     Parameters
     ----------
-    level
     box
     block
     blocksToReplace

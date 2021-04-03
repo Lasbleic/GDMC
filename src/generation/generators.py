@@ -129,11 +129,11 @@ class MaskedGenerator(Generator):
         for x, y, z in self.surface_pos(height_map):
             if y > mean_y:
                 vbox = BoundingBox((x, mean_y + 1, z), (1, y - mean_y, 1))
-                fillBlocks(level, vbox, BlockAPI.blocks.Air)
+                fillBlocks(vbox, BlockAPI.blocks.Air)
             elif y < mean_y:
                 vbox = BoundingBox((x, y + 1, z), (1, mean_y - y, 1))
                 material = BlockAPI.blocks.StoneBricks if self.is_lateral(x, z) else BlockAPI.blocks.Dirt
-                fillBlocks(level, vbox, material)
+                fillBlocks(vbox, material)
         terraform_map[:] = mean_y
         return terraform_map
 
@@ -275,7 +275,7 @@ class CropGenerator(MaskedGenerator):
                 if height is not None:
                     y0 = height[xd-x0, zd-z0]
                     if y0 < min_height:
-                        fillBlocks(level, BoundingBox((xd, y0, zd), (1, min_height-y0, 1)), BlockAPI.blocks.CoarseDirt)
+                        fillBlocks(BoundingBox((xd, y0, zd), (1, min_height - y0, 1)), BlockAPI.blocks.CoarseDirt)
                         y0 = min_height
                     elif y0 > max_height:
                         continue
@@ -306,7 +306,7 @@ class CropGenerator(MaskedGenerator):
         h = height_map
         irrigation_height = min(h[h.shape[0]//2, h.shape[1]//2], h.max()) + 1 - self._box.miny
         irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
-        fillBlocks(level, irrigation_box, BlockAPI.blocks.Water)
+        fillBlocks(irrigation_box, BlockAPI.blocks.Water)
 
     def __terraform(self, level, height_map):
         # type: (MCLevel, ndarray) -> ndarray
@@ -396,7 +396,7 @@ class DoorGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
             setBlock(Point(x, z, y), self._resource(x, y, z, palette))
-        fillBlocks(level, self._box.translate(self._direction).split(dy=2)[0], BlockAPI.blocks.Air, ground_blocks)
+        fillBlocks(self._box.translate(self._direction).split(dy=2)[0], BlockAPI.blocks.Air, ground_blocks)
 
     def _resource(self, x, y, z, palette):
         if y == self._box.miny:
@@ -514,6 +514,6 @@ class StoneTower(Generator): pass
 
 
 def place_street_lamp(level, x, y, z, material):
-    fillBlocks(level, BoundingBox((x, y+1, z), (1, 3, 1)), BlockAPI.getFence(material))
+    fillBlocks(BoundingBox((x, y + 1, z), (1, 3, 1)), BlockAPI.getFence(material))
     setBlock(Point(x, z, y+4), BlockAPI.blocks.RedstoneLamp)
     setBlock(Point(x, z, y+5), f"daylight_detector[inverted=true]")

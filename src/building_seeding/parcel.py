@@ -23,7 +23,7 @@ class Parcel:
         self._center = seed
         self._building_type = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
-        self._entry_point = self._center  # type: Point
+        self._entry_point = self.__compute_entry_point()  # type: Point
         self._relative_box = TransformBox((seed.x, 0, seed.z),
                                           (1, 1, 1))  # type: TransformBox
         self._box = None  # type: TransformBox
@@ -42,19 +42,20 @@ class Parcel:
 
     def __compute_entry_point(self):
         road_net = self._map.road_network
+
+        # If path from road_net to seed has already been computed, project the entry point on this path
         if road_net.is_accessible(self._center):
-            path = road_net.path_map[self._center.x, self._center.z]
+            path = road_net.path_map[self._center.x, self._center.z]  # path[-1] == seed
             distance_threshold = MIN_PARCEL_SIDE + MAX_ROAD_WIDTH // 2
-            if len(path) <= AVERAGE_PARCEL_SIZE:
+            if len(path) <= distance_threshold:
                 # beyond this distance, no need to build a new road, parcel is considered accessible
-                self._entry_point = path[0] if len(path) else self._center
-                if len(path) > distance_threshold:
-                    self._center = path[distance_threshold]
-                return
-            # compute the local direction of the road
-            index = max(0, len(path) - distance_threshold)
-            target_road_pt = path[index]
+                return path[0] if len(path) else self._center
+            else:
+                # len(path) > distance_threshold, compute the local direction of the road
+                index = len(path) - distance_threshold
+                target_road_pt = path[index]
         else:
+            # have no clue where the nearest road is, aim for the middle of the map
             target_road_pt = Point(self._map.width // 2, self._map.length // 2)
 
         local_road_x = target_road_pt.x - self._center.x
@@ -69,9 +70,10 @@ class Parcel:
             resid_road_dir = Direction.of(dx=resid_road_x, dz=resid_road_z)
         else:
             resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
-        self._entry_point = self._center + resid_road_dir.value * ENTRY_POINT_MARGIN
-        if not (0 <= self.entry_x < self._map.width and 0 <= self.entry_z < self._map.length):
-            self._entry_point = target_road_pt
+        entry_point = self._center + resid_road_dir.value * ENTRY_POINT_MARGIN
+        if not (0 <= entry_point.x < self._map.width and 0 <= entry_point.z < self._map.length):
+            entry_point = target_road_pt
+        return entry_point
 
     def __initialize_limits(self):
         # build parcel box

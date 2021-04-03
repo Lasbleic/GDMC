@@ -26,6 +26,7 @@ class RoadNetwork:
         # Representing the distance from the network + the path to the network
         self.cost_map = full((width, length), maxint)
         self.distance_map = full((width, length), maxint)
+        # paths from existing road points to every reachable destination
         self.path_map = empty((width, length), dtype=object)
         self.lambda_max = MAX_LAMBDA
         self.network_node_list = []
@@ -240,7 +241,7 @@ class RoadNetwork:
         # additional cost for slopes
         _src_height = self.__all_maps.height_map[src_point]
         _dest_height = self.__all_maps.height_map[dest_point]
-        elevation = abs(int(_src_height) - int(_dest_height))
+        elevation = abs(self.__all_maps.height_map.steepness(src_point, norm=False).dot(dest_point - src_point))
         value += elevation * 0.5
 
         # finally, local cost depends on local steepness, measured as stdev in a small radius
@@ -416,7 +417,8 @@ class RoadNetwork:
         def update_distances(updated_point):
             x, z = updated_point.x, updated_point.z
             path = path_to_dest(updated_point)
-            is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
+            # is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
+            is_straight_road = True
             if (x + 1 < self.width) and (is_straight_road or path[-2].z == z):
                 update_distance(updated_point, Point(x + 1, z), neighbors)
             if (x - 1 >= 0) and (is_straight_road or path[-2].z == z):

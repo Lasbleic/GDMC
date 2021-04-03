@@ -216,17 +216,17 @@ class Rails(RailElement):
         origin = (self.minx, height, self.minz)
         size = (self.width, 1, self.length)
         box = TransformBox(origin, size)
-        fillBlocks(level, box, Materials["Cobblestone"])
+        fillBlocks(box, Materials["Cobblestone"])
         box.translate(dy=1, inplace=True)
         tunnel_box = box.expand(1, 0, 0) if self.length > self.width else box.expand(0, 0, 1)
         tunnel_box.expand(Top, inplace=True)
 
-        fillBlocks(level, tunnel_box, Materials["Air"])
+        fillBlocks(tunnel_box, Materials["Air"])
         material = Materials["Rail (North/South)"] if (self.width == 1) else Materials["Rail (East/West)"]
-        fillBlocks(level, box, material, [Materials["Air"]])
+        fillBlocks(box, material, [Materials["Air"]])
 
         tunnel_box.translate(dy=1)
-        fillBlocks(level, tunnel_box, Materials["Stone"], [Materials["Sand"], Materials["Gravel"]])
+        fillBlocks(tunnel_box, Materials["Stone"], [Materials["Sand"], Materials["Gravel"]])
 
         accelerator_count = max(self.width, self.length) // self.DIST_BTWN_ACCELERATION
         for count in range(max(accelerator_count, 1)):
@@ -269,9 +269,9 @@ class Rails(RailElement):
 
         def build_rail_block(x, y, z, block):
             box = TransformBox((x - 1, y + 1, z - 1), (3, 2, 3))
-            fillBlocks(level, box, Materials["Air"], all_but_rails)
+            fillBlocks(box, Materials["Air"], all_but_rails)
             box.translate(dy=1, inplace=True)
-            fillBlocks(level, box, Materials["Stone"], [Materials["Sand"]])
+            fillBlocks(box, Materials["Stone"], [Materials["Sand"]])
             setMaterial(level, x, y, z, b)
             if level.blockAt(int(x), int(y) + 1, int(z)) == 0:
                 setMaterial(level, x, y + 1, z, block)
@@ -384,35 +384,35 @@ class TrainStation(RailWay):
         def generate_x_station(__level, __box):
 
             # Station walls and ceiling
-            fillBlocks(__level, __box, Materials["Block of Quartz"])
-            fillBlocks(__level, __box.expand(-1, -1, -1), Materials["Air"])
+            fillBlocks(__box, Materials["Block of Quartz"])
+            fillBlocks(__box.expand(-1, -1, -1), Materials["Air"])
 
             # Platform
             platform_box = __box.expand(-1, 0, -1).split(dy=1)[0]
-            fillBlocks(__level, platform_box, Materials["Stone"])
+            fillBlocks(platform_box, Materials["Stone"])
             platform_edge_box = platform_box.split(dz=2)[1].split(dz=1)[0]
-            fillBlocks(__level, platform_edge_box, Materials["Stone Brick Stairs (Bottom, North)"])
-            fillBlocks(__level, platform_edge_box.translate(dz=4), Materials["Stone Brick Stairs (Bottom, South)"])
+            fillBlocks(platform_edge_box, Materials["Stone Brick Stairs (Bottom, North)"])
+            fillBlocks(platform_edge_box.translate(dz=4), Materials["Stone Brick Stairs (Bottom, South)"])
 
             # Ceiling
             ceiling_box = platform_edge_box.translate(dy=5, dz=2)
-            fillBlocks(__level, ceiling_box.translate(dy=-1, dz=-4), Materials["Stone Brick Stairs (Top, North)"])
-            fillBlocks(__level, ceiling_box.translate(dy=-1, dz=4), Materials["Stone Brick Stairs (Top, South)"])
-            fillBlocks(__level, ceiling_box.translate(dz=-3), Materials["Stone Bricks"])
-            fillBlocks(__level, ceiling_box.translate(dz=-2), Materials["Stone Brick Stairs (Top, North)"])
-            fillBlocks(__level, ceiling_box.translate(dz=-1), Materials["Stone Brick Slab (Top)"])
-            fillBlocks(__level, ceiling_box.translate(dz=0), Materials["Chiseled Stone Bricks"])
-            fillBlocks(__level, ceiling_box.translate(dz=1), Materials["Stone Brick Slab (Top)"])
-            fillBlocks(__level, ceiling_box.translate(dz=2), Materials["Stone Brick Stairs (Top, South)"])
-            fillBlocks(__level, ceiling_box.translate(dz=3), Materials["Stone Bricks"])
+            fillBlocks(ceiling_box.translate(dy=-1, dz=-4), Materials["Stone Brick Stairs (Top, North)"])
+            fillBlocks(ceiling_box.translate(dy=-1, dz=4), Materials["Stone Brick Stairs (Top, South)"])
+            fillBlocks(ceiling_box.translate(dz=-3), Materials["Stone Bricks"])
+            fillBlocks(ceiling_box.translate(dz=-2), Materials["Stone Brick Stairs (Top, North)"])
+            fillBlocks(ceiling_box.translate(dz=-1), Materials["Stone Brick Slab (Top)"])
+            fillBlocks(ceiling_box.translate(dz=0), Materials["Chiseled Stone Bricks"])
+            fillBlocks(ceiling_box.translate(dz=1), Materials["Stone Brick Slab (Top)"])
+            fillBlocks(ceiling_box.translate(dz=2), Materials["Stone Brick Stairs (Top, South)"])
+            fillBlocks(ceiling_box.translate(dz=3), Materials["Stone Bricks"])
 
             # Rails
             rail_box = __box.expand(0, 0, -4).split(dy=2)[0]
-            fillBlocks(__level, __box.expand(0, 0, -4).split(dy=2)[0], Materials.Air)
+            fillBlocks(__box.expand(0, 0, -4).split(dy=2)[0], Materials.Air)
             rail_box = rail_box.split(dy=1)[0]
-            fillBlocks(__level, rail_box.translate(dy=-1), Materials["Cobblestone"])
-            fillBlocks(__level, rail_box, Materials["Rail (East/West)"])
-            fillBlocks(__level, rail_box.expand(0, 0, -1), Materials["Standing Sign (South)"])
+            fillBlocks(rail_box.translate(dy=-1), Materials["Cobblestone"])
+            fillBlocks(rail_box, Materials["Rail (East/West)"])
+            fillBlocks(rail_box.expand(0, 0, -1), Materials["Standing Sign (South)"])
 
             for x in [__box.minx + 3, __box.minx + 7]:
                 setMaterial(__level, x, __box.miny + 3, __box.minz + 5, Materials["Sea Lantern"])
@@ -427,8 +427,8 @@ class TrainStation(RailWay):
             copyBlocksFrom(level, schematic, sourceBox=schem_box.expand(Bottom),
                            destinationPoint=box.origin - (0, 1, 0))
             sign_box = BoundingBox((box.minx + 5, box.miny, box.minz), (1, 1, box.length))
-            fillBlocks(level, sign_box, Materials.Air)
-            fillBlocks(level, sign_box, Materials["Standing Sign (East)"])
+            fillBlocks(sign_box, Materials.Air)
+            fillBlocks(sign_box, Materials["Standing Sign (East)"])
         else:
             generate_x_station(level, box)
 
