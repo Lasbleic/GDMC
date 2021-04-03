@@ -27,7 +27,7 @@ class BiomeMap(Map):
         # return Map.__getitem__(self, biomePoint)
         return super(BiomeMap, self).__getitem__(biomePoint)
 
-    __biome_types = {
+    _biome_types = {
         ("ocean", 0), ("taiga", 5), ("plains", 1), ("mountains", 3), ("desert", 2), ("forest", 4), ("swamp", 6),
         ("river", 7), ("nether_wastes", 8), ("the_end", 9), ("frozen_ocean", 10), ("frozen_river", 11),
         ("snowy_tundra", 12), ("snowy_mountains", 13), ("mushroom_fields", 14), ("mushroom_field_shore", 15),
@@ -50,8 +50,8 @@ class BiomeMap(Map):
     }
 
     # bi map from biome name to biome id
-    __biome_to_id = {_[0]: _[1] for _ in __biome_types}
-    __id_to_biome = {_[1]: _[0] for _ in __biome_types}
+    __biome_to_id = {_[0]: _[1] for _ in _biome_types}
+    __id_to_biome = {_[1]: _[0] for _ in _biome_types}
 
     @staticmethod
     def getBiome(biome_id: int): return BiomeMap.__id_to_biome[biome_id]
@@ -63,3 +63,4 @@ class BiomeMap(Map):
 if __name__ == '__main__':
     assert BiomeMap.getBiomeId("warm_ocean") == 44
     assert BiomeMap.getBiome(3) == "mountains"
+    print({_ for _ in map(lambda _: _[0], BiomeMap._biome_types)})
