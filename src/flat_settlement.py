@@ -154,7 +154,7 @@ class FlatSettlement:
             # type: (Parcel) -> None
             min_y = percentile(__parcel.height_map, 25)
             max_y = percentile(__parcel.height_map, 75)
-            road_y = self._maps.height_map.upper_height(__parcel.entry_x, __parcel.entry_z)
+            road_y = self._maps.height_map[__parcel.entry_point]
             y = road_y
             if road_y > max_y:
                 y = max_y

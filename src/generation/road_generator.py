@@ -9,7 +9,6 @@ from numpy.random.mtrand import choice
 
 from generation.generators import Generator
 from terrain import HeightMap
-from utilityFunctions import setBlock, raytrace
 from utils import *
 
 

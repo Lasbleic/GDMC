@@ -44,7 +44,7 @@ class ObstacleMap:
     def __add_obstacle(self, point, mask, cost):
         for dx, dz in product(range(mask.shape[0]), range(mask.shape[1])):
             p = point + Point(dx, dz)
-            if self.__all_maps.in_limits(p, False) and mask[dx, dz]:
+            if self.__all_maps._in_limits(p, False) and mask[dx, dz]:
                 self.__set_obstacle(p.x, p.z, cost)
 
     def hide_obstacle(self, point, mask=None, store_obstacle=True):

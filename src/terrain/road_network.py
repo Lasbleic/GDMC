@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import division, print_function
 
+from numba import njit
 from numpy import empty
 
 import terrain
@@ -246,26 +247,28 @@ class RoadNetwork:
             return maxint
 
         # specific cost to build on water
-        if self.__all_maps.fluid_map.is_water(dest_point, margin=4):
+        if self.__all_maps.fluid_map.is_water(dest_point, margin=MIN_DIST_TO_RIVER):
             if not self.__all_maps.fluid_map.is_water(src_point):
                 return BRIDGE_COST
             return BRIDGE_UNIT_COST
 
+        # discount to get roads closer to water
+        src_water = self.__all_maps.fluid_map.water_distance(src_point)
+        dest_water = self.__all_maps.fluid_map.water_distance(dest_point)
+        if 2.5 * MIN_DIST_TO_RIVER >= src_water > dest_water > MIN_DIST_TO_RIVER:
+            value += (dest_water - src_water) * .7
+
         # additional cost for slopes
-        _src_height = self.__all_maps.height_map[src_point]
-        _dest_height = self.__all_maps.height_map[dest_point]
         elevation = abs(self.__all_maps.height_map.steepness(src_point, norm=False).dot(dest_point - src_point))
         value += elevation * 0.5
 
-        # finally, local cost depends on local steepness, measured as stdev in a small radius
-        value += self.__all_maps.height_map.steepness(dest_point.x, dest_point.z) * 0.3
-
-        return value
+        return max(1, value)
 
     def road_only_cost(self, src_point, dest_point):
         return 1 if self.is_road(dest_point) else maxint
 
     # return the path from the point satisfying the ending_condition to the root_point, excluded
+    @njit
     def dijkstra(self, root_points, max_distance, force_update):
         # type: (List[Point], int, bool) -> None
         """
@@ -375,6 +378,7 @@ class RoadNetwork:
             update_maps_info_at(clst_neighbor)
             update_distances(clst_neighbor)
 
+    @njit
     def a_star(self, root_point, ending_point, cost_function):
         # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int]) -> List[Point]
         """

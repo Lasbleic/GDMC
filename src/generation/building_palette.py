@@ -2,6 +2,8 @@ from random import randint
 
 from utils import BlockAPI
 
+b = BlockAPI.blocks
+
 
 class HousePalette(dict):
 
@@ -39,32 +41,32 @@ class HousePalette(dict):
 
 stony_palette = {"cobblestone": 0.7, "gravel": 0.2, "stone": 0.1}
 
-oak_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.SprucePlanks, BlockAPI.blocks.OakWood, BlockAPI.blocks.OakPlanks,
-                                  BlockAPI.blocks.WhiteStainedGlassPane, 'gable', BlockAPI.blocks.StoneBrick, 'oak')
+oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.OakWood, b.OakPlanks,
+                                  b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'oak')
 
-birch_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.OakPlanks, BlockAPI.blocks.BirchWood, BlockAPI.blocks.BirchPlanks,
-                                    BlockAPI.blocks.WhiteStainedGlassPane, 'gable', BlockAPI.blocks.StoneBrick, 'birch')
+birch_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.BirchWood, b.BirchPlanks,
+                                    b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'birch')
 
-dark_oak_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.SprucePlanks, 'Dark Oak Wood', 'Dark Oak Wood Planks',
-                                       BlockAPI.blocks.WhiteStainedGlassPane, 'gable', BlockAPI.blocks.StoneBrick, 'dark_oak')
+dark_oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.DarkOakWood, b.DarkOakPlanks,
+                                       b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'dark_oak')
 
-spruce_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.OakPlanks, BlockAPI.blocks.SpruceWood, BlockAPI.blocks.SprucePlanks,
-                                     'Light Gray Stained Glass Pane', 'gable', BlockAPI.blocks.StoneBrick, 'spruce')
+spruce_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
+                                     'Light Gray Stained Glass Pane', 'gable', b.StoneBrick, 'spruce')
 
-acacia_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, 'Birch Wood Planks', 'Acacia Wood', 'Acacia Wood Planks',
-                                     BlockAPI.blocks.WhiteStainedGlassPane, 'gable', BlockAPI.blocks.StoneBrick, 'acacia')
+acacia_house_palette1 = HousePalette(b.Cobblestone, b.BirchPlanks, b.AcaciaWood, b.AcaciaPlanks,
+                                     b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'acacia')
 
-jungle_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.OakPlanks, 'Jungle Wood', 'Jungle Wood Planks',
-                                     BlockAPI.blocks.WhiteStainedGlassPane, 'gable', BlockAPI.blocks.StoneBrick, 'jungle')
+jungle_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.JungleWood, b.JunglePlanks,
+                                     b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'jungle')
 
-sand_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.SprucePlanks, BlockAPI.blocks.SmoothSandstone, BlockAPI.blocks.Sandstone,
-                                   BlockAPI.blocks.BirchFence, 'flat', BlockAPI.blocks.ChiseledSandstone, 'oak')
+sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothSandstone, b.Sandstone,
+                                   b.BirchFence, 'flat', b.ChiseledSandstone, 'oak')
 
-red_sand_house_palette1 = HousePalette(BlockAPI.blocks.Cobblestone, BlockAPI.blocks.SprucePlanks, 'Smooth Red Sandstone', 'Red Sandstone',
-                                       'Birch Fence', 'flat', 'Chiseled Red Sandstone', 'oak')
+red_sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothRedSandstone, b.RedSandstone,
+                                       b.BirchFence, 'flat', b.ChiseledRedSandstone, 'oak')
 
-terracotta_palette1 = HousePalette('Red Sandstone', BlockAPI.blocks.SprucePlanks, 'Oak Wood', 'Hardened Clay',
-                                   'Spruce Fence', 'flat', 'Hardened Clay', 'Oak')
+terracotta_palette1 = HousePalette(b.RedSandstone, b.SprucePlanks, b.OakWood, b.Clay,
+                                   b.SpruceFence, 'flat', b.Clay, 'oak')
 
 # Defines for each biome the acceptable palettes. Adapted from pymclevel.biome_types
 biome_palettes = {
@@ -118,7 +120,7 @@ biome_palettes = {
     # 'nether_wastes': [],
     # 'ocean': [],
     'plains': [oak_house_palette1],
-    'river': [],
+    'river': [oak_house_palette1],
     'savanna': [acacia_house_palette1],
     'savanna_plateau': [acacia_house_palette1],
     'shattered_savanna': [acacia_house_palette1],

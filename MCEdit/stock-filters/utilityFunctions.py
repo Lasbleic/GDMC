@@ -87,8 +87,8 @@ def setBlock(level, blockdata, x, y, z):
 # def getBoxSize(box):
 # 	return (box.maxx - box.minx, box.maxy - box.miny, box.maxz - box.minz)
 #
-# # returns an array of blocks after raytracing from (x1,y1,z1) to (x2,y2,z2)
-# # this uses Bresenham 3d algorithm, taken from a modified version written by Bob Pendleton
+# returns an array of blocks after raytracing from (x1,y1,z1) to (x2,y2,z2)
+# this uses Bresenham 3d algorithm, taken from a modified version written by Bob Pendleton
 def raytrace(xyz1, xyz2):
     (x1, y1, z1) = xyz1
     (x2, y2, z2) = xyz2

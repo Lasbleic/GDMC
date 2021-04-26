@@ -8,7 +8,7 @@ MAX_POND_EXPLORATION = 144  # should ideally be higher than the largest ponds to
 
 # Each bridge costs a initial cost + linear cost on length
 BRIDGE_COST = 10
-BRIDGE_UNIT_COST = 2
+BRIDGE_UNIT_COST = 4
 
 # buildings dimensions
 MAX_HEIGHT = 12  # 12 -> max 3 floors

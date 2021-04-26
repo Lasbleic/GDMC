@@ -15,12 +15,34 @@ class TerrainMaps:
     def __init__(self, level: WorldSlice, area: BuildArea):
         self.level = level
         self.area: BuildArea = area
+        from time import time
+        t0 = t1 = time()
         self.height_map = HeightMap(level, area)
+        print(f'Computed height map in {time() - t1})')
+
+        t1 = time()
         self.biome = BiomeMap(level, area)
+        print(f'Computed biome map in {time() - t1})')
+
+        t1 = time()
         self.fluid_map = FluidMap(level, area, self)
+        print(f'Computed fluid map in {time() - t1})')
+
+        t1 = time()
         self.obstacle_map = ObstacleMap(self.width, self.length, self)
+        print(f'Computed obstacle map in {time() - t1})')
+
+        t1 = time()
         self.road_network = RoadNetwork(self.width, self.length, self)  # type: RoadNetwork
+        print(f'Computed road map in {time() - t1})')
+
+        t1 = time()
         self.trees = TreesMap(level, self.height_map)
+        print(f'Computed trees map in {time() - t1})')
+
+        t1 = time()
+        print(f'Computed terrain maps in {t1 - t0})')
+        exit(0)
 
     @property
     def width(self):

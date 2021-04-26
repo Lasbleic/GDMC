@@ -5,6 +5,7 @@ from time import time
 from typing import List
 
 import numpy as np
+from numba import njit
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
 from utils import Point, cardinal_directions, water_blocks, lava_blocks, WorldSlice, \
@@ -12,6 +13,7 @@ from utils import Point, cardinal_directions, water_blocks, lava_blocks, WorldSl
 import parameters
 from terrain.biomes import BiomeMap
 from terrain.map import Map
+from utils.fast_dijkstra import fast_dijkstra
 from utils.parameters import MIN_DIST_TO_OCEAN, MIN_DIST_TO_RIVER, \
     MIN_DIST_TO_LAVA
 
@@ -39,7 +41,7 @@ class FluidMap(Map):
         water_points = []
         t0 = time()
         for x, z in product(range(self.area.width), range(self.area.length)):
-            y: int = self.terrain.height_map[x, z] - 1
+            y: int = self.terrain.height_map[x, z]
             if level.getBlockRelativeAt(x, y, z) in water_blocks:
                 biome = BiomeMap.getBiome(self.terrain.biome[x, z])
                 if 'Ocean' in biome or 'Beach' in biome:
@@ -62,7 +64,7 @@ class FluidMap(Map):
 
             if algorithm in ['prop', 'spread']:
                 algo = LabelPropagation if algorithm == 'prop' else LabelSpreading
-                model = algo(kernel, gamma=param, n_neighbors=min(len(lbls), param), tol=0, max_iter=200)
+                model = algo(kernel, gamma=param, n_neighbors=min(len(lbls), param), tol=1e-4, max_iter=200)
                 try:
                     model.fit(data, lbls)
                     lbls = model.predict(data)
@@ -83,9 +85,9 @@ class FluidMap(Map):
         print('Computed distance maps in {:0.3f} seconds'.format(time() - t1))
 
     def __build_distance_maps(self):
-        self.river_distance = np.full(self.__water_map.shape, self.__water_limit)
-        self.ocean_distance = np.full(self.__water_map.shape, self.__water_limit)
-        self.lava_distance = np.full(self.__lava_map.shape, self.__lava_limit)
+        self.river_distance = np.full(self.__water_map.shape, self.__water_limit, dtype=np.float32)
+        self.ocean_distance = np.full(self.__water_map.shape, self.__water_limit, dtype=np.float32)
+        self.lava_distance = np.full(self.__lava_map.shape, self.__lava_limit, dtype=np.float32)
 
         for x, z in product(range(self.area.width), range(self.area.length)):
             if self.__water_map[x, z] in [2, 3]:
@@ -100,6 +102,7 @@ class FluidMap(Map):
         def is_init_neigh(distance_map, _x, _z):
             # Context: find border water points in a water surface.
             # Surrounded water points are useless in exploration
+            W, L = distance_map.shape
             if distance_map[_x, _z] != 0:
                 return False
             else:
@@ -151,9 +154,18 @@ class FluidMap(Map):
                 update_distances(clst_neighbor)
                 del neighbours[0]
 
-        __pseudo_dijkstra(self.river_distance)
-        __pseudo_dijkstra(self.ocean_distance)
-        __pseudo_dijkstra(self.lava_distance)
+        fast_dijkstra(self.river_distance, self.terrain.height_map[:])
+        fast_dijkstra(self.ocean_distance, self.terrain.height_map[:])
+        fast_dijkstra(self.lava_distance, self.terrain.height_map[:])
+
+        # __pseudo_dijkstra(self.river_distance)
+        # __pseudo_dijkstra(self.ocean_distance)
+        # __pseudo_dijkstra(self.lava_distance)
+
+        # print(self.river_distance[0, 0])
+        # from matplotlib import pyplot as plt
+        # plt.imshow(self.river_distance)
+        # plt.show()
 
     def is_lava(self, x_or_point, z=None, margin=0):
         # type: (Point or int, None or int, float) -> object

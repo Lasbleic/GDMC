@@ -287,17 +287,30 @@ class _RoofSymbol(CardinalGenerator):
             fillBlocks(ridge_box.translate(dy=-1), palette.get_structure_block('x'), BlockAPI.blocks.Air)
 
     def __gen_gable_z(self, level, palette):
-        real_box = self.gable_box
-        # # prepare virtual level to generate rotated roof & copy surrounding blocks
-        # roof_level = MCSchematic(real_box.size)
-        # # copyBlocksFrom(roof_level, level, real_box, (0, 0, 0))  # todo
-        # for _ in range(3):
-        #     roof_level.rotateLeft()
-        #
-        # virt_box = TransformBox((1, 1, 1), (self.length, self.height, self.width))  # flip roof source box
-        # _RoofSymbol(virt_box, self._direction.rotate(), self._roof_type).generate(roof_level, palette=palette)
-        # roof_level.rotateLeft()  # rotate generated roof
-        # # copyBlocksFrom(level, roof_level, TransformBox((0, 0, 0), real_box.size), real_box.origin)  # todo
+        box = self.gable_box
+        for index in range(box.width // 2):
+            attic_box = TransformBox((box.minx + index + 1, box.miny + index, box.minz + 1),
+                                     (box.width - 2*(index+1), 1, box.length - 2))
+            west_box = TransformBox((box.maxx - index - 1, box.miny + index, box.minz), (1, 1, box.length))
+            east_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
+            fillBlocks(west_box, palette.get_roof_block('bottom', 'west'), BlockAPI.blocks.Air)
+            fillBlocks(east_box, palette.get_roof_block('bottom', 'east'), BlockAPI.blocks.Air)
+            if index != 0:
+                fillBlocks(attic_box, "bone_block[axis=y]")
+                attic_box.expand(0, 0, -1, inplace=True)
+                fillBlocks(attic_box, BlockAPI.blocks.Air)
+                fillBlocks(west_box.translate(dy=-1), palette.get_roof_block('top', 'east'), BlockAPI.blocks.Air)
+                fillBlocks(east_box.translate(dy=-1), palette.get_roof_block('top', 'west'), BlockAPI.blocks.Air)
+            else:
+                fillBlocks(attic_box, palette.get_structure_block('x'))
+                attic_box.expand(0, 0, -1, inplace=True)
+                fillBlocks(attic_box, palette['floor'])
+        # build roof ridge
+        if box.width % 2 == 1:
+            index = box.width // 2
+            ridge_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
+            fillBlocks(ridge_box, palette.get_roof_block('bottom'), BlockAPI.blocks.Air)
+            fillBlocks(ridge_box.translate(dy=-1), palette.get_structure_block('z'), BlockAPI.blocks.Air)
 
     def __gen_gable_cross(self, level, palette):
         for direction in cardinal_directions():
@@ -349,23 +362,29 @@ class _WallSymbol(Generator):
                 self.children.append(_WallSymbol(box_wal))
 
     def _generate_zwall(self, level, palette):
-        """
-        Generates a flipped x_wall in a virtual level and pastes it to level.
-        Parameters
-        ----------
-        level MCLevel level to generate in
-        palette Block palette
-
-        Returns
-        -------
-        None
-        """
-        tmp_box = TransformBox((0, 0, 0), (self.length, self.height, self.width))  # flip wall box
-        # wall_level = MCSchematic(tmp_box.size)  # prepare virtual level to generate rotated wall
-        # _WallSymbol(tmp_box).generate(wall_level, palette=palette)  # generate rotated wall
-        # wall_level.rotateLeft()  # flip generated wall
-        # tmp_box = TransformBox(tmp_box.origin, self.size)  # flip generation box
-        # copyBlocksFrom(level, wall_level, tmp_box, self.origin)  # retrieve wall to real level  # todo
+        if self.length % 2 == 0:
+            # even wall: split in two
+            if self.length == 2:
+                fillBlocks(self._box, palette['wall'])
+                if bernouilli(0.5):
+                    fillBlocks(self._box.expand(0, -1, 0), palette['window'])
+            elif self.length == 4:
+                fillBlocks(self._box, palette['wall'])
+                box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
+                self.children.append(_WallSymbol(box_win))
+            else:
+                for half_wall_box in self._box.split(dz=randint(3, self.length - 3)):
+                    self.children.append(_WallSymbol(half_wall_box))
+        else:
+            # uneven wall: derive in column | window | wall
+            if self.length == 1:
+                fillBlocks(self._box, palette['wall'])
+            else:
+                box_col, box_wal = self._box.split(dz=2)
+                box_win = TransformBox((self._box.origin + (0, 1, 1)), (1, self.height - 2, 1))
+                fillBlocks(box_col, palette['wall'])
+                fillBlocks(box_win, palette['window'])
+                self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level: WorldSlice, palette: HousePalette):
         box = self._box

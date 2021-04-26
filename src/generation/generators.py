@@ -1,5 +1,5 @@
 from math import floor
-from random import randint
+from random import randint, random
 
 from numpy import percentile
 from numpy.random import choice
@@ -248,13 +248,15 @@ class CropGenerator(MaskedGenerator):
 
         # place animals
         animal_count = sum(self._mask.flat) // SURFACE_PER_ANIMAL
-        while animal_count:
+        while animal_count > 0:
             x = randint(fence_box.minx, fence_box.maxx - 1)
             z = randint(fence_box.minz, fence_box.maxz - 1)
             y = height_map[x - self.origin.x, z - self.origin.z] + 1
             if self.is_masked(x, z, True) and not self.is_lateral(x, z):
                 interfaceUtils.runCommand(f"summon {animal} {x} {y} {z}")
                 animal_count -= 1
+            else:
+                animal_count -= .1
 
     def _gen_crop_v1(self, level, height=None, palette=None):
         from numpy import ones
@@ -263,13 +265,15 @@ class CropGenerator(MaskedGenerator):
         min_height = int(percentile(height.flatten(), 15))
         max_height = int(percentile(height.flatten(), 85))
         # block states
-        crop_ids = [141, 142, 59]
-        prob = ones(len(crop_ids)) / len(crop_ids)  # uniform across the crops
+        b = BlockAPI.blocks
+        crop_type = choice([b.Carrots, b.Beetroots, b.Potatoes, b.Wheat])
+        crop_age = randint(2, 5)
 
         # each water source irrigates a 9x9 flat zone
-        water_sources = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)
-        for _ in range(water_sources):
-            xs, zs = x0 + randint(0, self.width - 1), z0 + randint(0, self.length - 1)
+        water_source_count = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)
+        water_sources = set()
+        for _ in range(water_source_count):
+            xs, zs = x0 + randint(1, self.width - 2), z0 + randint(1, self.length - 2)
             for xd, zd in product(range(max(x0, xs - 4), min(x0 + self.width, xs + 5)),
                                   range(max(z0, zs - 4), min(z0 + self.length, zs + 5))):
                 if height is not None:
@@ -284,13 +288,16 @@ class CropGenerator(MaskedGenerator):
                 if (xd, zd) == (xs, zs):
                     # water source
                     setBlock(Point(xd, zd, y0), BlockAPI.blocks.Water)
-                elif level.level.getBlockAt((xd, y0, zd)) != 9:
-                    setBlock(Point(xd, zd, y0), f"farmland[moisture=7]")  # farmland
-                    bid = choice(crop_ids, p=prob)
-                    age = randint(0, 7)
-                    # todo: generate crops
-                    # level.setBlockAt(xd, y0+1, zd, bid)
-                    # level.setBlockDataAt(xd, y0+1, zd, age)
+                    water_sources.add((xd, zd))
+                elif (xd, zd) not in water_sources:
+                    # farmland
+                    setBlock(Point(xd, zd, y0), f"farmland[moisture=7]")
+
+                    # crop
+                    crop_age = crop_age + random() - .5
+                    int_crop_age = pos_bound(int(round(crop_age)), 7)
+                    crop_block = f"{crop_type}[age={int_crop_age}]"
+                    setBlock(Point(xd, zd, y0+1), crop_block)
 
     def _gen_harvested_crop(self, level, height_map, palette=None):
         # TODO: fix water sources

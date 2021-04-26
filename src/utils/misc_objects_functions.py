@@ -2,9 +2,9 @@ from os.path import realpath, sep
 from random import random
 
 
-def bernouilli(p=.5):
+def bernouilli(success_rate=.5):
     # type: (float) -> bool
-    return random() <= p
+    return random() <= success_rate
 
 
 def get_project_path():
@@ -159,26 +159,105 @@ def sym_range(v, dv, vmax=None):
 #     def surface(self):
 #         return self.width * self.length
 
-#
-# def compute_height_map(level, box):
-#     """
-#     Custom height map, quite slow
-#     """
-#     t0 = time()
-#     xmin, xmax = box.minx, box.maxx
-#     zmin, zmax = box.minz, box.maxz
-#     ground_blocks = [Block.Grass.ID, Block.Gravel.ID, Block.Dirt.ID,
-#                      Block.Sand.ID, Block.Stone.ID, Block.Clay.ID]
-#
-#     h = array([[level.heightMapAt(x, z) for z in range(zmin, zmax)] for x in range(xmin, xmax)])
-#     for x, z in product(range(xmin, xmax), range(zmin, zmax)):
-#         while h[x-xmin, z-zmin] >= 0 and level.blockAt(x, h[x-xmin, z-zmin], z) not in ground_blocks:
-#             h[x-xmin, z-zmin] -= 1
-#
-#     print('Computed height map in {}s'.format(time() - t0))
-#     return h
-#
-#
+# returns an array of blocks after raytracing from (x1,y1,z1) to (x2,y2,z2)
+# this uses Bresenham 3d algorithm, taken from a modified version written by Bob Pendleton
+def raytrace(xyz1, xyz2):
+    (x1, y1, z1) = xyz1
+    (x2, y2, z2) = xyz2
+    output = []
+
+    x2 -= 1
+    y2 -= 1
+    z2 -= 1
+
+    i = 0
+    dx = 0
+    dy = 0
+    dz = 0
+    l = 0
+    m = 0
+    n = 0
+    x_inc = 0
+    y_inc = 0
+    z_inc = 0
+    err_1 = 0
+    err_2 = 0
+    dx2 = 0
+    dy2 = 0
+    dz2 = 0
+    point = [x1, y1, z1]
+
+    dx = x2 - x1
+    dy = y2 - y1;
+    dz = z2 - z1;
+    x_inc = -1 if dx < 0 else 1
+    l = abs(dx)
+    y_inc = -1 if dy < 0 else 1
+    m = abs(dy)
+    z_inc = -1 if dz < 0 else 1
+    n = abs(dz)
+    dx2 = l << 1
+    dy2 = m << 1
+    dz2 = n << 1
+
+    if l >= m and l >= n:
+        err_1 = dy2 - l
+        err_2 = dz2 - l
+        for i in range(l):
+            np = (point[0], point[1], point[2])
+            output.append(np)
+            if err_1 > 0:
+                point[1] += y_inc
+                err_1 -= dx2
+
+            if err_2 > 0:
+                point[2] += z_inc
+                err_2 -= dx2
+
+            err_1 += dy2
+            err_2 += dz2
+            point[0] += x_inc
+
+    elif m >= l and m >= n:
+        err_1 = dx2 - m
+        err_2 = dz2 - m
+        for i in range(m):
+            np = (point[0], point[1], point[2])
+            output.append(np)
+            if err_1 > 0:
+                point[0] += x_inc
+                err_1 -= dy2
+
+            if err_2 > 0:
+                point[2] += z_inc
+                err_2 -= dy2
+
+            err_1 += dx2
+            err_2 += dz2
+            point[1] += y_inc
+
+    else:
+        err_1 = dy2 - n
+        err_2 = dx2 - n
+        for i in range(n):
+            np = (point[0], point[1], point[2])
+            output.append(np)
+            if err_1 > 0:
+                point[1] += y_inc
+                err_1 -= dz2
+
+            if err_2 > 0:
+                point[0] += x_inc
+                err_2 -= dz2
+
+            err_1 += dy2
+            err_2 += dx2
+            point[2] += z_inc
+
+    np = (point[0], point[1], point[2])
+    output.append(np)
+    return output
+
 if __name__ == '__main__':
     l = [-1, 3, -5, 9, 6]
     print(l, argmin(l), argmax(l))
