@@ -18,31 +18,30 @@ class TerrainMaps:
         from time import time
         t0 = t1 = time()
         self.height_map = HeightMap(level, area)
-        print(f'Computed height map in {time() - t1})')
+        print(f'Computed height map in {time() - t1}')
 
         t1 = time()
         self.biome = BiomeMap(level, area)
-        print(f'Computed biome map in {time() - t1})')
+        print(f'Computed biome map in {time() - t1}')
 
         t1 = time()
         self.fluid_map = FluidMap(level, area, self)
-        print(f'Computed fluid map in {time() - t1})')
+        print(f'Computed fluid map in {time() - t1}')
 
         t1 = time()
         self.obstacle_map = ObstacleMap(self.width, self.length, self)
-        print(f'Computed obstacle map in {time() - t1})')
+        print(f'Computed obstacle map in {time() - t1}')
 
         t1 = time()
         self.road_network = RoadNetwork(self.width, self.length, self)  # type: RoadNetwork
-        print(f'Computed road map in {time() - t1})')
+        print(f'Computed road map in {time() - t1}')
 
         t1 = time()
         self.trees = TreesMap(level, self.height_map)
-        print(f'Computed trees map in {time() - t1})')
+        print(f'Computed trees map in {time() - t1}')
 
         t1 = time()
-        print(f'Computed terrain maps in {t1 - t0})')
-        exit(0)
+        print(f'Computed terrain maps in {t1 - t0}')
 
     @property
     def width(self):
@@ -69,6 +68,12 @@ class TerrainMaps:
     @staticmethod
     def request():
         from utils.gdmc_http_client_python.interfaceUtils import requestBuildArea
+        from time import time
+        print("Requesting build area...", end='')
         build_area = BuildArea(requestBuildArea())
+        print(f"OK: {str(build_area)}")
+        print("Requesting level...")
+        t0 = time()
         level = WorldSlice((build_area.x, build_area.z, build_area.width, build_area.length))
+        print(f"completed in {(time()-t0)}s")
         return TerrainMaps(level, build_area)

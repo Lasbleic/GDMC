@@ -5,7 +5,6 @@ from time import time
 from typing import List
 
 import numpy as np
-from numba import njit
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
 from utils import Point, cardinal_directions, water_blocks, lava_blocks, WorldSlice, \
@@ -13,7 +12,7 @@ from utils import Point, cardinal_directions, water_blocks, lava_blocks, WorldSl
 import parameters
 from terrain.biomes import BiomeMap
 from terrain.map import Map
-from utils.fast_dijkstra import fast_dijkstra
+from utils.algorithms.fast_dijkstra import fast_dijkstra
 from utils.parameters import MIN_DIST_TO_OCEAN, MIN_DIST_TO_RIVER, \
     MIN_DIST_TO_LAVA
 

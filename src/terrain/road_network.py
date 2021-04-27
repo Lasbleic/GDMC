@@ -268,7 +268,6 @@ class RoadNetwork:
         return 1 if self.is_road(dest_point) else maxint
 
     # return the path from the point satisfying the ending_condition to the root_point, excluded
-    @njit
     def dijkstra(self, root_points, max_distance, force_update):
         # type: (List[Point], int, bool) -> None
         """
@@ -378,7 +377,6 @@ class RoadNetwork:
             update_maps_info_at(clst_neighbor)
             update_distances(clst_neighbor)
 
-    @njit
     def a_star(self, root_point, ending_point, cost_function):
         # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int]) -> List[Point]
         """
@@ -392,78 +390,12 @@ class RoadNetwork:
         -------
         best first path from root_point to ending_point if any exists
         """
-
-        def init():
-            x, z = root_point.x, root_point.z
-            _distance_map = full((self.width, self.length), MAX_FLOAT)
-            _distance_map[x][z] = 0
-            _neighbours = [root_point]
-            _predecessor_map = empty((self.width, self.length), dtype=object)
-            return _distance_map, _neighbours, _predecessor_map
-
-        def closest_neighbor():
-            _closest_neighbors = []
-            _min_heuristic = MAX_FLOAT
-            for neighbor in neighbors:
-                _heuristic = heuristic(neighbor)
-                _current_heuristic = distance_map[neighbor.x][neighbor.z] + _heuristic
-                if _current_heuristic < _min_heuristic:
-                    _closest_neighbors = [neighbor]
-                    _min_heuristic = _current_heuristic
-                elif _current_heuristic == _min_heuristic:
-                    _closest_neighbors += [neighbor]
-            return choice(_closest_neighbors)
-
-        from math import sqrt
-        def heuristic(point):
-            return sqrt((point.x - ending_point.x) ** 2 + (point.z - ending_point.z) ** 2)
-
-        def update_distance(updated_point, neighbor, _neighbors):
-            edge_cost = cost_function(self, updated_point, neighbor)
-            if edge_cost == maxint:
-                return
-
-            new_distance = distance_map[updated_point.x][updated_point.z] + edge_cost
-            previous_distance = distance_map[neighbor.x][neighbor.z]
-            if previous_distance >= MAX_FLOAT:
-                _neighbors += [neighbor]
-            if previous_distance > new_distance:
-                distance_map[neighbor.x][neighbor.z] = new_distance
-                predecessor_map[neighbor.x][neighbor.z] = updated_point
-
-        def update_distances(updated_point):
-            x, z = updated_point.x, updated_point.z
-            path = path_to_dest(updated_point)
-            # is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
-            is_straight_road = True
-            if (x + 1 < self.width) and (is_straight_road or path[-2].z == z):
-                update_distance(updated_point, Point(x + 1, z), neighbors)
-            if (x - 1 >= 0) and (is_straight_road or path[-2].z == z):
-                update_distance(updated_point, Point(x - 1, z), neighbors)
-            if (z + 1 < self.length) and (is_straight_road or path[-2].x == x):
-                update_distance(updated_point, Point(x, z + 1), neighbors)
-            if (z - 1 >= 0) and (is_straight_road or path[-2].x == x):
-                update_distance(updated_point, Point(x, z - 1), neighbors)
-
-        def path_to_dest(dest_point):
-            current_point = dest_point
-            path = []
-            while current_point.z != root_point.z or current_point.x != root_point.x:
-                path = [current_point] + path
-                current_point = predecessor_map[current_point.x][current_point.z]
-            return path
-
-        distance_map, neighbors, predecessor_map = init()
-        clst_neighbor = root_point
-        while len(neighbors) > 0 and (clst_neighbor.z != ending_point.z or clst_neighbor.x != ending_point.x):
-            clst_neighbor = closest_neighbor()
-            neighbors.remove(clst_neighbor)
-            update_distances(clst_neighbor)
-
-        if clst_neighbor.z != ending_point.z or clst_neighbor.x != ending_point.x:
-            return []
-        else:
-            return path_to_dest(clst_neighbor)
+        from utils.algorithms import a_star
+        t0 = time()
+        tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
+        t0 = time() - t0
+        print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, avg: {int(len(tuple_path)/t0)}mps")
+        return [Point(u, v) for u, v in tuple_path]
 
     def __distance_based_cycle_creation(self, node1, node2):
         return MIN_DISTANCE_CYCLE < euclidean(node1, node2) < MAX_DISTANCE_CYCLE
