@@ -32,7 +32,7 @@ def a_star(root_point, ending_point, dimensions, cost_function):
         clst_neighbor = _closest_neighbor(astar_env, ending_point)
         neighbors.remove(clst_neighbor)
         _update_distances(astar_env + (cost_function,), dimensions, clst_neighbor)
-    print(f"Fast a* explored {n_steps} points in {time() - t0} seconds")
+    # print(f"Fast a* explored {n_steps} points in {time() - t0} seconds")
 
     if clst_neighbor != ending_point:
         return []

@@ -2,11 +2,11 @@
 Function used to compute interests
 """
 
-from __future__ import division
+from numba import njit
+from numpy import log, sqrt, exp
 
-from math import log, sqrt, exp
 
-
+@njit
 def attraction_repulsion(d, lambda_min, lambda_0, lambda_max):
 
     if d < lambda_min:
@@ -22,6 +22,7 @@ def attraction_repulsion(d, lambda_min, lambda_0, lambda_max):
     return res
 
 
+@njit
 def balance(d, lambda_min, lambda_0, lambda_max):
 
     if d < lambda_min or d > lambda_max:
@@ -35,6 +36,7 @@ def balance(d, lambda_min, lambda_0, lambda_max):
     return res
 
 
+@njit
 def close_distance(d, lambdas):
     # type: (float, (float, float)) -> float
     lambda_min, lambda_max = lambdas
@@ -47,6 +49,7 @@ def close_distance(d, lambdas):
     return res
 
 
+@njit
 def open_distance(d, lambdas):
     lambda_min, lambda_max = lambdas
     if d <= lambda_min:
@@ -55,6 +58,7 @@ def open_distance(d, lambdas):
         return close_distance(d, lambdas)
 
 
+@njit
 def obstacle(d, lambdas):
     # type: (float, (float, float)) -> float
     """

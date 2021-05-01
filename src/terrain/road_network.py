@@ -289,7 +289,7 @@ class RoadNetwork:
             for root_point in root_points:
                 _distance_map[root_point.x, root_point.z] = 0
                 _cost_map[root_point.x, root_point.z] = 0
-            _neighbours = root_points
+            _neighbours = set(root_points)
             _predecessor_map = empty((self.width, self.length), dtype=object)
             return _cost_map, _distance_map, _neighbours, _predecessor_map
 
@@ -336,7 +336,7 @@ class RoadNetwork:
             previous_cost = cost_map[neighbor.x][neighbor.z]
             if previous_cost >= maxint and new_dist <= max_distance and not self.is_road(neighbor) \
                     and (new_cost < self.cost_map[neighbor.x][neighbor.z] or force_update):
-                _neighbors += [neighbor]
+                _neighbors.add(neighbor)
             if previous_cost > new_cost:
                 cost_map[neighbor.x][neighbor.z] = new_cost
                 distance_map[neighbor.x][neighbor.z] = new_dist
@@ -393,8 +393,8 @@ class RoadNetwork:
         from utils.algorithms import a_star
         t0 = time()
         tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
-        t0 = time() - t0
-        print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, avg: {int(len(tuple_path)/t0)}mps")
+        t0 = time() - t0 + .001
+        # print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, avg: {int(len(tuple_path)/t0)}mps")
         return [Point(u, v) for u, v in tuple_path]
 
     def __distance_based_cycle_creation(self, node1, node2):
