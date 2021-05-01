@@ -1,13 +1,15 @@
 from math import floor
+from os import sep
 from random import randint, random
 
 from numpy import percentile
 from numpy.random import choice
 
 from generation.building_palette import HousePalette
+from interfaceUtils import sendBlocks, runCommand
 from utils import *
 
-# from utils.old_structure_void_handle import VoidStructureNBT, all_but_void
+from utils.nbt_structures import StructureNBT
 
 SURFACE_PER_ANIMAL = 16
 
@@ -213,7 +215,7 @@ class CropGenerator(MaskedGenerator):
 
     def generate(self, level, height_map=None, palette=None):
         # height_map = self._terraform(level, height_map)
-        self.__terraform(level, height_map)
+        self.__terraform(height_map)
         self._clear_trees(level)
         self._sub_generator_function(level, height_map, palette)
 
@@ -317,7 +319,7 @@ class CropGenerator(MaskedGenerator):
         irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
         fillBlocks(irrigation_box, BlockAPI.blocks.Water)
 
-    def __terraform(self, level, height_map):
+    def __terraform(self, height_map):
         # type: (MCLevel, ndarray) -> ndarray
         road_dir_x, road_dir_z = self.entry_direction.x, self.entry_direction.z
         if road_dir_x == 1:
@@ -430,68 +432,31 @@ class DoorGenerator(Generator):
 
 
 class WindmillGenerator(Generator):
-    pass
+    def generate(self, level, height_map=None, palette=None):
+        # todo: reactivate windmills
+
+        # Compute windmill position
+        box = self._box
+        x, z = box.minx + box.width // 2, box.minz + box.length // 2
+        y = height_map[box.width//2, box.length//2]
 
 
-#     def generate(self, level, height_map=None, palette=None):
-#         # type: (MCLevel, array, dict) -> None
-#         box = self._box
-#         x, z = box.minx + box.width // 2, box.minz + box.length // 2
-#         y = height_map[box.width//2, box.length//2] if height_map is not None else 15
-#         box = TransformBox((x-5, y-32, z-4), (11, 11, 8))
-#         fillBlocks(level, box.expand(1), Materials['Bedrock'])  # protective shell around windmill frames
-#         mech_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill_mech.nbt']))
-#         mech_sch = mech_nbt.toSchematic()
-#         copyBlocksWrap(level, mech_sch, mech_sch.bounds, box.origin)
-#
-#         box.translate(dy=31, inplace=True)
-#         windmill_nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'gdmc_windmill.nbt']))
-#         windmill_sch = windmill_nbt.toSchematic()
-#         copyBlocksWrap(level, windmill_sch, windmill_sch.bounds, box.origin)
-#         ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
-#
-#         self.__activate_one_repeater(level, ground_box)
-#
-#     @staticmethod
-#     def __activate_one_repeater(level, box):
-#         # type: (MCLevel, TransformBox) -> None
-#         repeatr_pos = []
-#         repeatr_id = Materials['unpowered_repeater'].ID
-#         for x, y, z in box.positions:
-#             block_id = level.blockAt(x, y, z)
-#             if block_id == repeatr_id:
-#                 repeatr_pos.append((x, y, z))
-#
-#         x, y, z = box.minx + 1, box.miny, box.maxz-1
-#         repeater = Materials[repeatr_id, level.blockDataAt(x, y, z)]
-#         dir_str = str(repeater.Blockstate[1]['facing'])
-#         dir_com = Direction.from_string(dir_str)
-#
-#         # activate a repeater and preparing its tile tick
-#         block = Materials['Redstone Repeater (Powered, Delay 4, {})'.format(str(-dir_com))]
-#         WindmillGenerator.__repeater_tile_tick(level, x, y, z, True)
-#         setBlock(level, block, x, y, z)
-#
-#         # activate the command block following the previous repeater
-#         x += 1
-#         command_block_entity = level.getTileEntitiesInBox(TransformBox((x, y, z), (1, 1, 1)))[0]
-#         command_block_entity['powered'].value = True  # power command block
-#
-#         # prepare tile tick for the repeater following the command block
-#         x += 1
-#         WindmillGenerator.__repeater_tile_tick(level, x, y, z, False)
-#
-#     @staticmethod
-#     def __repeater_tile_tick(level, x, y, z, powered):
-#         string_id = '{}powered_repeater'.format('' if powered else 'un')
-#         tile_tick = TAG_Compound()
-#         tile_tick.add(TAG_Int(-1, 'p'))
-#         tile_tick.add(TAG_Int(10, 't'))
-#         tile_tick.add(TAG_Int(x, 'x'))
-#         tile_tick.add(TAG_Int(y, 'y'))
-#         tile_tick.add(TAG_Int(z, 'z'))
-#         tile_tick.add(TAG_String(string_id, 'i'))
-#         level.addTileTick(tile_tick)
+        # Build floor
+        ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
+        fillBlocks(ground_box, BlockAPI.blocks.CoarseDirt)
+
+        # Build windmill frames
+        box = TransformBox((x-5, y-31, z-4), (11, 11, 8))
+        fillBlocks(box.expand(1), BlockAPI.blocks.Bedrock)  # protective shell around windmill frames
+        mech_nbt = StructureNBT('gdmc_windmill_mech.nbt')
+        mech_nbt.build(*box.origin)
+
+        # Build windmill
+        box.translate(dy=31, inplace=True)
+        windmill_nbt = StructureNBT('gdmc_windmill.nbt')
+        windmill_nbt.build(*box.origin)
+        sendBlocks(0, 0, 0)
+        print(runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]'))
 
 
 class WoodTower(Generator): pass
