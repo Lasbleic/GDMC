@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import cv2
 
-from utils import WorldSlice, BuildArea
+from utils import WorldSlice, BuildArea, ground_blocks, water_blocks, lava_blocks
 from terrain.map import Map
 from utils import Point
 
@@ -82,14 +82,17 @@ class HeightMap(Map):
         heightmapNoTrees = hm_mbnl[:]
         area = world_slice.rect
 
+        valid_blocks = ground_blocks.union(water_blocks).union(lava_blocks)
+
+        def isValidBlock(block):
+            block = block.split(':')[-1].split('[')[0]
+            return block in valid_blocks
+
         from itertools import product
         for x, z in product(range(area[2]), range(area[3])):
-            while True:
-                y = heightmapNoTrees[x, z]
-                block = world_slice.getBlockAt((area[0] + x, y - 1, area[1] + z))
-                if block[-4:] == '_log' or block.split(':')[-1] == 'bamboo':
-                    heightmapNoTrees[x, z] -= 1
-                else:
-                    break
+            y = heightmapNoTrees[x, z]
+            while not isValidBlock(world_slice.getBlockRelativeAt(x, y-1, z)):
+                y -= 1
+            heightmapNoTrees[x, z] = y
 
         return np.array(np.minimum(hm_mbnl, heightmapNoTrees)) - 1

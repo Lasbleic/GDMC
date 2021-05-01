@@ -9,18 +9,10 @@ from itertools import product
 from utils import Point, WorldSlice, BoundingBox, Iterable, manhattan
 from utils.gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
 
-water_blocks = ["minecraft:water", 'minecraft:ice', 'minecraft:frosted_ice', 'minecraft:packed_ice',
-                'minecraft:blue_ice']
-
-lava_blocks = ['minecraft:lava']
-
-fluid_blocks_ID = water_blocks + lava_blocks
-
-set_blocks = set()
-
-
+alterated_pos = set()
 def setBlock(point: Point, blockstate: str):
-    res = setBlockDefault(point.x, point.y, point.z, blockstate)
+    res = setBlockDefault(point.x, point.y, point.z, blockstate, 1)
+    alterated_pos.add((point.x, point.z))
     if res:
         for res in filter(lambda _: len(_) > 1, res.split('\n')):
             print(res)
@@ -762,24 +754,22 @@ class BlockAPI:
         return f"{material}_slab" + (BlockAPI.__buildBlockState({"type": "bottom", "waterlogged": "false"}, **kwargs))
 
 
-ground_blocks = [
-    BlockAPI.blocks.Grass,
-    BlockAPI.blocks.Dirt,
-    BlockAPI.blocks.Stone,
-    BlockAPI.blocks.Bedrock,
-    BlockAPI.blocks.Sand,
-    BlockAPI.blocks.Gravel,
-    BlockAPI.blocks.GoldOre,
-    BlockAPI.blocks.IronOre,
-    BlockAPI.blocks.CoalOre,
-    BlockAPI.blocks.LapisOre,
-    BlockAPI.blocks.DiamondOre,
-    BlockAPI.blocks.RedstoneOre,
-    BlockAPI.blocks.Netherrack,
-    BlockAPI.blocks.SoulSand,
-    BlockAPI.blocks.Clay,
-    BlockAPI.blocks.Glowstone
-]
+# adapted from https://minecraft.fandom.com/wiki/Altitude#Natural_resources_and_altitude
+b = BlockAPI.blocks
+ground_blocks = {
+    b.GrassBlock, b.Dirt, b.Gravel, b.Podzol, b.CoarseDirt, b.Farmland,
+    b.Stone, b.Andesite, b.Diorite, b.Granite, b.Granite,
+    b.Sand, b.Sandstone, b.Clay,
+    b.CoalOre, b.IronOre, b.DiamondOre, b.GoldOre, b.RedstoneOre, b.LapisOre, b.EmeraldOre,
+    b.Terracotta, b.YellowTerracotta, b.OrangeTerracotta,
+    b.Netherrack, b.SoulSand,
+    b.Bedrock,
+    b.Glowstone
+}
+
+water_blocks = {b.Water, b.Ice, b.FrostedIce, b.PackedIce, b.BlueIce}
+
+lava_blocks = {b.Lava}
 
 
 def connected_component(maps, source_point, connection_condition, early_stopping_condition=None, check_limits=True):

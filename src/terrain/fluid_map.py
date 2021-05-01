@@ -41,7 +41,7 @@ class FluidMap(Map):
         t0 = time()
         for x, z in product(range(self.area.width), range(self.area.length)):
             y: int = self.terrain.height_map[x, z]
-            if level.getBlockRelativeAt(x, y, z) in water_blocks:
+            if level.getBlockRelativeAt(x, y, z).split(':')[-1] in water_blocks:
                 biome = BiomeMap.getBiome(self.terrain.biome[x, z])
                 if 'Ocean' in biome or 'Beach' in biome:
                     label = 1

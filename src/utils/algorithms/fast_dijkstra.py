@@ -63,3 +63,5 @@ def fast_dijkstra(distance_map: np.ndarray, height_map: np.ndarray):
         clst_neighbor = neighbours[0]
         update_distances(distance_map, height_map, neighbours, clst_neighbor, max_distance)
         del neighbours[0]
+
+    return distance_map

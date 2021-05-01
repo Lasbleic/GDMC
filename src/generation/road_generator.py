@@ -4,13 +4,13 @@ from math import ceil, sqrt
 from random import randint
 from time import sleep
 
+import numpy
 from numpy import uint8
 from numpy.random.mtrand import choice
 
 from generation.generators import Generator
 from terrain import HeightMap
 from utils import *
-import numpy
 
 from utils.misc_objects_functions import raytrace
 
@@ -32,7 +32,6 @@ class RoadGenerator(Generator):
         from terrain import TerrainMaps
         terrain: TerrainMaps
         print("[RoadGenerator] generating road blocks...", end='')
-        Generator.generate(self, terrain, height_map)  # generate bridges
 
         road_height_map = zeros(height_map.shape, dtype=uint8)
         network = zeros((self.width, self.length))
@@ -79,6 +78,8 @@ class RoadGenerator(Generator):
                     if h < y:
                         pole_box = TransformBox((xa, h, za), (1, y-h, 1))
                         fillBlocks(pole_box, BlockAPI.blocks.StoneBricks)
+
+        Generator.generate(self, terrain, height_map)  # generate bridges
         print("OK")
 
     def __compute_road_at(self, x, z, height_map, r):
@@ -115,19 +116,27 @@ class RoadGenerator(Generator):
         smoothing_kernel = array([-2, 3, 6, 7, 6, 3, -2]) / 21
         if len(path) < 2:
             return
-        prev_point = None
-        cur_bridge = None
+
+        water_margin = 5
         if any(self.__fluids.is_water(_) for _ in path):
-            for point in path:
-                if not self.__network.is_road(point) and self.__fluids.is_water(point):
-                    if cur_bridge is None:
-                        cur_bridge = Bridge(prev_point if prev_point is not None else point, self.__origin)
-                    cur_bridge += point
-                elif cur_bridge is not None:
-                    cur_bridge += point
-                    self.children.append(cur_bridge)
-                    cur_bridge = None
-                prev_point = point
+            bridge_start = next(filter(lambda i: self.__fluids.is_water(path[i], water_margin), range(len(path))))
+            bridge_end = next(filter(lambda i: not self.__fluids.is_water(path[i], water_margin) or i == (len(path) + 1), range(bridge_start + 1, len(path) + 1)))
+
+            bridge_start_pt = path[bridge_start]
+            bridge_start_pt = Point(bridge_start_pt.x, bridge_start_pt.z, self.__maps.height_map[bridge_start_pt])
+            bridge_end_pt = path[bridge_end-1]
+            bridge_end_pt = Point(bridge_end_pt.x, bridge_end_pt.z, self.__maps.height_map[bridge_end_pt])
+            bridge = Bridge(bridge_start_pt, self.__origin)
+            bridge += bridge_end_pt
+            self.children.append(bridge)
+
+            if bridge_start > 0:
+                self.handle_new_road(path[:bridge_start])
+
+            if bridge_end < len(path):
+                self.handle_new_road(path[bridge_end:])
+
+            return
 
         # carves the new path if possible and necessary to avoid steep slopes
         path_height: ndarray = array([self.__maps.height_map[_] for _ in path]).astype(float)
@@ -162,7 +171,6 @@ class RoadGenerator(Generator):
                 for updated_point_index in filter(lambda _: path_height[_] != orig_path_height[_], range(len(path))):
                     point = path[updated_point_index]
                     self.__maps.obstacle_map.map[point.x, point.z] += 1
-            # todo: public stairs structures (/ ladders ?) in steep streets
 
         else:
             # todo: debug why end can't be computed sometimes
@@ -197,33 +205,23 @@ class Bridge(Generator):
         return self
 
     def generate(self, level, height_map=None, palette=None):
+        y0, y1 = self.__points[0].y, self.__points[-1].y
+        water_height = min(y0, y1)
         self._box = TransformBox(self._box)
         self.translate(dx=self.__origin.x, dz=self.__origin.z)
         self.__straighten_bridge_points()
-        o1, o2 = self.__points[0], self.__points[-1]  # type: Point, Point
-        length = euclidean(o1, o2) + 1
-        try:
-            y1, y2 = height_map[o1.x, o1.z] + 1, height_map[o2.x, o2.z] + 1
-        except IndexError:
-            return
 
-        def base_height(_d):
-            # y1 when d = 0, y2 when d = length
-            return y1 + _d / length * (y2 - y1)
+        heights = [height_map[_.x, _.z] for _ in self.__points]
+        length = len(heights)
+        target_bridge_height = water_height + 2.5  # ideal height so that boats can pass under the bridge
 
-        def curv_height(_d):
-            # 0 in d = 0 & d = length, 0.5 derivative in 0
-            cst1 = 1 / length  # steepness constraint
-            cst2 = (4 / length ** 2) * (67 - base_height(length / 2))  # bridge height constraint
-            cst = max(0, min(cst1, cst2))
-            return cst * _d * (length - _d)
+        h1 = numpy.full(length, target_bridge_height)
+        h2 = numpy.array([y0 + (i / 2) if i <= (length / 2) else y1 + ((length-i-1) / 2) for i in range(length)]) + .5
+        bridge_height = numpy.minimum(h1, h2)
 
-        for p in self.__points:
-            d = euclidean(p, o1)
-            interpol1 = base_height(d) + curv_height(d)
-            interpol2 = base_height(d + 1) + curv_height(d + 1)
+        for p, h in zip(self.__points, bridge_height):
             ap = p + self.__origin
-            self.place_block(ap.x, interpol1, interpol2, ap.z)
+            self.place_block(ap.x, h, ap.z)
 
     @property
     def width(self):
@@ -233,62 +231,30 @@ class Bridge(Generator):
     def length(self):
         return abs(self.__points[-1].z - self.__points[0].z)
 
-    def place_block(self, x, y1, y2, z):
-        if y1 > y2:
-            y1, y2 = y2, y1
-
-        def get_stair_orientation(xs, zs):
-            if self.width > self.length:
-                return "east" if xs < (self._box.minx + self.width / 2) else "west"
-            else:
-                return "south" if zs < (self._box.minz + self.length / 2) else "north"
-
-        def my_round(v):
-            d, r = v // 1, v % 1
-            rounded = 0 if r < 1 / 3 else 0.5 if r < 2 / 3 else 1
-            return d + rounded
-
-        r1, r2 = my_round(y1), my_round(y2)
-        y = int(r1)
-        if r2 - r1 <= 1 / 2:
-            if r1 - int(r1) == 0:
-                b = BlockAPI.getSlab("stone_brick", type="bottom")
-            else:
-                b = BlockAPI.blocks.StoneBricks
+    def place_block(self, x, y, z):
+        if y % 1 == 0:
+            b = BlockAPI.blocks.StoneBricks
         else:
-            if r1 - int(r1) == 0:
-                b = BlockAPI.getStairs("stone_brick", facing=get_stair_orientation(x, z))
-            else:
-                b = BlockAPI.blocks.StoneBrickSlab
-                y += 1
+            b = BlockAPI.getSlab("stone_brick", type="bottom")
+        y = ceil(y)
 
         if self.width > self.length:
             for dz in range(-1, 2):
                 setBlock(Point(x, z+dz, y), b)
         else:
-
             for dx in range(-1, 2):
                 setBlock(Point(x+dx, z, y), b)
 
     def __straighten_bridge_points(self):
         o1, o2 = self.__points[0], self.__points[-1]
         if o1.x == o2.x:
-            self.__points = [Point(o1.x, _) for _ in range(o1.z, o2.z)] + [o2]
+            z1, z2 = sorted((o1.z, o2.z))
+            self.__points = [Point(o1.x, z) for z in range(z1, z2 + 1)]
         elif o1.z == o2.z:
-            self.__points = [Point(_, o1.z) for _ in range(o1.x, o2.x)] + [o2]
+            x1, x2 = sorted((o1.x, o2.x))
+            self.__points = [Point(x, o1.z) for x in range(x1, x2 + 1)]
         else:
             self.__points = [Point(p[0], p[2]) for p in raytrace((o1.x, 0, o1.z), (o2.x, 0, o2.z))]
-        # elif self.width > self.length:
-        #     # bridge z = int(f(x))
-        #     a = (o2.z - o1.z) / (o2.x - o1.x)
-        #     b = (o1.z * o2.x - o2.z * o1.x) / (o2.x - o1.x)
-        #     self.__points = [Point(x, my_round(a*x + b)) for x in range(o1.x, o2.x)]
-        # else:
-        #     # bridge x = int(f(z))
-        #     a = (o2.x - o1.x) / (o2.z - o1.z)
-        #     b = (o1.x * o2.z - o2.x * o1.z) / (o2.z - o1.z)
-        #     self.__points = [Point(my_round(a*z + b), z) for z in range(o1.z, o2.z)]
-        # self.__points.append(o2)  # o2 is excluded from the ranges
 
 
 class CarvedRoad(Generator):
@@ -311,7 +277,7 @@ class CarvedRoad(Generator):
             height = road_height + 2 - ground_height
             if height < 2:
                 road_box = TransformBox((absolute_road.x - 1, road_height + 1, absolute_road.z - 1), (3, 3, 3))
-                fillBlocks(road_box, BlockAPI.blocks.Air)
+                fillBlocks(road_box, BlockAPI.blocks.Air, ground_blocks)
 
 
 class RampStairs(Generator):

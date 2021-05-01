@@ -108,8 +108,8 @@ def _update_distances(env, dims, point):
 def _path_to_dest(env, origin, destination):
     distance_map, neighbors, predecessor_map = env
     current_point = destination
-    path = []
+    path = [destination]
     while current_point != origin:
-        path = [current_point] + path
         current_point = predecessor_map[current_point]
-    return path
+        path.append(current_point)
+    return list(reversed(path))

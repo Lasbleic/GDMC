@@ -1,3 +1,5 @@
+from itertools import product
+
 from terrain import ObstacleMap, RoadNetwork
 from terrain.tree_map import TreesMap
 from utils import BuildArea, WorldSlice, BoundingBox
@@ -77,3 +79,17 @@ class TerrainMaps:
         level = WorldSlice((build_area.x, build_area.z, build_area.width, build_area.length))
         print(f"completed in {(time()-t0)}s")
         return TerrainMaps(level, build_area)
+
+    def undo(self):
+        """
+        Undo all modifications to the terrain for debug purposes
+        """
+        from utils import setBlock, Point
+        from utils.gdmc_http_client_python.interfaceUtils import runCommand
+        from utils.block_utils import alterated_pos
+        for xa, za in alterated_pos:
+            x, z = xa - self.area.x, za - self.area.z
+            ya = self.height_map.upper_height(x, z) + 1
+            for y in range(self.height_map.lower_height(x, z), ya):
+                setBlock(Point(xa, za, y), self.level.getBlockAt((xa, y, za)))
+            runCommand(f'fill {xa} {ya} {za} {xa} {255} {za} minecraft:air')
