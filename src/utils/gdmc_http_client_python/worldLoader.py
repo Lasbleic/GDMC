@@ -1,21 +1,34 @@
-from math import ceil, log2
-from utils.gdmc_http_client_python.bitarray import BitArray
+# ! /usr/bin/python3
+"""### Provides tools for reading chunk data
+
+This module contains functions to:
+* Calculate a heightmap ideal for building
+* Visualise numpy arrays
+"""
+__all__ = ['WorldSlice']
+# __version__
+
 from io import BytesIO
-import requests
+from math import ceil, log2
+
 import nbt
 import numpy as np
+import requests
+
+from bitarray import BitArray
 
 
 def getChunks(x, z, dx, dz, rtype='text'):
-    print("getting chunks %i %i %i %i " % (x, z, dx, dz))
+    """**Get raw chunk data.**"""
+    print(f"getting chunks {x} {z} {dx} {dz} ")
 
-    url = 'http://localhost:9000/chunks?x=%i&z=%i&dx=%i&dz=%i' % (x, z, dx, dz)
-    print("request url: %s" % url)
+    url = f'http://localhost:9000/chunks?x={x}&z={z}&dx={dx}&dz={dz}'
+    print(f"request url: {url}")
     acceptType = 'application/octet-stream' if rtype == 'bytes' else 'text/raw'
     response = requests.get(url, headers={"Accept": acceptType})
-    print("result: %i" % response.status_code)
+    print(f"result: {response.status_code}")
     if response.status_code >= 400:
-        print("error: %s" % response.text)
+        print(f"error: {response.text}")
 
     if rtype == 'text':
         return response.text
@@ -24,23 +37,21 @@ def getChunks(x, z, dx, dz, rtype='text'):
 
 
 class CachedSection:
+    """**Represents a cached chunk section (16x16x16).**"""
+
     def __init__(self, palette, blockStatesBitArray):
         self.palette = palette
-        self.blockStatesBitArray: BitArray = blockStatesBitArray
+        self.blockStatesBitArray = blockStatesBitArray
 
 
 class WorldSlice:
+    """**Contains information on a slice of the world.**"""
     # TODO format this to blocks
-    def __init__(self, rect, heightmapTypes=None):
-        if heightmapTypes is None:
-            heightmapTypes = ["MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES", "OCEAN_FLOOR", "WORLD_SURFACE"]
+
+    def __init__(self, rect, heightmapTypes=["MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES", "OCEAN_FLOOR", "WORLD_SURFACE"]):
         self.rect = rect
-        self.chunkRect = (
-            rect[0] >> 4,
-            rect[1] >> 4,
-            ((rect[0] + rect[2] - 1) >> 4) - (rect[0] >> 4) + 1,
-            ((rect[1] + rect[3] - 1) >> 4) - (rect[1] >> 4) + 1
-        )
+        self.chunkRect = (rect[0] >> 4, rect[1] >> 4, ((rect[0] + rect[2] - 1) >> 4) - (
+            rect[0] >> 4) + 1, ((rect[1] + rect[3] - 1) >> 4) - (rect[1] >> 4) + 1)
         self.heightmapTypes = heightmapTypes
 
         bytes = getChunks(*self.chunkRect, rtype='bytes')
@@ -54,11 +65,12 @@ class WorldSlice:
         # heightmaps
         self.heightmaps = {}
         for hmName in self.heightmapTypes:
-            self.heightmaps[hmName] = np.zeros((rect[2], rect[3]), dtype=np.int)
+            self.heightmaps[hmName] = np.zeros(
+                (rect[2], rect[3]), dtype=np.int)
 
         # Sections are in x,z,y order!!! (reverse minecraft order :p)
-        self.sections = [[[None for i in range(16)] for z in range(self.chunkRect[3])] for x in
-                         range(self.chunkRect[2])]
+        self.sections = [[[None for i in range(16)] for z in range(
+            self.chunkRect[3])] for x in range(self.chunkRect[2])]
 
         # heightmaps
         print("extracting heightmaps")
@@ -76,8 +88,8 @@ class WorldSlice:
                     for cz in range(16):
                         for cx in range(16):
                             try:
-                                heightmap[-rectOffset[0] + x * 16 + cx, -rectOffset[
-                                    1] + z * 16 + cz] = heightmapBitArray.getAt(cz * 16 + cx)
+                                heightmap[-rectOffset[0] + x * 16 + cx, -rectOffset[1] +
+                                          z * 16 + cz] = heightmapBitArray.getAt(cz * 16 + cx)
                             except IndexError:
                                 pass
 
@@ -98,13 +110,16 @@ class WorldSlice:
                     palette = section['Palette']
                     rawBlockStates = section['BlockStates']
                     bitsPerEntry = max(4, ceil(log2(len(palette))))
-                    blockStatesBitArray = BitArray(bitsPerEntry, 16 * 16 * 16, rawBlockStates)
+                    blockStatesBitArray = BitArray(
+                        bitsPerEntry, 16 * 16 * 16, rawBlockStates)
 
-                    self.sections[x][z][y] = CachedSection(palette, blockStatesBitArray)
+                    self.sections[x][z][y] = CachedSection(
+                        palette, blockStatesBitArray)
 
         print("done")
 
     def getBlockCompoundAt(self, blockPos):
+        """**Returns block data.**"""
         # chunkID = relativeChunkPos[0] + relativeChunkPos[1] * self.chunkRect[2]
 
         # section = self.nbtfile['Chunks'][chunkID]['Level']['Sections'][(blockPos[1] >> 4)+1]
@@ -127,17 +142,19 @@ class WorldSlice:
         bitarray = cachedSection.blockStatesBitArray
         palette = cachedSection.palette
 
-        blockIndex = (blockPos[1] % 16) * 16 * 16 + (blockPos[2] % 16) * 16 + blockPos[0] % 16
+        blockIndex = (blockPos[1] % 16) * 16 * 16 + \
+            (blockPos[2] % 16) * 16 + blockPos[0] % 16
         return palette[bitarray.getAt(blockIndex)]
 
     def getBlockAt(self, blockPos):
+        """**Returns the block's namespaced id at blockPos.**"""
         blockCompound = self.getBlockCompoundAt(blockPos)
         if blockCompound == None:
             return "minecraft:air"
         else:
             return blockCompound["Name"].value
 
-    def getBlockRelativeAt(self, x, y=None, z=None):
-        if y is None and z is None:
-            return self.getBlockRelativeAt(x.x, x.y, x.z)
-        return self.getBlockAt((x + self.rect[0], y, z + self.rect[1]))
+    def getBlockRelativeAt(self, x, y, z):
+        x += self.rect[0]
+        z += self.rect[1]
+        return self.getBlockAt((x, y, z))
