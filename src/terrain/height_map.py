@@ -13,7 +13,7 @@ class HeightMap(Map):
         # highest non air block
         super().__init__(self.__calcGoodHeightmap(level))
         self.area = area
-        self.__air_height: Map = Map(level.heightmaps["WORLD_SURFACE"][:])
+        self.__air_height: Map = Map(level.heightmaps["WORLD_SURFACE"][:] - 1)
 
         # highest solid block (below oceans)
         self.__ocean_floor: Map = Map(np.minimum(self[:], level.heightmaps["OCEAN_FLOOR"]))
@@ -63,7 +63,8 @@ class HeightMap(Map):
         # type: (List[Point], List[int]) -> None
         for p, h in zip(points, heights):
             if self.upper_height(p) == self[p]:
-                self._values[p.x, p.z] = h
+                self.__air_height._values[p.x, p.z] = h
+            self._values[p.x, p.z] = h
             # self.__ocean_floor.__values[p.x, p.z] = h
 
     @staticmethod

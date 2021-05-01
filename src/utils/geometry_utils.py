@@ -245,6 +245,9 @@ class BuildArea:
     def rect(self):
         return self.x, self.z, self.width, self.length
 
+    def __str__(self):
+        return f"build area of size {self.__shape} starting in {self.origin}"
+
 
 class TransformBox(BoundingBox):
     """

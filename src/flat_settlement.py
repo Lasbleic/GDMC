@@ -76,7 +76,7 @@ class FlatSettlement:
             # update road network
             # if road_id == 0:
             #     self._road_network.create_road(out_connections[0], out_connections[1])
-            # else:
+            # else :
             self._road_network.connect_to_network(out_connections[-1])
 
     def init_town_center(self):
@@ -160,7 +160,6 @@ class FlatSettlement:
                 y = max_y
             elif road_y < min_y:
                 y = min_y
-            y += 1
             try:
                 d = min(euclidean(__parcel.center, _.center) for _ in
                         filter(lambda p: p.building_type.name == "ghost", self._parcels)

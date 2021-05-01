@@ -10,6 +10,9 @@ from numpy.random.mtrand import choice
 from generation.generators import Generator
 from terrain import HeightMap
 from utils import *
+import numpy
+
+from utils.misc_objects_functions import raytrace
 
 
 class RoadGenerator(Generator):
@@ -109,6 +112,7 @@ class RoadGenerator(Generator):
         Builds necessary bridges and stairs for every new path
         Assumes that it is called before the path is marked as a road in the RoadNetwork
         """
+        smoothing_kernel = array([-2, 3, 6, 7, 6, 3, -2]) / 21
         if len(path) < 2:
             return
         prev_point = None
@@ -126,27 +130,31 @@ class RoadGenerator(Generator):
                 prev_point = point
 
         # carves the new path if possible and necessary to avoid steep slopes
-        path_height = [self.__maps.height_map[_] for _ in path]
+        path_height: ndarray = array([self.__maps.height_map[_] for _ in path]).astype(float)
         if len(path_height) > max(path_height) - min(path_height):
-            orig_path_height = path_height[:]
+            if len(path_height) <= 7:
+                # path too short to convolve
+                return
+
+            orig_path_height = path_height.copy()
             # while there is a 2 block elevation in the path, smooth path heights
             changed = False
-            prev_value = max([abs(h2 - h1) for h2, h1 in
-                              zip(path_height[1:], path_height[:-1])])  # max elevation, supposed to decrease
+            elevation = abs(numpy.diff(path_height)).max()
+            if elevation > 1:
+                path_height[:3] = path_height[:3].mean()
+                path_height[-3:] = path_height[-3:].mean()
 
-            while any(abs(h2 - h1) > 1 for h2, h1 in zip(path_height[1:], path_height[:-1])):
+            while elevation > 1:
                 changed = True
-                for i in range(2, len(path_height) - 2):
-                    if not self.__fluids.is_water(path[i]):
-                        path_height[i] = sum(path_height[i - 2: i + 3]) / 5
-                path_height[1] = sum(path_height[:3]) / 3
-                path_height[-2] = sum(path_height[-3:]) / 3
-                new_value = max([abs(h2 - h1) for h2, h1 in zip(path_height[1:], path_height[:-1])])
+                # convolving outside kernel edges works bad
+                path_height[3:-3] = numpy.convolve(path_height, smoothing_kernel, 'valid')
+                new_elevation = abs(numpy.diff(path_height)).max()
 
-                if new_value >= prev_value:
+                if new_elevation >= elevation:
                     break
                 else:
-                    prev_value = new_value
+                    elevation = new_elevation
+
             if changed:
                 path_height = [int(round(_)) for _ in path_height]
                 self.__maps.height_map.update(path, path_height)

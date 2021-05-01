@@ -20,11 +20,10 @@ set_blocks = set()
 
 
 def setBlock(point: Point, blockstate: str):
-    if blockstate not in set_blocks:
-        print(blockstate)
-        set_blocks.add(blockstate)
-    setBlockDefault(point.x, point.y, point.z, blockstate)
-    # print(setBlockDefault(point.x, point.y, point.z, blockstate))
+    res = setBlockDefault(point.x, point.y, point.z, blockstate)
+    if res:
+        for res in filter(lambda _: len(_) > 1, res.split('\n')):
+            print(res)
 
 
 class BlockAPI:
@@ -525,6 +524,8 @@ class BlockAPI:
         RedstoneBlock = "redstone_block"
         RedstoneLamp = "redstone_lamp"
         RedstoneOre = "redstone_ore"
+        RedstoneTorch = "redstone_torch"
+        Repeater = "repeater"
         RepeatingCommandBlock = "repeating_command_block"
         RespawnAnchor = "respawn_anchor"
         RoseBush = "rose_bush"

@@ -80,25 +80,20 @@ if __name__ == '__main__':
     t0 = time()
     print("Hello Settlers!")
     # get & parse building zone
-    build_area = BuildArea(interfaceUtils.requestBuildArea())
-    level = WorldSlice((build_area.x, build_area.z, build_area.width, build_area.length))
-    t1 = time()
-    print("Import du level", t1 - t0)
-    # analyze the terrain
-    terrain = TerrainMaps(level, build_area)
-    t2 = time()
-    print("Parsing du level", t2 - t1)
+    terrain = TerrainMaps.request()
+    # exit(0)
 
     settlement = FlatSettlement(terrain)
     settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
     settlement.init_road_network()  # define outside connections
+    # exit(0)
     t2 = time()
     settlement.build_skeleton(options[option_time_limit], options[option_visu])  # define buildings list and seed them
     print("calcul du squelette", time() - t2)
-    # try:
-    #     settlement.define_parcels()     # define parcels around seeds
-    # except RuntimeWarning:
-    #     pass
-    # settlement.generate(terrain, options[option_debug])      # build buildings on parcels
+    try:
+        settlement.define_parcels()     # define parcels around seeds
+    except RuntimeWarning:
+        pass
+    settlement.generate(terrain, options[option_debug])      # build buildings on parcels
     print('{} seconds of execution'.format(time() - t0))
 
