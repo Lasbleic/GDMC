@@ -10,8 +10,8 @@ from utils import Point, WorldSlice, BoundingBox, Iterable, manhattan
 from utils.gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
 
 alterated_pos = set()
-def setBlock(point: Point, blockstate: str):
-    res = setBlockDefault(point.x, point.y, point.z, blockstate, 1)
+def setBlock(point: Point, blockstate: str, buffer_size=50):
+    res = setBlockDefault(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
     if res:
         for res in filter(lambda _: len(_) > 1, res.split('\n')):

@@ -7,6 +7,7 @@ from numba.core.types import UniTuple, Set as nbSet, string
 from terrain import HeightMap
 from terrain.map import Map
 from utils import *
+from utils.misc_objects_functions import _in_limits
 
 
 class TreesMap(Map):
@@ -95,12 +96,6 @@ def _is_trunk(block: str) -> bool:
 @numba.njit(cache=True)
 def _is_tree(bid: str) -> bool:
     return _is_trunk(bid) or '_leaves' in bid or 'mushroom_block' in bid
-
-
-@numba.njit
-def _in_limits(xyz0: Tuple[int, int, int], width, length):
-    x0, y0, z0 = xyz0
-    return 0 <= x0 < width and 0 <= z0 < length
 
 
 # @numba.njit(b1(UniTuple(i8, 3), string, nbSet(UniTuple(i8, 3))))

@@ -5,6 +5,7 @@ Village skeleton growth
 from numpy import argmin
 from statistics import mean
 
+from building_seeding.settlement_seeding import Districts
 from terrain import TerrainMaps
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.interest.pre_processing import VisuHandler
@@ -16,19 +17,18 @@ from utils import *
 
 class VillageSkeleton:
 
-    def __init__(self, scenario, maps, ghost_position, parcel_list):
-        # type: (str, TerrainMaps, Point, List[Parcel]) -> VillageSkeleton
+    def __init__(self, scenario: str, maps: TerrainMaps, districts: Districts, parcel_list: List[Parcel]):
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
-        self.ghost = ghost_position
+        self.ghost = districts.town_centers[0]
         buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
         self.building_iterator = BuildingPool(buildable_surface)
         self.__parcel_list = parcel_list
         self.parcel_size = MIN_PARCEL_SIDE
 
         # parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
-        self.__interest = InterestSeeder(maps, parcel_list, scenario)
+        self.__interest = InterestSeeder(maps, districts, parcel_list, scenario)
 
     def add_parcel(self, seed, building_type):
         if isinstance(seed, Point):

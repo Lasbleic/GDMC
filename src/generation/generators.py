@@ -222,6 +222,7 @@ class CropGenerator(MaskedGenerator):
     def _gen_animal_farm(self, level, height_map, palette, animal=None):
         # type: (MCLevel, array, HousePalette, str) -> None
         # todo: abreuvoir + herbe + abri + terrain adaptability
+        # todo: surround water with trapdoors to avoid leaks
         if not animal:
             animal = choice(["cow", "pig", "chicken", "sheep"])
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
@@ -273,6 +274,8 @@ class CropGenerator(MaskedGenerator):
 
         # each water source irrigates a 9x9 flat zone
         water_source_count = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)
+        if self.width <= 3 or self.length <= 3:
+            water_source_count = 0
         water_sources = set()
         for _ in range(water_source_count):
             xs, zs = x0 + randint(1, self.width - 2), z0 + randint(1, self.length - 2)
@@ -455,7 +458,7 @@ class WindmillGenerator(Generator):
         box.translate(dy=31, inplace=True)
         windmill_nbt = StructureNBT('gdmc_windmill.nbt')
         windmill_nbt.build(*box.origin)
-        sendBlocks(0, 0, 0)
+        sendBlocks()
         print(runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]'))
 
 

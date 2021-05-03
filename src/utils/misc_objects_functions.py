@@ -1,5 +1,7 @@
 from os.path import realpath, sep
 from random import random
+from numba import njit
+from typing import Tuple
 
 
 def bernouilli(success_rate=.5):
@@ -27,6 +29,7 @@ def argmin(values, key=None):
             v0, k0 = rec_argmin(sub_values[:L])
             v1, k1 = rec_argmin(sub_values[L:])
             return (v0, k0) if k0 <= k1 else (v1, k1)
+
     return rec_argmin(values)[0]
 
 
@@ -44,6 +47,7 @@ def argmax(values, key=None):
             v0, k0 = rec_argmax(sub_values[:L])
             v1, k1 = rec_argmax(sub_values[L:])
             return (v0, k0) if k0 >= k1 else (v1, k1)
+
     return rec_argmax(values)[0]
 
 
@@ -79,6 +83,14 @@ def sym_range(v, dv, vmax=None):
         raise ValueError("Expected dv to be half and integer, found {}".format(dv))
     v0, v1 = pos_bound(v0, vmax), pos_bound(v1, vmax)
     return range(int(v0), int(v1))
+
+
+
+@njit
+def _in_limits(xyz0: Tuple[int, int, int], width, length):
+    x0, y0, z0 = xyz0
+    return 0 <= x0 < width and 0 <= z0 < length
+
 
 # class TransformBox(BoundingBox):
 #     """
@@ -258,7 +270,8 @@ def raytrace(xyz1, xyz2):
     output.append(np)
     return output
 
+
 if __name__ == '__main__':
     l = [-1, 3, -5, 9, 6]
     print(l, argmin(l), argmax(l))
-    print(argmax(l, lambda v: v**2))
+    print(argmax(l, lambda v: v ** 2))

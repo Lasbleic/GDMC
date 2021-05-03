@@ -64,8 +64,9 @@ class HeightMap(Map):
         for p, h in zip(points, heights):
             if self.upper_height(p) == self[p]:
                 self.__air_height._values[p.x, p.z] = h
+            if self.lower_height(p) == self[p]:
+                self.__ocean_floor._values[p.x, p.z] = h
             self._values[p.x, p.z] = h
-            # self.__ocean_floor.__values[p.x, p.z] = h
 
     @staticmethod
     def __calcGoodHeightmap(world_slice):

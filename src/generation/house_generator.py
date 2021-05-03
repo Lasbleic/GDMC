@@ -2,6 +2,7 @@
 
 from generation.generators import *
 # from pymclevel import MCLevel, MCSchematic
+from interfaceUtils import getBlock
 from utils import bernouilli, Direction
 
 
@@ -387,10 +388,12 @@ class _WallSymbol(Generator):
                 self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level: WorldSlice, palette: HousePalette):
+        # todo: locate windows better
+        sendBlocks()
         box = self._box
         entry = Point(door_x, door_z)
         if self.length > 1:
-            is_win = [int(level.getBlockAt((box.minx, box.miny+1, box.minz+_)) == palette['window']) for _ in range(box.length)]
+            is_win = [int(getBlock(box.minx, box.miny+1, box.minz+_) == palette['window']) for _ in range(box.length)]
             door_val = [euclidean(entry, Point(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
             # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
             door_z = argmin(door_val)
@@ -401,7 +404,7 @@ class _WallSymbol(Generator):
                 door_box.expand(Direction.of(0, 0, 1), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         else:
-            is_win = [int(level.getBlockAt((box.minx+_, box.miny+1, box.minz)) == palette['window']) for _ in range(box.width)]
+            is_win = [int(getBlock(box.minx+_, box.miny+1, box.minz) == palette['window']) for _ in range(box.width)]
             door_val = [euclidean(entry, Point(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.width)]
             door_x = argmin(door_val)
             door_box = TransformBox(box.origin + (door_x, 0, 0), (1, box.height, 1))

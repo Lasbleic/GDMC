@@ -241,20 +241,20 @@ class RoadNetwork:
     def generate(self, level):
         # type: (WorldSlice) -> None
         hm = self.__all_maps.height_map  # type: terrain.HeightMap
-        self.__generator.generate(level, hm.box_height(self.__all_maps.box, False))
+        self.__generator.generate(level, hm[:])
 
     def __update_distance_map(self, road, force_update=False):
         self.dijkstra(road, self.lambda_max, force_update)
 
     def road_build_cost(self, src_point, dest_point):
-        value = 1
+        value = scale = euclidean(src_point, dest_point)
         # if we don't have access to terrain info
         if self.__all_maps is None:
             return value
 
         # if dest is road, no additional cost
         if self.is_road(dest_point):
-            return 0.2
+            return scale * .2
 
         # if dest_point is an obstacle, return inf
         is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
@@ -265,8 +265,8 @@ class RoadNetwork:
         # specific cost to build on water
         if self.__all_maps.fluid_map.is_water(dest_point, margin=MIN_DIST_TO_RIVER):
             if not self.__all_maps.fluid_map.is_water(src_point):
-                return BRIDGE_COST
-            return BRIDGE_UNIT_COST
+                return scale * BRIDGE_COST
+            return scale * BRIDGE_UNIT_COST
 
         # discount to get roads closer to water
         src_water = self.__all_maps.fluid_map.water_distance(src_point)

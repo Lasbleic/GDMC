@@ -10,6 +10,7 @@ from numpy.random import geometric, normal
 
 from building_seeding import Parcel, VillageSkeleton, BuildingType
 from building_seeding.parcel import MaskedParcel
+from building_seeding.settlement_seeding import Districts, min_spanning_tree
 from generation.building_palette import get_biome_palette
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
 from terrain import TerrainMaps
@@ -20,18 +21,18 @@ MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external con
 SETTLEMENT_ACCESS_DIST = 25  # maximum distance from settlement center to road net
 
 
-class FlatSettlement:
+class Settlement:
     """
     Intermediate project: generate a realistic village on a flat terrain
     """
     def __init__(self, maps):
-        # type: (TerrainMaps) -> FlatSettlement
+        # type: (TerrainMaps) -> Settlement
         self._maps = maps  # type: TerrainMaps
+        self.districts = Districts(self._maps.area)
         self._origin = maps.area.origin
         self._center: Point = Point(0, 0)
         self._road_network = self._maps.road_network
         self._parcels: List[Parcel] = []
-        self._village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.town_center, self._parcels)
 
     def __random_border_point(self):
         # type: () -> Point
@@ -101,10 +102,11 @@ class FlatSettlement:
             else:
                 stp_thresh *= 1.1
         self._parcels.append(Parcel(self._center, BuildingType().ghost, self._maps))
-        # self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
+        self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
 
     def build_skeleton(self, time_limit, do_visu=False):
-        self._village_skeleton.grow(time_limit, do_visu)
+        village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.districts, self._parcels)
+        village_skeleton.grow(time_limit, do_visu)
         # for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
         #     self._parcels.remove(parcel)
 
@@ -203,3 +205,14 @@ class FlatSettlement:
     @property
     def limits(self):
         return self._maps.area
+
+    def build_districts(self, **kwargs):
+        self.districts.build(self._maps, **kwargs)
+
+        main_roads = min_spanning_tree(self.districts.seeds)
+        for p1, p2 in main_roads:
+            self._road_network.create_road(p1, p2)
+
+        for town_center in self.districts.town_centers:
+            self._parcels.append(Parcel(town_center, BuildingType().ghost, self._maps))
+            self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)

@@ -91,5 +91,7 @@ class TerrainMaps:
             x, z = xa - self.area.x, za - self.area.z
             ya = self.height_map.upper_height(x, z) + 1
             for y in range(self.height_map.lower_height(x, z), ya):
-                setBlock(Point(xa, za, y), self.level.getBlockAt((xa, y, za)))
+                setBlock(Point(xa, za, y), self.level.getBlockAt((xa, y, za)), 1000)
             runCommand(f'fill {xa} {ya} {za} {xa} {255} {za} minecraft:air')
+        from interfaceUtils import sendBlocks
+        sendBlocks()

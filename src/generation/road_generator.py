@@ -49,19 +49,15 @@ class RoadGenerator(Generator):
                         # if x, z is a road point or has already been computed, no need to do it now
                         continue
                     if not self.__fluids.is_water(x, z):
-                        distance = abs(road_block.x - x) + abs(road_block.z - z)
-                        prob = distance / (8 * road_width)
-                        # if not bernouilli(prob):
-                        if True:
-                            y, b = self.__compute_road_at(x, z, height_map, road_block)
-                            if b not in palette_network:
-                                b_id = len(palette_network) + 1
-                                palette_network[b] = b_id
-                                network_palette[b_id] = b
-                            else:
-                                b_id = palette_network[b]
-                            network[x, z] = b_id
-                            road_height_map[x, z] = y
+                        y, b = self.__compute_road_at(x, z, height_map)
+                        if b not in palette_network:
+                            b_id = len(palette_network) + 1
+                            palette_network[b] = b_id
+                            network_palette[b_id] = b
+                        else:
+                            b_id = palette_network[b]
+                        network[x, z] = b_id
+                        road_height_map[x, z] = y
 
         for x in range(self.width):
             for z in range(self.length):
@@ -69,11 +65,10 @@ class RoadGenerator(Generator):
                     y, b_id = road_height_map[x, z], network[x, z]
                     b = network_palette[b_id]
                     xa, za = x + x0, z + z0
+                    fillBlocks(TransformBox((xa, y, za), (1, 4, 1)), BlockAPI.blocks.Air)
                     setBlock(Point(xa, za, y), b)
-                    if "slab" not in b and bernouilli(0.1):
+                    if "slab" not in b and "stair" not in b and bernouilli(0.1):
                         place_torch(terrain.level, xa, y + 1, za)
-                    else:
-                        fillBlocks(TransformBox((xa, y + 1, za), (1, 2, 1)), BlockAPI.blocks.Air)
                     h = height_map[x, z]
                     if h < y:
                         pole_box = TransformBox((xa, h, za), (1, y-h, 1))
@@ -82,11 +77,13 @@ class RoadGenerator(Generator):
         Generator.generate(self, terrain, height_map)  # generate bridges
         print("OK")
 
-    def __compute_road_at(self, x, z, height_map, r):
-        # type: (int, int, array, Point) -> (int, str)
+    def __compute_road_at(self, x, z, height_map):
+        # type: (int, int, array) -> (int, str)
         material = choice(list(self.stony_palette.keys()), p=list(self.stony_palette.values()))
 
         stair_material = choice([BlockAPI.blocks.Cobblestone, BlockAPI.blocks.StoneBrick, BlockAPI.blocks.Stone])
+
+        # Computes local road height depending of the height of road blocks +-1 block away
         surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
         surround_alt = {Point(x1, z1): height_map[x1, z1] for (x1, z1) in surround_iter if
                         self.__network.is_road(x1, z1) and ((x1 == x) or (z1 == z) or not self.__network.is_road(x, z))}
@@ -174,15 +171,10 @@ class RoadGenerator(Generator):
 
         else:
             # todo: debug why end can't be computed sometimes
-            try:
-                begin = next(filter(lambda v: abs(path_height[v+1]-path_height[v] > 1), range(len(path_height)-1)))
-            except StopIteration:
-                begin = 0
-
-            try:
-                end = next(filter(lambda v: abs(path_height[v-1]-path_height[v] > 1), range(len(path_height)-1, 0, -1)))
-            except StopIteration:
-                end = len(path_height) - 1
+            elevation = numpy.abs(numpy.diff(path_height))
+            length = len(elevation)
+            begin = next(i for i in range(length) if elevation[i] > 1)
+            end = next(length-i for i in range(length) if elevation[length-i-1] > 1)
             self.children.append(RampStairs(path[begin], path[end], self.__maps.height_map))
             for _ in range(end-begin-1):
                 path.pop(begin)

@@ -2,7 +2,10 @@ from numpy.random import choice
 
 from numba.core.types import UniTuple
 from numba import i8, njit, jit
+import numba
 import numpy as np
+
+from utils.misc_objects_functions import _in_limits
 
 maxint = 1 << 32
 
@@ -20,19 +23,15 @@ def a_star(root_point, ending_point, dimensions, cost_function):
     -------
     best first path from root_point to ending_point if any exists
     """
-    from time import time
-    t0 = time()
     distance_map, neighbors, predecessor_map = astar_env = _init(root_point, dimensions)
 
     clst_neighbor = root_point
-    t0 = time()
     n_steps = 0
     while len(neighbors) > 0 and (clst_neighbor != ending_point):
         n_steps += 1
         clst_neighbor = _closest_neighbor(astar_env, ending_point)
         neighbors.remove(clst_neighbor)
         _update_distances(astar_env + (cost_function,), dimensions, clst_neighbor)
-    # print(f"Fast a* explored {n_steps} points in {time() - t0} seconds")
 
     if clst_neighbor != ending_point:
         return []
@@ -94,15 +93,8 @@ def _update_distance(env, updated_point, neighbor):
 @jit(forceobj=True, cache=True)
 def _update_distances(env, dims, point):
     x, z = point  # type: int, int
-    width, length = dims
-    if x + 1 < width:
-        _update_distance(env, point, (x + 1, z))
-    if x - 1 >= 0:
-        _update_distance(env, point, (x - 1, z))
-    if z + 1 < length:
-        _update_distance(env, point, (x, z + 1))
-    if z - 1 >= 0:
-        _update_distance(env, point, (x, z - 1))
+    for xz in _exploration_neighbourhood(x, z, *dims):
+        _update_distance(env, point, xz)
 
 
 def _path_to_dest(env, origin, destination):
@@ -113,3 +105,15 @@ def _path_to_dest(env, origin, destination):
         current_point = predecessor_map[current_point]
         path.append(current_point)
     return list(reversed(path))
+
+
+@njit(cache=True)
+def _exploration_neighbourhood(x, z, width, length):
+    neighbourhood = set()
+    for dx, dz in [(0, 1), (-1, 2), (0, 2), (1, 2)]:
+        for _ in numba.prange(4):
+            dx, dz = dz, -dx
+            x0, z0 = x+dx, z+dz
+            if _in_limits((x0, 0, z0), width, length):
+                neighbourhood.add((x0, z0))
+    return neighbourhood
