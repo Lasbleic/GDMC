@@ -32,7 +32,7 @@ class Districts:
     def build(self, maps: TerrainMaps, **kwargs):
         visualize = kwargs.get("visualize", False)
         X, Xu = self.__build_data(maps)
-        max_clusters = min(16, self.width * self.length // 100**2)
+        max_clusters = min(16, self.width * self.length // 80**2)
         if max_clusters < 2:
             kwargs["n_clusters"] = 1
         print(f"there'll be max {max_clusters} districts")
@@ -143,6 +143,10 @@ class Districts:
         # store results
         self.district_map = Map(neighborhood)
         self.score_map = Map(values)
+
+    @property
+    def n_districts(self):
+        return len(self.seeds)
 
 
 def min_spanning_tree(points: List[Point]) -> Set[Tuple[Point, Point]]:

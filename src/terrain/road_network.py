@@ -72,6 +72,9 @@ class RoadNetwork:
                     closest_node = node
                     min_distance = euclidean(node, point)
 
+        if not self.road_blocks:
+            return closest_node
+
         # try to promote an extremity to node
         alt_edge = [_ for _ in self.road_blocks if _ not in self.nodes]
         alt_dist = [euclidean(_, point) for _ in alt_edge]

@@ -49,14 +49,32 @@ class Settlement:
         # return Point2D(x, z)
         return choice(self._maps.fluid_map.external_connections)
 
+    def build_districts(self, **kwargs):
+        self.districts.build(self._maps, **kwargs)
+
+        # mark town centers
+        for town_center in self.districts.town_centers:
+            self._parcels.append(Parcel(town_center, BuildingType().ghost, self._maps))
+            self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
+
+        # init road net
+        if self.districts.n_districts >= 2:
+            main_roads = min_spanning_tree(self.districts.seeds)
+            for p1, p2 in main_roads:
+                self._road_network.create_road(p1, p2)
+        else:
+            self._road_network.create_road(self.districts.seeds[0], self.districts.seeds[0])
+        self.init_road_network()
+
     def init_road_network(self):
-        out_connections = [self.__random_border_point()]
+        # out_connections = [self.__random_border_point()]
         max_road_count = max(1, min(self.limits.width, self.limits.length) // MEAN_ROAD_COVERED_SURFACE)
-        logging.debug('Max road count: {}'.format(max_road_count))
+        # logging.debug('Max road count: {}'.format(max_road_count))
         road_count = min(geometric(1./max_road_count), max_road_count*3//2)
-        logging.debug('New settlement will have {} roads B)'.format(road_count))
-        logging.debug('First border point @{}'.format(str(out_connections[0])))
-        self._road_network.create_road(self._parcels[0].entry_point, out_connections[0])
+        logging.debug('New settlement will have {} external connections B)'.format(road_count))
+        # logging.debug('First border point @{}'.format(str(out_connections[0])))
+        # self._road_network.create_road(self._parcels[0].entry_point, out_connections[0])
+        out_connections = [Point(self.limits.width//2, self.limits.length//2)]
 
         for road_id in range(road_count):
             min_distance_to_roads = min(self.limits.width, self.limits.length) / (road_id+1)
@@ -74,35 +92,7 @@ class Settlement:
                 else:
                     logging.debug('\tDismissed point {} at {}m < {}m'.format(*log_args))
                     min_distance_to_roads *= 0.9
-            # update road network
-            # if road_id == 0:
-            #     self._road_network.create_road(out_connections[0], out_connections[1])
-            # else :
             self._road_network.connect_to_network(out_connections[-1])
-
-    def init_town_center(self):
-        stp_thresh = 1
-        while True:
-            mean_x = self.limits.width / 2
-            dx = normal(mean_x, self.limits.width / 8)
-            dx = int(min(self.limits.width-1, max(0, dx)))
-
-            mean_z = self.limits.length / 2
-            dz = normal(mean_z, self.limits.length / 8)
-            dz = int(min(self.limits.length-1, max(0, dz)))
-
-            random_center = Point(dx, dz)
-            distance = self._road_network.get_distance(random_center)
-            if self._maps.fluid_map.is_close_to_fluid(random_center) or distance < MIN_PARCEL_SIDE:
-                continue
-            elif self._maps.height_map.steepness(random_center.x, random_center.z) < stp_thresh:
-                self._center = random_center
-                logging.debug('Settlement center placed @{}, {}m away from road'.format(str(random_center), distance))
-                break
-            else:
-                stp_thresh *= 1.1
-        self._parcels.append(Parcel(self._center, BuildingType().ghost, self._maps))
-        self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
 
     def build_skeleton(self, time_limit, do_visu=False):
         village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.districts, self._parcels)
@@ -206,13 +196,51 @@ class Settlement:
     def limits(self):
         return self._maps.area
 
-    def build_districts(self, **kwargs):
-        self.districts.build(self._maps, **kwargs)
+    def terraform(self):
+        """
+        Smooth out the terrain around locations that will be built on
+        """
+        import cv2
+        from numpy import uint8
+        base_height = uint8(self._maps.height_map[:])
+        smooth_height = cv2.medianBlur(base_height, 7)
 
-        main_roads = min_spanning_tree(self.districts.seeds)
-        for p1, p2 in main_roads:
-            self._road_network.create_road(p1, p2)
+        # Compute constructable locations: road net + parcels
+        mask = zeros(base_height.shape)
 
-        for town_center in self.districts.town_centers:
-            self._parcels.append(Parcel(town_center, BuildingType().ghost, self._maps))
-            self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
+        for pos in self._road_network.road_blocks:
+            x0 = max(pos.x - 2, 0)
+            x1 = min(pos.x + 3, self.limits.width)
+            z0 = max(pos.z - 2, 0)
+            z1 = min(pos.z + 3, self.limits.length)
+            mask[x0:x1, z0:z1] = 1
+
+        for parcel in self._parcels:
+            x0 = max(parcel.minx - 2, 0)
+            x1 = min(parcel.maxx + 3, self.limits.width)
+            z0 = max(parcel.minz - 2, 0)
+            z1 = min(parcel.maxz + 3, self.limits.length)
+            mask[x0:x1, z0:z1] = 1
+        del x0, x1, z0, z1, parcel, pos
+
+        mask[self._maps.fluid_map.water > 0] = 0  # discount water
+
+        for x, z in filter(lambda u: mask[u] and base_height[u] != smooth_height[u],
+                           product(range(self.limits.width), range(self.limits.length))):
+            xa = x + self.limits.x
+            za = z + self.limits.z
+            ya = base_height[x, z]
+            new_y = smooth_height[x, z]
+            self._maps.height_map.update([Point(x, z)], [new_y])
+            surface_block = self._maps.level.getBlockAt((xa, ya, za))
+            setBlock(Point(xa, za, new_y), surface_block)
+
+            if new_y > ya:
+                below_block = self._maps.level.getBlockAt((xa, ya - 1, za))
+                box = TransformBox((xa, ya, za), (1, new_y - ya, 1))
+                fillBlocks(box, below_block)
+
+            elif new_y < ya:
+                # actually an else block
+                box = TransformBox((xa, new_y + 1, za), (1, ya - new_y - 1, 1))
+                fillBlocks(box, BlockAPI.blocks.Air)

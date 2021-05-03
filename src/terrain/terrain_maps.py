@@ -87,10 +87,10 @@ class TerrainMaps:
         from utils import setBlock, Point
         from utils.gdmc_http_client_python.interfaceUtils import runCommand
         from utils.block_utils import alterated_pos
-        for xa, za in alterated_pos:
+        for xa, za in filter(lambda xz: self.in_limits(Point(xz[0], xz[1]), True), alterated_pos):
             x, z = xa - self.area.x, za - self.area.z
             ya = self.height_map.upper_height(x, z) + 1
-            for y in range(self.height_map.lower_height(x, z), ya):
+            for y in range(self.height_map.lower_height(x, z)-3, ya):
                 setBlock(Point(xa, za, y), self.level.getBlockAt((xa, y, za)), 1000)
             runCommand(f'fill {xa} {ya} {za} {xa} {255} {za} minecraft:air')
         from interfaceUtils import sendBlocks

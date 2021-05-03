@@ -319,7 +319,7 @@ class CropGenerator(MaskedGenerator):
             setBlock(Point(x, z, y), b)
         h = height_map
         irrigation_height = min(h[h.shape[0] // 2, h.shape[1] // 2], h.max()) + 1 - self._box.miny
-        irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, irrigation_height, 1))
+        irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, 1, 1))
         fillBlocks(irrigation_box, BlockAPI.blocks.Water)
 
     def __terraform(self, height_map):
@@ -413,10 +413,8 @@ class DoorGenerator(Generator):
         fillBlocks(self._box.translate(self._direction).split(dy=2)[0], BlockAPI.blocks.Air, ground_blocks)
 
     def _resource(self, x, y, z, palette):
-        if y == self._box.miny:
-            # block_name = '{} Door (Lower, Unopened, {})'.format(self._material, -self._direction)
-            block_name = BlockAPI.getDoor(palette['door'], half="lower", facing=(-self._direction).name.lower())
-        elif y == self._box.miny + 1:
+        if self._box.miny <= y <= self._box.miny + 1:
+            half = "lower" if y == self._box.miny else "upper"
             if self._box.surface == 1:
                 hinge = 'left'
             else:
@@ -426,9 +424,7 @@ class DoorGenerator(Generator):
                 left_x = int(floor(mean_x + 0.5 * norm_dir.x))  # floored because int(negative float) rounds up
                 left_z = int(floor(mean_z + 0.5 * norm_dir.z))
                 hinge = 'left' if (x == left_x and z == left_z) else 'right'
-            # block_name = '{} Door (Upper, {} Hinge, Unpowered)'.format(self._material, hinge)
-            block_name = BlockAPI.getDoor(palette['door'], half="upper", hinge=hinge,
-                                          facing=(-self._direction).name.lower())
+            block_name = BlockAPI.getDoor(palette['door'], half=half, hinge=hinge, facing=(-self._direction).name.lower())
         else:
             block_name = palette['wall']
         return block_name

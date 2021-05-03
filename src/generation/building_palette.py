@@ -51,7 +51,7 @@ dark_oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.DarkOakW
                                        b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'dark_oak')
 
 spruce_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
-                                     'Light Gray Stained Glass Pane', 'gable', b.StoneBrick, 'spruce')
+                                     b.LightGrayStainedGlassPane, 'gable', b.StoneBrick, 'spruce')
 
 acacia_house_palette1 = HousePalette(b.Cobblestone, b.BirchPlanks, b.AcaciaWood, b.AcaciaPlanks,
                                      b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'acacia')

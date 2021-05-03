@@ -9,7 +9,7 @@ from flat_settlement import Settlement
 from terrain import TerrainMaps
 from utils import interfaceUtils, WorldSlice, BuildArea
 
-logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%H-%M-%S', gmtime())), level=logging.INFO)
+logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%H-%M-%S', gmtime())), level=logging.DEBUG)
 
 option_time_limit = "time_limit"  # "10' limit"
 option_debug = "debug"  # "Debug mode: does not catch exceptions in generation"
@@ -18,7 +18,7 @@ option_visu = "visualization"  # "Visualization tool: plots iterations of buildi
 if __name__ == '__main__':
     options = {
         option_time_limit: "600",
-        option_debug: True,
+        option_debug: False,
         option_visu: False
     }
     t0 = time()
@@ -37,6 +37,7 @@ if __name__ == '__main__':
         settlement.define_parcels()  # define parcels around seeds
     except RuntimeWarning:
         pass
+    settlement.terraform()
     settlement.generate(terrain, options[option_debug])      # build buildings on parcels
     print('{} seconds of execution'.format(time() - t0))
 

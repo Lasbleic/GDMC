@@ -94,6 +94,7 @@ class ProcHouseGenerator(Generator):
         self.children[0].generate_door(door_direction, door_x, door_z, level, palette)
 
     def _generate_stairs(self, level, palette):
+        # todo
         pass
 
 
@@ -388,30 +389,31 @@ class _WallSymbol(Generator):
                 self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level: WorldSlice, palette: HousePalette):
-        # todo: locate windows better
         sendBlocks()
         box = self._box
         entry = Point(door_x, door_z)
         if self.length > 1:
-            is_win = [int(getBlock(box.minx, box.miny+1, box.minz+_) == palette['window']) for _ in range(box.length)]
+            is_win = [int(getBlock(box.minx, box.miny+1, box.minz+_).endswith(palette['window'])) for _ in range(box.length)]
+            if sum(is_win) == 0: is_win = [1 for _ in range(len(is_win))]
             door_val = [euclidean(entry, Point(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
             # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
             door_z = argmin(door_val)
             door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
             if door_z > 0 and is_win[door_z - 1]:
-                door_box.expand(Direction.of(0, 0, -1), inplace=True)
+                door_box.expand(Direction.of(dz=-1), inplace=True)
             elif door_z < box.length - 1 and is_win[door_z + 1]:
-                door_box.expand(Direction.of(0, 0, 1), inplace=True)
+                door_box.expand(Direction.of(dz=1), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         else:
-            is_win = [int(getBlock(box.minx+_, box.miny+1, box.minz) == palette['window']) for _ in range(box.width)]
+            is_win = [int(getBlock(box.minx+_, box.miny+1, box.minz).endswith(palette['window'])) for _ in range(box.width)]
+            if sum(is_win) == 0: is_win = [1 for _ in range(len(is_win))]
             door_val = [euclidean(entry, Point(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.width)]
             door_x = argmin(door_val)
             door_box = TransformBox(box.origin + (door_x, 0, 0), (1, box.height, 1))
             if door_x > 0 and is_win[door_x - 1]:
-                door_box.expand(Direction.of(-1, 0, 0), inplace=True)
+                door_box.expand(Direction.of(dx=-1), inplace=True)
             elif door_x < box.width - 1 and is_win[door_x + 1]:
-                door_box.expand(Direction.of(1, 0, 0), inplace=True)
+                door_box.expand(Direction.of(dx=1), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
 
 
