@@ -9,10 +9,11 @@ from itertools import product
 from typing import List
 
 import numpy as np
+from numba import njit
 
 from building_seeding import Parcel
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from building_seeding.interest.math_function import attraction_repulsion
+from building_seeding.interest.math_function import attraction_repulsion, X_ARRAY, Z_ARRAY
 from utils import Point, euclidean
 
 
@@ -41,11 +42,22 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parc
 
 
 def sociability(building_type, scenario, settlement_seeds, size):
-
     sociability_map = np.zeros(size)
 
-    for x, z, in product(range(size[0]), range(size[1])):
+    # for x, z, in product(range(size[0]), range(size[1])):
+    #     sociability_map[x, z] = local_sociability(x, z, building_type, scenario, settlement_seeds)
+    for seed in settlement_seeds:
+        neighbor_type, pos = seed.building_type, seed.center
+        lambdas = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][building_type.name + "-" + neighbor_type.name]
+        sociability_map += sociability_one_seed(*lambdas, pos.x, pos.z, size)
 
-        sociability_map[x, z] = local_sociability(x, z, building_type, scenario, settlement_seeds)
+    return sociability_map / len(settlement_seeds)
 
-    return sociability_map
+
+@njit()
+def sociability_one_seed(l0, l1, l2, x, z, size):
+    X = np.full(size, x)
+    Z = np.full(size, z)
+    D = np.sqrt((X - X_ARRAY) ** 2 + (Z - Z_ARRAY) ** 2)
+    # return np.vectorize(lambda d: attraction_repulsion(d, l0, l1, l2))(D)
+    return attraction_repulsion(D, l0, l1, l2)

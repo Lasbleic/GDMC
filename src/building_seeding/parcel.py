@@ -21,9 +21,9 @@ class Parcel:
     def __init__(self, seed, building_type, mc_map):
         # type: (Point, BuildingType, terrain.TerrainMaps) -> Parcel
         self._center = seed
-        self._building_type = building_type
+        self.building_type: BuildingType = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
-        self._entry_point = self.__compute_entry_point()  # type: Point
+        self._entry_point = seed if building_type is BuildingType.ghost else self.__compute_entry_point()
         self._relative_box = None  # type: TransformBox
         self._box = None  # type: TransformBox
         self._mask = None
@@ -172,7 +172,7 @@ class Parcel:
 
     @property
     def generator(self):
-        gen = self._building_type.new_instance(self._box)  # type: Generator
+        gen = self.building_type.new_instance(self._box)  # type: Generator
         gen._entry_point = self._entry_point
         return gen
 
@@ -192,10 +192,6 @@ class Parcel:
     @property
     def entry_point(self):
         return self._entry_point
-
-    @property
-    def building_type(self):
-        return self._building_type
 
     @property
     def width(self):
@@ -308,7 +304,7 @@ class MaskedParcel(Parcel):
         try:
             return self.building_type.generator(self._box, self.entry_point, self._mask)  # type: MaskedGenerator
         except TypeError:
-            gen = self._building_type.new_instance(self._box)  # type: Generator
+            gen = self.building_type.new_instance(self._box)  # type: Generator
             gen._entry_point = self._entry_point
             return gen
 

@@ -38,7 +38,7 @@ class VillageSkeleton:
                 new_parcel = Parcel(seed, building_type, self.maps)
         elif isinstance(seed, Parcel):
             new_parcel = seed
-            new_parcel.building_type.copy(BuildingType().ghost)
+            new_parcel.building_type = BuildingType.ghost
         else:
             raise TypeError("Expected Point or Parcel, found {}".format(seed.__class__))
         self.__parcel_list.append(new_parcel)
@@ -64,13 +64,13 @@ class VillageSkeleton:
                     old_parcel = self.__parcel_list[index]
                     self.maps.obstacle_map.hide_obstacle(old_parcel.origin, old_parcel.mask, False)
                     block_parcel.mark_as_obstacle(self.maps.obstacle_map)
-                    block_parcel.building_type.copy(old_parcel.building_type)
+                    block_parcel.building_type = old_parcel.building_type
                     self.__parcel_list[index] = block_parcel
                 else:
                     # add a park or plaza in the new cycle
-                    self.add_parcel(block_parcel, BuildingType().ghost)
+                    self.add_parcel(block_parcel, BuildingType.ghost)
 
-    def grow(self, do_limit, do_visu):
+    def grow(self, time_limit: int, do_visu: bool):
         print("Seeding parcels")
         map_plots = VisuHandler(do_visu, self.maps, self.__parcel_list)
         build_iter = self.building_iterator
@@ -95,7 +95,7 @@ class VillageSkeleton:
             self.add_parcel(building_position, building_type)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
             # self.__handle_new_road_cycles(cycles)
-            if do_limit and time() - t0 >= 9 * 60:
+            if time_limit and time() - t0 >= time_limit:
                 print("Time limit reached: early stopping parcel seeding")
                 break
 
@@ -119,7 +119,7 @@ class CityBlock:
         parcel_shapes = Point(1, 1) + parcel_limits - parcel_origin
         parcel_mask = mask[(parcel_origin.x - origin.x): (parcel_origin.x - origin.x + parcel_shapes.x),
                            (parcel_origin.z - origin.z): (parcel_origin.z - origin.z + parcel_shapes.z)]
-        return MaskedParcel(parcel_origin, BuildingType(), self.__maps, parcel_mask)
+        return MaskedParcel(parcel_origin, BuildingType.ghost, self.__maps, parcel_mask)
 
     @property
     def minx(self):

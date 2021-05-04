@@ -52,11 +52,6 @@ class Settlement:
     def build_districts(self, **kwargs):
         self.districts.build(self._maps, **kwargs)
 
-        # mark town centers
-        for town_center in self.districts.town_centers:
-            self._parcels.append(Parcel(town_center, BuildingType().ghost, self._maps))
-            self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
-
         # init road net
         if self.districts.n_districts >= 2:
             main_roads = min_spanning_tree(self.districts.seeds)
@@ -65,6 +60,12 @@ class Settlement:
         else:
             self._road_network.create_road(self.districts.seeds[0], self.districts.seeds[0])
         self.init_road_network()
+
+        # mark town centers
+        for town_center in self.districts.town_centers:
+            self._parcels.append(Parcel(town_center, BuildingType.ghost, self._maps))
+            self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
+
 
     def init_road_network(self):
         # out_connections = [self.__random_border_point()]
@@ -94,7 +95,7 @@ class Settlement:
                     min_distance_to_roads *= 0.9
             self._road_network.connect_to_network(out_connections[-1])
 
-    def build_skeleton(self, time_limit, do_visu=False):
+    def build_skeleton(self, time_limit: int, do_visu: bool = False):
         village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.districts, self._parcels)
         village_skeleton.grow(time_limit, do_visu)
         # for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
@@ -221,7 +222,7 @@ class Settlement:
             z0 = max(parcel.minz - 2, 0)
             z1 = min(parcel.maxz + 3, self.limits.length)
             mask[x0:x1, z0:z1] = 1
-        del x0, x1, z0, z1, parcel, pos
+        # del x0, x1, z0, z1, parcel, pos
 
         mask[self._maps.fluid_map.water > 0] = 0  # discount water
 

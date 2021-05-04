@@ -1,106 +1,44 @@
 from __future__ import division, print_function
 
 import logging
+from enum import Enum
 
 from numpy.random import random, choice
 from typing import Dict
 
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
-from generation.generators import WoodTower, StoneTower
+from generation.generators import WoodTower, StoneTower, Generator
 from generation.plaza import PlazaGenerator
 from parameters import AVERAGE_PARCEL_SIZE
 
 
-class BuildingType:
+class BuildingType(Enum):
     """
-    Just a type of building, defined by a name and a generator
+    All types of buildings. Holds generator for each type. At the generation step, new_instance is called to instantiate
+    a new generator.
     """
+    ghost = PlazaGenerator
+    house = ProcHouseGenerator
+    crop = CropGenerator
+    windmill = WindmillGenerator
 
-    def __init__(self, name=None, generator=None):
-        self.name = name
-        self.generator = generator
-        if name is not None and isinstance(name, BuildingType):
-            self.copy(name)
+    def new_instance(self, box) -> Generator:
+        return self.value(box)
 
-    def new_instance(self, box):
-        if self.generator:
-            return self.generator(box)
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __eq__(self, other):
-        if isinstance(other, BuildingType):
-            return self.name == other.name
-        return False
+    @property
+    def generator(self):
+        return self.value
 
     def __str__(self):
-        return "Building type {}".format(self.name if self.name is not None else "undefined")
-
-    @property
-    def house(self):
-        self.name = 'house'
-        self.generator = ProcHouseGenerator
-        return self
-
-    @property
-    def crop(self):
-        self.name = 'crop'
-        self.generator = CropGenerator
-        return self
-
-    @property
-    def windmill(self):
-        self.name = 'windmill'
-        self.generator = WindmillGenerator
-        return self
-
-    @property
-    def ghost(self):
-        self.name = 'ghost'
-        self.generator = PlazaGenerator
-        return self
-
-    @property
-    def wood_tower(self):
-        self.name = 'wood_tower'
-        self.generator = WoodTower
-        return self
-
-    @property
-    def stone_tower(self):
-        self.name = 'stone_tower'
-        self.generator = StoneTower
-        return self
-
-    @staticmethod
-    def from_name(name):
-        if name == 'crop':
-            return BuildingType().crop
-        if name == 'house':
-            return BuildingType().house
-        if name == 'ghost':
-            return BuildingType().ghost
-        if name == 'windmill':
-            return BuildingType().windmill
-        if name == 'wood_tower':
-            return BuildingType().wood_tower
-        if name == 'stone_tower':
-            return BuildingType().stone_tower
-
-    def copy(self, other):
-        assert isinstance(other, BuildingType)
-        self.name = other.name
-        self.generator = other.generator
-        return self
+        return "Building type {}".format(self.name)
 
 
 class BuildingPool:
     def __init__(self, exploitable_surface):
         self._building_count = 0  # type: int
         self._settlement_limit = 0  # type: int
-        self.__current_type = BuildingType().house
+        self.__current_type: BuildingType = BuildingType.house
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
@@ -140,7 +78,7 @@ class BuildingPool:
             probs = transition_states.values()
             probs = [p / sum(probs) for p in probs]
             next_type = choice(types, p=probs)
-            self.__current_type = BuildingType.from_name(next_type)
+            self.__current_type = BuildingType[next_type]
         elif self._building_count >= self._settlement_limit:
             raise StopIteration
 

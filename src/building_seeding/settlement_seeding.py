@@ -10,8 +10,8 @@ from sklearn.metrics import silhouette_score
 
 from terrain import TerrainMaps
 from terrain.map import Map
-from utils import Point, product, manhattan, full, BuildArea, bernouilli
-from utils.misc_objects_functions import argmax
+from utils import Point, product, manhattan, full, BuildArea, bernouilli, euclidean
+from utils.misc_objects_functions import argmax, argmin
 
 
 class Districts:
@@ -32,17 +32,22 @@ class Districts:
     def build(self, maps: TerrainMaps, **kwargs):
         visualize = kwargs.get("visualize", False)
         X, Xu = self.__build_data(maps)
-        max_clusters = min(16, self.width * self.length // 80**2)
+        cluster_approx = np.sqrt(self.width * self.length) // 50
+        print("cluster approx", cluster_approx)
+        min_clusters = int(cluster_approx / 2)
+        max_clusters = int(np.ceil(cluster_approx * 1.3))
         if max_clusters < 2:
             kwargs["n_clusters"] = 1
-        print(f"there'll be max {max_clusters} districts")
+        print(f"there'll be between {min_clusters} and {max_clusters} districts")
+        min_clusters = max(2, min_clusters)
+        max_clusters = min(12, max_clusters)
 
         def select_best_model():
             if kwargs.get("n_clusters", 0):
                 return self.__kmeans(X, kwargs.get("n_clusters"), visualize)
 
             models, scores = [], []
-            for n_clusters in range(2, max_clusters + 1):
+            for n_clusters in range(max(2, min_clusters), max_clusters + 1):
                 model: KMeans = self.__kmeans(X, n_clusters, visualize)
                 models.append(model)
                 if X.shape[0] < 10000:
@@ -71,7 +76,9 @@ class Districts:
             cluster_size[label] = cluster.shape[0]
 
         centers = self.__scaler.inverse_transform(model.cluster_centers_ / self.__coord_scale)
-        self.seeds = [Point(int(round(_[0])), int(round(_[1]))) for _ in centers]
+        seeds = [Point(round(_[0]), round(_[1])) for _ in centers]
+        samples = [Point(Xu[i, 0], Xu[i, 1]) for i in range(Xu.shape[0])]
+        self.seeds = [argmin(samples, key=lambda sample: euclidean(seed, sample)) for seed in seeds]
 
         def select_town_clusters():
             built_districts = set()
@@ -92,7 +99,7 @@ class Districts:
     def __build_data(self, maps: TerrainMaps, coord_scale=1.15):
         n_samples = min(1e5, self.width * self.length)
         keep_rate = n_samples / (self.width * self.length)
-        Xu = np.array([[x, z, maps.height_map.lower_height(x, z), Districts.suitability(x, z, maps)]
+        Xu = np.array([[x, z, Districts.suitability(x, z, maps)]
                       for x, z in product(range(maps.width), range(maps.length))
                       if bernouilli(keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)])
         X = self.__scaler.fit_transform(Xu)

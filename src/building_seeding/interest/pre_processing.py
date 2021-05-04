@@ -231,7 +231,7 @@ if __name__ == '__main__':
     # from matplotlib import pyplot as plt, colors
     from terrain.road_network import *
     from utils import Point2D
-    from building_seeding.building_pool import BuildingType
+    from building_seeding.building_pool import BuildingType, BuildingType
     from building_seeding.interest.accessibility import accessibility
     # Accessibility example
 
@@ -250,7 +250,7 @@ if __name__ == '__main__':
 
     # Accessibility Map
 
-    access_net = accessibility(BuildingType().house, "Flat_scenario", road_net, N)
+    access_net = accessibility(BuildingType.house, "Flat_scenario", road_net, N)
     access_cmap = "jet"
     access_map = Map("accessibility_map", access_net, access_cmap, (-1, 1))
 

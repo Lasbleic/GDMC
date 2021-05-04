@@ -2,11 +2,15 @@
 Function used to compute interests
 """
 
-from numba import njit
-from numpy import log, sqrt, exp
+from numba import njit, vectorize
+import numpy as np
+from utils import BuildArea
 
+X_ARRAY = np.array([[x for z in range(BuildArea().length)] for x in range(BuildArea().width)])
+Z_ARRAY = np.array([[z for z in range(BuildArea().length)] for x in range(BuildArea().width)])
 
-@njit
+# @njit
+@vectorize(cache=True)
 def attraction_repulsion(d, lambda_min, lambda_0, lambda_max):
 
     if d < lambda_min:
@@ -16,8 +20,8 @@ def attraction_repulsion(d, lambda_min, lambda_0, lambda_max):
         res = 0
 
     else:
-        a = log(sqrt(2) - 1) / (lambda_min - lambda_0)
-        res = 2 * exp(-a * (d - lambda_0)) - exp(-2 * a * (d - lambda_0))
+        a = np.log(np.sqrt(2) - 1) / (lambda_min - lambda_0)
+        res = 2 * np.exp(-a * (d - lambda_0)) - np.exp(-2 * a * (d - lambda_0))
 
     return res
 
@@ -31,7 +35,7 @@ def balance(d, lambda_min, lambda_0, lambda_max):
     else:
         lambda_tilde = lambda_min if d < lambda_0 else lambda_max
         a = -1.1
-        res = (1 - a) * exp(- ((d - lambda_0) / (lambda_tilde - lambda_0)) ** 2 * log((a - 1) / (a + 1))) + a
+        res = (1 - a) * np.exp(- ((d - lambda_0) / (lambda_tilde - lambda_0)) ** 2 * np.log((a - 1) / (a + 1))) + a
 
     return res
 
