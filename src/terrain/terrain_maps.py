@@ -69,10 +69,9 @@ class TerrainMaps:
 
     @staticmethod
     def request():
-        from utils.gdmc_http_client_python.interfaceUtils import requestBuildArea
         from time import time
         print("Requesting build area...", end='')
-        build_area = BuildArea(requestBuildArea())
+        build_area = BuildArea()
         print(f"OK: {str(build_area)}")
         print("Requesting level...")
         t0 = time()

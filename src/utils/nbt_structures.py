@@ -19,7 +19,8 @@ deprecated_name = {
     "unlit_redstone_torch": b.RedstoneTorch,
     "unpowered_repeater": b.Repeater,
     "coarse_dirt_dirt": b.CoarseDirt,
-    "spruce_wooden_slab": b.SpruceSlab
+    "spruce_wooden_slab": b.SpruceSlab,
+    "standing_sign": b.OakSign
 }
 
 

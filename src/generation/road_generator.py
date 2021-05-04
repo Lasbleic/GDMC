@@ -117,7 +117,7 @@ class RoadGenerator(Generator):
         water_margin = 5
         if any(self.__fluids.is_water(_) for _ in path):
             bridge_start = next(filter(lambda i: self.__fluids.is_water(path[i], water_margin), range(len(path))))
-            bridge_end = next(filter(lambda i: not self.__fluids.is_water(path[i], water_margin) or i == (len(path) + 1), range(bridge_start + 1, len(path) + 1)))
+            bridge_end = next(filter(lambda i: i == len(path) or not self.__fluids.is_water(path[i], water_margin), range(bridge_start + 1, len(path) + 1)))
 
             bridge_start_pt = path[bridge_start]
             bridge_start_pt = Point(bridge_start_pt.x, bridge_start_pt.z, self.__maps.height_map[bridge_start_pt])

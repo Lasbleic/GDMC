@@ -1,7 +1,6 @@
 # coding=utf-8
-from __future__ import division, print_function
-
 from typing import Callable
+from time import time
 
 from numpy import empty
 
@@ -13,7 +12,7 @@ from utils import Point, euclidean
 
 MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 32
-MIN_DISTANCE_CYCLE = 24
+MIN_DISTANCE_CYCLE = 16
 DIST_BETWEEN_NODES = 12
 maxint = 1 << 32
 
@@ -72,11 +71,11 @@ class RoadNetwork:
                     closest_node = node
                     min_distance = euclidean(node, point)
 
-        if not self.road_blocks:
+        if not self.road_blocks.difference(self.nodes):
             return closest_node
 
         # try to promote an extremity to node
-        alt_edge = [_ for _ in self.road_blocks if _ not in self.nodes]
+        alt_edge = [_ for _ in self.road_blocks.difference(self.nodes)]
         alt_dist = [euclidean(_, point) for _ in alt_edge]
         i = int(argmin(alt_dist))
         edge, dist = alt_edge[i], alt_dist[i]
@@ -175,8 +174,11 @@ class RoadNetwork:
         # type: (Point, Point, List[Point]) -> List[Point]
         if path is None:
             assert root_point is not None and ending_point is not None
+            print(f"[RoadNetwork] Compute road path from {str(root_point + self.__all_maps.area.origin)} towards {str(ending_point + self.__all_maps.area.origin)}", end="")
+            _t0 = time()
             path = self.a_star(root_point, ending_point, RoadNetwork.road_build_cost)
             self.nodes.update({root_point, ending_point})
+            print(f"in {(time() - _t0):0.2f}s")
         self.__set_road(path)
         return path
 
@@ -193,7 +195,6 @@ class RoadNetwork:
         -------
         Created road cycles (possibly empty)
         """
-        from time import time
 
         # safe check: the point is already connected
         if self.is_road(point_to_connect):
@@ -231,6 +232,9 @@ class RoadNetwork:
                 old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
                 new_path = self.create_road(path=new_path)
                 cycles.append(set(old_path).union(set(new_path)))
+                if len(cycles) > 1:
+                    # allow max 2 new cycles
+                    break
         if _t1 is not None:
             print("[RoadNetwork] Computed road cycles in {:0.2f}s".format(time()-_t1))
 
@@ -261,7 +265,7 @@ class RoadNetwork:
 
         # if dest_point is an obstacle, return inf
         is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
-        is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=8)
+        is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=MIN_DIST_TO_LAVA)
         if is_dest_obstacle:
             return maxint
 
@@ -396,7 +400,7 @@ class RoadNetwork:
             update_maps_info_at(clst_neighbor)
             update_distances(clst_neighbor)
 
-    def a_star(self, root_point, ending_point, cost_function):
+    def a_star(self, root_point, ending_point, cost_function, timer=False):
         # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int]) -> List[Point]
         """
         Parameters
@@ -410,17 +414,21 @@ class RoadNetwork:
         best first path from root_point to ending_point if any exists
         """
         from utils.algorithms import a_star
+        if root_point == ending_point:
+            return [root_point]
         t0 = time()
-        tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
-        t0 = time() - t0 + .001
-        # print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, avg: {int(len(tuple_path)/t0)}mps")
+        try:
+            tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
+        except SystemError:
+            return []
+        if timer:
+            t0 = time() - t0 + .001
+            print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, avg: {int(len(tuple_path)/t0)}mps")
         return [Point(u, v) for u, v in tuple_path]
 
     def cycle_creation_condition(self, node1: Point, node2: Point) -> List[Point]:
         straight_dist = euclidean(node1, node2)
-        if straight_dist > MAX_DISTANCE_CYCLE or straight_dist == 0:
-            # todo: cette condition pourrait varier selon la distance au(x) centre-ville(s), pour modéliser des patés
-            #  de maison plus petits/denses en centre qu'en périphérie
+        if not (MIN_DISTANCE_CYCLE <= straight_dist <= MAX_DISTANCE_CYCLE):
             return []
 
         existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost)

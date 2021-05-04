@@ -7,11 +7,11 @@ import numpy as np
 
 from utils.misc_objects_functions import _in_limits
 
-maxint = 1 << 32
+maxint = 1 << 15
 
 
+@jit(forceobj=True)
 def a_star(root_point, ending_point, dimensions, cost_function):
-    # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int]) -> List[Point]
     """
     Parameters
     ----------
@@ -23,7 +23,7 @@ def a_star(root_point, ending_point, dimensions, cost_function):
     -------
     best first path from root_point to ending_point if any exists
     """
-    distance_map, neighbors, predecessor_map = astar_env = _init(root_point, dimensions)
+    distance_map, neighbors, predecessor_map, heuristic_map = astar_env = _init(root_point, dimensions)
 
     clst_neighbor = root_point
     n_steps = 0
@@ -36,28 +36,32 @@ def a_star(root_point, ending_point, dimensions, cost_function):
     if clst_neighbor != ending_point:
         return []
     else:
-        return _path_to_dest(astar_env, root_point, ending_point)
+        return _path_to_dest(predecessor_map, root_point, ending_point)
 
 
+@njit
 def _init(point, dims):
     x, z = point
     _distance_map = np.full(dims, maxint)
-    _distance_map[x][z] = 0
+    _distance_map[x, z] = 0
     _neighbours = {point}
-    _predecessor_map = np.empty(dims, dtype=list)
-    return _distance_map, _neighbours, _predecessor_map
+    _predecessor_map = np.full((*dims, 2), max(dims))
+    _heuristic_map = np.full(dims, maxint)
+    return _distance_map, _neighbours, _predecessor_map, _heuristic_map
 
 
 @njit(cache=True)
 def _closest_neighbor(env, destination):
 
     distance_map, neighbors = env[:2]
+    heuristic_map = env[3]
     closest_neighbors = [(0, 0)]
     min_heuristic = maxint
     for neighbor in neighbors:
-        heuristic = _heuristic(neighbor, destination)
         x, z = neighbor
-        current_heuristic = distance_map[x, z] + heuristic
+        if heuristic_map[neighbor] == maxint:
+            heuristic_map[neighbor] = _heuristic(neighbor, destination)
+        current_heuristic = distance_map[x, z] + heuristic_map[neighbor]
         if current_heuristic < min_heuristic:
             closest_neighbors = [neighbor]
             min_heuristic = current_heuristic
@@ -73,9 +77,9 @@ def _heuristic(point, destination):
     return 1.1 * np.sqrt((xf - x0) ** 2 + (zf - z0) ** 2)
 
 
-@jit(forceobj=True, cache=True)
+@jit(forceobj=True)
 def _update_distance(env, updated_point, neighbor):
-    distance_map, neighbors, predecessor_map, cost = env
+    distance_map, neighbors, predecessor_map, h_map, cost = env
     edge_cost = cost(updated_point, neighbor)
     if edge_cost == maxint:
         return
@@ -84,33 +88,41 @@ def _update_distance(env, updated_point, neighbor):
     previous_distance = distance_map[neighbor]
     if previous_distance >= maxint:
         neighbors.add(neighbor)
-        # neighbors.append(neighbor)
     if previous_distance > new_distance:
         distance_map[neighbor] = new_distance
         predecessor_map[neighbor] = updated_point
 
 
-@jit(forceobj=True, cache=True)
+@jit(forceobj=True, parallel=True)
 def _update_distances(env, dims, point):
     x, z = point  # type: int, int
     for xz in _exploration_neighbourhood(x, z, *dims):
         _update_distance(env, point, xz)
 
 
-def _path_to_dest(env, origin, destination):
-    distance_map, neighbors, predecessor_map = env
+@njit(cache=True)
+def _path_to_dest(predecessor_map, origin, destination):
     current_point = destination
     path = [destination]
     while current_point != origin:
-        current_point = predecessor_map[current_point]
+        current_point = (predecessor_map[current_point][0], predecessor_map[current_point][1])
         path.append(current_point)
-    return list(reversed(path))
+    return nb_reversed(path)
+
+
+@njit(cache=True)
+def nb_reversed(arr: list):
+    length = len(arr)
+    target = []
+    for i in range(length):
+        target.append(arr[length-1 - i])
+    return target
 
 
 @njit(cache=True)
 def _exploration_neighbourhood(x, z, width, length):
     neighbourhood = set()
-    for dx, dz in [(0, 1), (-1, 2), (0, 2), (1, 2)]:
+    for dx, dz in [(0, 1), (-1, 2), (0, 2), (1, 2), (-1, 3), (0, 3), (1, 3)]:
         for _ in numba.prange(4):
             dx, dz = dz, -dx
             x0, z0 = x+dx, z+dz

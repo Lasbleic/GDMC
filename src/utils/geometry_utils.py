@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Iterable
 
+from interfaceUtils import requestBuildArea
 from utils.pymclevel.box import BoundingBox
 from utils.misc_objects_functions import argmax
 
@@ -13,9 +14,9 @@ class Point:
     """
 
     def __init__(self, x, z, y=0):
-        self._x = x
-        self._z = z
-        self._y = y
+        self._x = int(x)
+        self._z = int(z)
+        self._y = int(y)
 
     def __str__(self):
         res = "(x:{}".format(self._x)
@@ -204,7 +205,9 @@ def all_directions(as_points: bool = True) -> Iterable[Direction or Point]:
 
 
 class BuildArea:
-    def __init__(self, build_area_json):
+    def __init__(self, build_area_json=None):
+        if build_area_json is None:
+            build_area_json = requestBuildArea()
         XFROM, XTO, ZFROM, ZTO = 'xFrom', 'xTo', 'zFrom', 'zTo'
 
         for (key1, key2, tag) in {(XFROM, XTO, 'X'), (ZFROM, ZTO, 'Z')}:

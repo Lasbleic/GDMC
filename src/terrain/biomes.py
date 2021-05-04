@@ -23,7 +23,7 @@ class BiomeMap(Map):
     def __getitem__(self, item):
         if not isinstance(item, Point):
             return self[Point(item[0], item[1])]
-        biomePoint: Point = (item - self.__offset) // 4
+        biomePoint: Point = (item + self.__offset) // 4
         # return Map.__getitem__(self, biomePoint)
         return super(BiomeMap, self).__getitem__(biomePoint)
 
@@ -61,6 +61,11 @@ class BiomeMap(Map):
 
 
 if __name__ == '__main__':
+    from terrain import TerrainMaps
     assert BiomeMap.getBiomeId("warm_ocean") == 44
     assert BiomeMap.getBiome(3) == "mountains"
     print({_ for _ in map(lambda _: _[0], BiomeMap._biome_types)})
+
+    terrain = TerrainMaps.request()
+    print(terrain.biome[0, 0])
+
