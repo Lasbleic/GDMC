@@ -5,7 +5,7 @@ from time import gmtime, strftime, time
 
 from building_seeding import VillageSkeleton, BuildingType
 from building_seeding.village_skeleton import CityBlock
-from flat_settlement import FlatSettlement
+from settlement import Settlement
 from terrain.maps import Maps
 from pymclevel import BoundingBox, MCLevel
 from utils import TransformBox, Point2D
@@ -21,7 +21,7 @@ def perform(level, box, options):
     print("Hello Settlers!")
     box = TransformBox(box)
     maps = Maps(level, box)
-    settlement = FlatSettlement(maps)
+    settlement = Settlement(maps)
     settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
     W, L = box.width, box.length
 
@@ -36,7 +36,7 @@ def perform(level, box, options):
 
     city_block = CityBlock(maps.road_network.road_blocks, maps)
     block_parcel = city_block.parcels()
-    skeleton.add_parcel(block_parcel, BuildingType().ghost)
+    skeleton.add_parcel(block_parcel, BuildingTypes.ghost)
     block_parcel.mark_as_obstacle(maps.obstacle_map)
 
     settlement._parcels.pop(0)

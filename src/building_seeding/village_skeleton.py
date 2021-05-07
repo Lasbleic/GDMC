@@ -23,7 +23,7 @@ class VillageSkeleton:
         self.maps = maps
         self.ghost = districts.town_centers[0]
         buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
-        self.building_iterator = BuildingPool(buildable_surface)
+        self.building_iterator = BuildingPool(districts.buildable_surface)
         self.__parcel_list = parcel_list
         self.parcel_size = MIN_PARCEL_SIDE
 

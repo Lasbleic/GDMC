@@ -6,7 +6,7 @@ import logging
 from pstats import SortKey, Stats
 from time import gmtime, strftime, time
 
-from flat_settlement import Settlement
+from settlement import Settlement
 from terrain import TerrainMaps
 from utils import interfaceUtils, WorldSlice, BuildArea
 
@@ -29,10 +29,8 @@ def main(**options):
     t2 = time()
     settlement.build_skeleton(options.get(time_limit, None), options.get(visu, False))  # define buildings list and seed them
     print("calcul du squelette", time() - t2)
-    try:
-        settlement.define_parcels()  # define parcels around seeds
-    except RuntimeWarning:
-        pass
+    settlement.clean_road_network()
+    settlement.define_parcels()  # define parcels around seeds
     settlement.terraform()
     settlement.generate(terrain, options.get(debug, False))      # build buildings on parcels
     print('{} seconds of execution'.format(time() - t0))

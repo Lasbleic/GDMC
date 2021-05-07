@@ -28,6 +28,9 @@ class Districts:
         self.seeds: List[Point] = None
         self.town_centers: List[Point] = None
         self.district_map: Map = None
+        self.cluster_size = {}
+        self.cluster_suitability = {}
+        self.built_seeds = set()
 
     def build(self, maps: TerrainMaps, **kwargs):
         visualize = kwargs.get("visualize", False)
@@ -68,12 +71,11 @@ class Districts:
         model = select_best_model()
 
         labels = set(model.labels_)
-        cluster_suitability, cluster_size = {}, {}
         for label in labels:
             cluster = X[model.labels_ == label]
             score = cluster[:, 2].mean()
-            cluster_suitability[label] = score
-            cluster_size[label] = cluster.shape[0]
+            self.cluster_suitability[label] = score
+            self.cluster_size[label] = cluster.shape[0]
 
         centers = self.__scaler.inverse_transform(model.cluster_centers_ / self.__coord_scale)
         seeds = [Point(round(_[0]), round(_[1])) for _ in centers]
@@ -81,15 +83,14 @@ class Districts:
         self.seeds = [argmin(samples, key=lambda sample: euclidean(seed, sample)) for seed in seeds]
 
         def select_town_clusters():
-            built_districts = set()
             surface_to_build = X.shape[0] * .25
             surface_built = 0
-            for index, _ in sorted(cluster_suitability.items(), key=lambda _: _[1], reverse=True):
-                built_districts.add(index)
-                surface_built += cluster_size[index]
+            for index, _ in sorted(self.cluster_suitability.items(), key=lambda _: _[1], reverse=True):
+                self.built_seeds.add(index)
+                surface_built += self.cluster_size[index]
                 if surface_built >= surface_to_build:
                     break
-            return list(sorted(built_districts, key=(lambda i: cluster_suitability[i]), reverse=True))
+            return list(sorted(self.built_seeds, key=(lambda i: self.cluster_suitability[i]), reverse=True))
 
         town_indexes = select_town_clusters()
         self.town_centers = [self.seeds[index] for index in town_indexes]
@@ -154,6 +155,10 @@ class Districts:
     @property
     def n_districts(self):
         return len(self.seeds)
+
+    @property
+    def buildable_surface(self):
+        return sum(self.cluster_size[i] for i in self.built_seeds)
 
 
 def min_spanning_tree(points: List[Point]) -> Set[Tuple[Point, Point]]:

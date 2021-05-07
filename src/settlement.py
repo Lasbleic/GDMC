@@ -12,6 +12,7 @@ from building_seeding import Parcel, VillageSkeleton, BuildingType
 from building_seeding.parcel import MaskedParcel
 from building_seeding.settlement_seeding import Districts, min_spanning_tree
 from generation.building_palette import get_biome_palette
+from interfaceUtils import sendBlocks
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
 from terrain import TerrainMaps
 from terrain.road_network import RoadNetwork
@@ -189,6 +190,8 @@ class Settlement:
                 except Exception:
                     print("FAIL")
 
+        sendBlocks()
+
     @property
     def town_center(self):
         return self._center
@@ -245,3 +248,32 @@ class Settlement:
                 # actually an else block
                 box = TransformBox((xa, new_y + 1, za), (1, ya - new_y - 1, 1))
                 fillBlocks(box, BlockAPI.blocks.Air)
+
+    def clean_road_network(self):
+        road_map = (self._road_network.network > 0).astype(int)
+        network: RoadNetwork = self._road_network
+
+        def degree(p: Point):
+            arr = road_map[max(0, p.x - 1):min(p.x + 2, road_map.shape[0]),
+                           max(0, p.z - 1):min(p.z + 2, road_map.shape[1])]
+            return arr.sum() - 1
+
+        def get_neighbour(p: Point):
+            for dx, dz in product(range(-1, 2), range(-1, 2)):
+                if self._maps.in_limits(p + Point(dx, dz), False) and road_map[p.x + dx, p.z + dz]:
+                    return p + Point(dx, dz)
+
+        def unset_road(p: Point):
+            if p in network.road_blocks:
+                network.road_blocks.remove(p)
+            else:
+                network.special_road_blocks.remove(p)
+            road_map[p.x, p.z] = 0
+            network.network[p.x, p.z] =0
+
+        for extremity in filter(lambda node: degree(node) == 1, network.nodes):
+            truncated_length = 0
+            while truncated_length < 8 and degree(extremity) == 1:
+                unset_road(extremity)
+                extremity = get_neighbour(extremity)
+                truncated_length += 1

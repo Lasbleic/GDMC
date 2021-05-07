@@ -202,6 +202,7 @@ class CropGenerator(MaskedGenerator):
 
     def choose_sub_generator(self, parcels):
         # type: (List[Parcel]) -> None
+        # todo: refine this
         if any(_.building_type.name == 'windmill' for _ in parcels):
             d = min(euclidean(self.mean, _.absolute_mean) for _ in parcels if _.building_type.name == 'windmill')
             if d <= 24:
@@ -223,6 +224,8 @@ class CropGenerator(MaskedGenerator):
         # type: (MCLevel, array, HousePalette, str) -> None
         # todo: abreuvoir + herbe + abri + terrain adaptability
         # todo: surround water with trapdoors to avoid leaks
+        # todo: refine gate position
+        # todo: refine fences shape
         if not animal:
             animal = choice(["cow", "pig", "chicken", "sheep"])
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
@@ -263,6 +266,8 @@ class CropGenerator(MaskedGenerator):
 
     def _gen_crop_v1(self, level, height=None, palette=None):
         from numpy import ones
+        # todo: store max age somewhere (beetroots grow up to age 3)
+        # todo: deter water sources from leaking everywhere
         # dimensions
         x0, y0, z0 = self.origin
         min_height = int(percentile(height.flatten(), 15))
@@ -455,7 +460,8 @@ class WindmillGenerator(Generator):
         windmill_nbt = StructureNBT('gdmc_windmill.nbt')
         windmill_nbt.build(*box.origin)
         sendBlocks()
-        print(runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]'))
+        # print(runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]'))
+        runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]')
 
 
 class WoodTower(Generator): pass

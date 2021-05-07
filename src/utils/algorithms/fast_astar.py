@@ -106,7 +106,21 @@ def _path_to_dest(predecessor_map, origin, destination):
     path = [destination]
     while current_point != origin:
         current_point = (predecessor_map[current_point][0], predecessor_map[current_point][1])
-        path.append(current_point)
+        if len(path) > 1 and abs_distance(path[-2], current_point) == 1:
+            # remove the angles
+            path[-1] = current_point
+        else:
+            dist = abs_distance(path[-1], current_point)
+            if dist > 1:
+                # because of the large steps in exploration_neighbourhood, the path is sometimes "incomplete"
+                # here we add intermediate blocks by exploring convex points between the last element of path and
+                # the current one
+                for i in range(1, dist):
+                    # i = 0 and i = dist correspond to path[-1] and current_point
+                    x = int(round(((dist - i) * path[-1][0] + i * current_point[0]) / dist))
+                    z = int(round(((dist - i) * path[-1][1] + i * current_point[1]) / dist))
+                    path.append((x, z))
+            path.append(current_point)
     return nb_reversed(path)
 
 
@@ -129,3 +143,12 @@ def _exploration_neighbourhood(x, z, width, length):
             if _in_limits((x0, 0, z0), width, length):
                 neighbourhood.add((x0, z0))
     return neighbourhood
+
+
+@njit(cache=True)
+def abs_distance(xz0, xz1):
+    dx = abs(xz0[0] - xz1[0])
+    dz = abs(xz0[1] - xz1[1])
+    if dx > dz:
+        return dx
+    return dz

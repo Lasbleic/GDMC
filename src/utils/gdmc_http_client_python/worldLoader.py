@@ -46,7 +46,6 @@ class CachedSection:
 
 class WorldSlice:
     """**Contains information on a slice of the world.**"""
-    # TODO format this to blocks
 
     def __init__(self, rect, heightmapTypes=["MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES", "OCEAN_FLOOR", "WORLD_SURFACE"]):
         self.rect = rect
@@ -125,7 +124,7 @@ class WorldSlice:
         # section = self.nbtfile['Chunks'][chunkID]['Level']['Sections'][(blockPos[1] >> 4)+1]
 
         # if not ('BlockStates' in section) or len(section['BlockStates']) == 0:
-        #     return -1 # TODO return air compound
+        #     return -1
 
         # palette = section['Palette']
         # blockStates = section['BlockStates']
@@ -133,11 +132,11 @@ class WorldSlice:
         chunkX = (blockPos[0] >> 4) - self.chunkRect[0]
         chunkZ = (blockPos[2] >> 4) - self.chunkRect[1]
         chunkY = blockPos[1] >> 4
-        # bitarray = BitArray(bitsPerEntry, 16*16*16, blockStates) # TODO this needs to be 'cached' somewhere
+        # bitarray = BitArray(bitsPerEntry, 16*16*16, blockStates)
         cachedSection = self.sections[chunkX][chunkZ][chunkY]
 
         if cachedSection == None:
-            return None  # TODO return air compound instead
+            return None
 
         bitarray = cachedSection.blockStatesBitArray
         palette = cachedSection.palette
