@@ -14,14 +14,6 @@ from utils.nbt_structures import StructureNBT
 SURFACE_PER_ANIMAL = 16
 
 
-# def copyBlocksWrap(level, sch, box, origin, blocksToCopy=all_but_void):
-#     try:
-#         copyBlocksFrom(level, sch, box, origin, blocksToCopy=blocksToCopy)
-#     except IndexError:
-#         level.removeEntitiesInBox(box)
-#         copyBlocksFrom(level, sch, box, origin, blocksToCopy=blocksToCopy)
-
-
 class Generator:
     _box = None  # type: TransformBox
 
@@ -130,7 +122,7 @@ class MaskedGenerator(Generator):
         terraform_map = zeros(height_map.shape)
         for x, y, z in self.surface_pos(height_map):
             if y > mean_y:
-                vbox = BoundingBox((x, mean_y + 1, z), (1, y - mean_y, 1))
+                vbox = BoundingBox((x, mean_y + 1, z), (1, y - mean_y + 1, 1))
                 fillBlocks(vbox, BlockAPI.blocks.Air)
             elif y < mean_y:
                 vbox = BoundingBox((x, y + 1, z), (1, mean_y - y, 1))
@@ -146,7 +138,9 @@ class MaskedGenerator(Generator):
             if absolute_coords:
                 return self.is_masked(px - self.origin.x, z - self.origin.z, False)
             else:
-                return self._mask[px, z]
+                if 0 <= px < self.width and 0 <= z < self.length:
+                    return self._mask[px, z]
+                return False
 
     def surface_pos(self, height_map):
         for x, y, z in Generator.surface_pos(self, height_map):
@@ -197,17 +191,45 @@ class MaskedGenerator(Generator):
         assert self._mask.shape == height_mask.shape
         self._mask = self._mask & height_mask
 
+    def refine_mask(self):
+        """
+        Removes narrow positions from the mask
+        """
+        def surrounding(x, z):
+            return filter(lambda xz: xz != (x, z) and self.is_masked(xz[0], xz[1], True), product(range(x-1, x+2), range(z-1, z+2)))
+
+        def is_corner(xz):
+            return self.is_corner(Point(*xz))
+
+        def in_inner_mask(xz):
+            return self.is_masked(*xz, True) and not self.is_lateral(*xz)
+
+        mask_corners = {(x, z) for (x, y, z) in self.surface_pos(zeros((self.width, self.length))) if self.is_corner(Point(x, z))}
+        while mask_corners:
+            corner = mask_corners.pop()
+            if all(not in_inner_mask(xz) for xz in surrounding(*corner)):
+                self._mask[corner[0] - self.origin[0], corner[1] - self.origin[2]] = False
+                mask_corners.update(filter(is_corner, surrounding(*corner)))
+
 
 class CropGenerator(MaskedGenerator):
 
+    animal_distribution = {"cow": 3, "pig": 2, "chicken": 3, "sheep": 2, "donkey": 1, "horse": 1, "rabbit": 1}
+
+    def _pick_animal(self):
+        samples = list(self.animal_distribution.keys())
+        probs = array(list(self.animal_distribution.values()))
+        probs = probs / sum(probs)
+        return choice(samples, p=probs)
+
     def choose_sub_generator(self, parcels):
         # type: (List[Parcel]) -> None
-        # todo: refine this
-        if any(_.building_type.name == 'windmill' for _ in parcels):
+        self._sub_generator_function = self._gen_animal_farm
+        if any(_.building_type.name == 'windmill' for _ in parcels) and bernouilli():
             d = min(euclidean(self.mean, _.absolute_mean) for _ in parcels if _.building_type.name == 'windmill')
-            if d <= 24:
+            if d <= 16:
                 self._sub_generator_function = self._gen_harvested_crop
-            elif d <= 35:
+            elif d <= 28:
                 self._sub_generator_function = self._gen_crop_v1
             else:
                 self._sub_generator_function = self._gen_animal_farm
@@ -215,19 +237,16 @@ class CropGenerator(MaskedGenerator):
             self._sub_generator_function = choice([self._gen_harvested_crop, self._gen_crop_v1, self._gen_animal_farm])
 
     def generate(self, level, height_map=None, palette=None):
-        # height_map = self._terraform(level, height_map)
         self.__terraform(height_map)
         self._clear_trees(level)
         self._sub_generator_function(level, height_map, palette)
 
     def _gen_animal_farm(self, level, height_map, palette, animal=None):
-        # type: (MCLevel, array, HousePalette, str) -> None
-        # todo: abreuvoir + herbe + abri + terrain adaptability
+        # type: (TerrainMaps, array, HousePalette, str) -> None
         # todo: surround water with trapdoors to avoid leaks
-        # todo: refine gate position
-        # todo: refine fences shape
+        self.refine_mask()
         if not animal:
-            animal = choice(["cow", "pig", "chicken", "sheep"])
+            animal = self._pick_animal()
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
         fence_block = BlockAPI.getFence(palette['door'])
         gate_pos, gate_dist, gate_block = None, 0, None
@@ -244,8 +263,13 @@ class CropGenerator(MaskedGenerator):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
                     door_dir_vec = self._entry_point - self.mean
                     door_dir = Direction.of(dx=door_dir_vec.x, dz=door_dir_vec.z)
+                    for direction in cardinal_directions(False):
+                        if not self.is_masked(gate_pos + direction.value, absolute_coords=True):
+                            door_dir = direction
+                            break
                     gate_block = BlockAPI.getFence(palette['door'], facing=str(door_dir).lower())
 
+        print(gate_pos, gate_block)
         # place gate
         if gate_pos:
             x, z = gate_pos.x, gate_pos.z
@@ -259,7 +283,10 @@ class CropGenerator(MaskedGenerator):
             z = randint(fence_box.minz, fence_box.maxz - 1)
             y = height_map[x - self.origin.x, z - self.origin.z] + 1
             if self.is_masked(x, z, True) and not self.is_lateral(x, z):
-                interfaceUtils.runCommand(f"summon {animal} {x} {y} {z}")
+                command = f"summon {animal} {x} {y} {z}"
+                if bernouilli(.3):
+                    command += "{" + f"Age:{randint(-25000, -5000)}" + "}"
+                interfaceUtils.runCommand(command)
                 animal_count -= 1
             else:
                 animal_count -= .1
@@ -503,3 +530,9 @@ def place_street_lamp(level, x, y, z, material):
     fillBlocks(BoundingBox((x, y + 1, z), (1, 3, 1)), BlockAPI.getFence(material))
     setBlock(Point(x, z, y + 4), BlockAPI.blocks.RedstoneLamp)
     setBlock(Point(x, z, y + 5), f"daylight_detector[inverted=true]")
+
+
+if __name__ == '__main__':
+    gen = CropGenerator(TransformBox((0, 0, 0), (1, 1, 1)))
+    print(gen.animal_distribution)
+    print(gen._pick_animal())

@@ -246,8 +246,7 @@ class RoadNetwork:
     # endregion
 
     def generate(self, level):
-        # type: (WorldSlice) -> None
-        hm = self.__all_maps.height_map  # type: terrain.HeightMap
+        hm = level.height_map[:]  # type: terrain.HeightMap
         self.__generator.generate(level, hm[:])
 
     def __update_distance_map(self, road, force_update=False):
@@ -431,7 +430,11 @@ class RoadNetwork:
         if not (MIN_DISTANCE_CYCLE <= straight_dist <= MAX_DISTANCE_CYCLE):
             return []
 
-        existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost)
+        try:
+            existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost)
+        except KeyError:
+            # todo: debug KeyError (0, 0)
+            return []
         current_dist = len(existing_path)
         straight_path = self.a_star(node1, node2, RoadNetwork.road_build_cost)
         straight_dist = len(straight_path)

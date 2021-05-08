@@ -17,7 +17,7 @@ def perform(level, box, options):
     gen = CropGenerator(box)
     height_map = maps.height_map.box_height(box, False)
     if options['type'] in Entity.entityList:
-        gen._gen_animal_farm(level, height_map, spruce_house_palette1, options['type'])  # don't try this at home
+        gen._gen_animal_farm(level, height_map, spruce_house_palette1, options['type'])
     elif options['type'] == "Harvested":
         gen._gen_harvested_crop(level, height_map)
     else:

@@ -66,7 +66,7 @@ red_sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothRe
                                        b.BirchFence, 'flat', b.ChiseledRedSandstone, 'oak')
 
 terracotta_palette1 = HousePalette(b.RedSandstone, b.SprucePlanks, b.OakWood, b.Clay,
-                                   b.SpruceFence, 'flat', b.Clay, 'oak')
+                                   b.SpruceFence, 'flat', b.Terracotta, 'oak')
 
 # Defines for each biome the acceptable palettes. Adapted from pymclevel.biome_types
 biome_palettes = {

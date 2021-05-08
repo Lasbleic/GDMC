@@ -169,11 +169,11 @@ class Settlement:
             # translate all parcels to absolute coordinates
             p.translate_to_absolute_coords(self._origin)
 
-    def generate(self, level, print_stack=False):
-        self._road_network.generate(level)
+    def generate(self, terrain: TerrainMaps, print_stack=False):
+        self._road_network.generate(terrain)
 
         for parcel in self._parcels:  # type: Parcel
-            parcel_biome = parcel.biome(level)
+            parcel_biome = parcel.biome(terrain)
             palette = get_biome_palette(parcel_biome)
             if isinstance(parcel, MaskedParcel):
                 obstacle_mask = self._maps.obstacle_map.box_obstacle(parcel.bounds)
@@ -181,12 +181,12 @@ class Settlement:
             if print_stack:
                 gen = parcel.generator
                 gen.choose_sub_generator(self._parcels)
-                gen.generate(level, parcel.height_map, palette)
+                gen.generate(terrain, parcel.height_map, palette)
             else:
                 try:
                     gen = parcel.generator
                     gen.choose_sub_generator(self._parcels)
-                    gen.generate(level, parcel.height_map, palette)
+                    gen.generate(terrain, parcel.height_map, palette)
                 except Exception:
                     print("FAIL")
 
