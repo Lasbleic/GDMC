@@ -3,7 +3,8 @@ from typing import List
 import numpy as np
 import cv2
 
-from utils import WorldSlice, BuildArea, ground_blocks, water_blocks, lava_blocks
+from gdmc_http_client_python.worldLoader import WorldSlice
+from utils import BuildArea, ground_blocks, water_blocks, lava_blocks, getBlockRelativeAt
 from terrain.map import Map
 from utils import Point
 
@@ -92,7 +93,7 @@ class HeightMap(Map):
         from itertools import product
         for x, z in product(range(area[2]), range(area[3])):
             y = heightmapNoTrees[x, z]
-            while not isValidBlock(world_slice.getBlockRelativeAt(x, y-1, z)):
+            while not isValidBlock(getBlockRelativeAt(world_slice, x, y-1, z)):
                 y -= 1
             heightmapNoTrees[x, z] = y
 

@@ -1,13 +1,14 @@
 from typing import Tuple
 
 import numba
-from numba import prange, b1, i8
-from numba.core.types import UniTuple, Set as nbSet, string
+from numba import prange, i8
+from numba.core.types import UniTuple, Set as nbSet
 
 from terrain import HeightMap
 from terrain.map import Map
 from utils import *
 from utils.misc_objects_functions import _in_limits
+from worldLoader import WorldSlice
 
 
 class TreesMap(Map):
@@ -36,7 +37,7 @@ def _detect_trunks(level: WorldSlice, height: HeightMap):
         x = xz // height.length
         z = xz % height.length
         y = height[x, z] + 1
-        block = level.getBlockRelativeAt(x, y, z)
+        block = getBlockRelativeAt(level, x, y, z)
         if _is_trunk(block):
             trunks.add((x, z))
 
@@ -80,7 +81,7 @@ def _process(level: WorldSlice, height: HeightMap):
                     y2 = height.upper_height(x2, z2)
                     position = (x2, y2, z2)
                     possible_tree_point = (x2, z2)
-                    if (possible_tree_point not in marked_blocks) and _is_tree(level.getBlockRelativeAt(*position)):
+                    if (possible_tree_point not in marked_blocks) and _is_tree(getBlockRelativeAt(level, *position)):
                         marked_blocks.add(possible_tree_point)
                         tree_blocks.append((*possible_tree_point, tree_index))
 

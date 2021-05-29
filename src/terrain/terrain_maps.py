@@ -2,11 +2,12 @@ from itertools import product
 
 from terrain import ObstacleMap, RoadNetwork
 from terrain.tree_map import TreesMap
-from utils import BuildArea, WorldSlice, BoundingBox
+from utils import BuildArea, BoundingBox
 from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
 # from terrain.obstacle_map import Obstacle  # todo: rewrite ObstacleMap
+from worldLoader import WorldSlice
 
 
 class TerrainMaps:
@@ -84,7 +85,7 @@ class TerrainMaps:
         Undo all modifications to the terrain for debug purposes
         """
         from utils import setBlock, Point
-        from utils.gdmc_http_client_python.interfaceUtils import runCommand
+        from gdmc_http_client_python.interfaceUtils import runCommand
         from utils.block_utils import alterated_pos
         for xa, za in filter(lambda xz: self.in_limits(Point(xz[0], xz[1]), True), alterated_pos):
             x, z = xa - self.area.x, za - self.area.z

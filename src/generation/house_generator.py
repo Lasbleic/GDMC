@@ -4,6 +4,7 @@ from generation.generators import *
 # from pymclevel import MCLevel, MCSchematic
 from interfaceUtils import getBlock
 from utils import bernouilli, Direction
+from worldLoader import WorldSlice
 
 
 class ProcHouseGenerator(Generator):

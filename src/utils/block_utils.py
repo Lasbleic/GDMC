@@ -6,8 +6,9 @@
 # water_blocks = [BlockAPI.block.Water, BlockAPI.block.WaterActive, BlockAPI.block.Ice]
 from itertools import product
 
-from utils import Point, WorldSlice, BoundingBox, Iterable, manhattan
-from utils.gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
+from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
+from gdmc_http_client_python.worldLoader import WorldSlice
+from utils import Point, BoundingBox, Iterable
 
 alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=50):
@@ -16,6 +17,25 @@ def setBlock(point: Point, blockstate: str, buffer_size=50):
     if res:
         for res in filter(lambda _: len(_) > 1, res.split('\n')):
             print(res)
+
+
+def getBlockRelativeAt(world_slice: WorldSlice, x: int, y: int, z: int):
+        """
+        Get block with coords relative to the building area
+        Parameters
+        ----------
+        world_slice (WorldSlice) the level
+        x (int) X coord
+        y (int) Y coord
+        z (int) Z coord
+
+        Returns
+        -------
+        Block str at (X, Y, Z)
+        """
+        x += world_slice.rect[0]
+        z += world_slice.rect[1]
+        return world_slice.getBlockAt((x, y, z))
 
 
 class BlockAPI:

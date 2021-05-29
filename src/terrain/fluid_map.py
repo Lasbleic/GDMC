@@ -7,8 +7,9 @@ from typing import List
 import numpy as np
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
-from utils import Point, cardinal_directions, water_blocks, lava_blocks, WorldSlice, \
-    BuildArea
+from gdmc_http_client_python.worldLoader import WorldSlice
+from utils import Point, cardinal_directions, water_blocks, lava_blocks, \
+    BuildArea, getBlockRelativeAt
 import parameters
 from terrain.biomes import BiomeMap
 from terrain.map import Map
@@ -41,7 +42,7 @@ class FluidMap(Map):
         t0 = time()
         for x, z in product(range(self.area.width), range(self.area.length)):
             y: int = self.terrain.height_map[x, z]
-            if level.getBlockRelativeAt(x, y, z).split(':')[-1] in water_blocks:
+            if getBlockRelativeAt(level, x, y, z).split(':')[-1] in water_blocks:
                 biome = BiomeMap.getBiome(self.terrain.biome[x, z])
                 if 'Ocean' in biome or 'Beach' in biome:
                     label = 1
@@ -53,7 +54,7 @@ class FluidMap(Map):
                     label = -1  # yet unlabeled
                 water_points.append((x, z, label))
 
-            elif level.getBlockRelativeAt(x, y, z) in lava_blocks:
+            elif getBlockRelativeAt(level, x, y, z) in lava_blocks:
                 self.__lava_map[x, z] = True
                 self.has_lava = True
 

@@ -2,7 +2,8 @@ from itertools import product
 
 from numpy import zeros, array
 
-from utils import WorldSlice, BuildArea, Point
+from gdmc_http_client_python.worldLoader import WorldSlice
+from utils import BuildArea, Point
 from terrain.map import Map
 
 
