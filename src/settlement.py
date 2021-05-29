@@ -8,9 +8,7 @@ from typing import List
 from numpy import percentile
 from numpy.random import geometric, normal
 
-from building_seeding import Parcel, VillageSkeleton, BuildingType
-from building_seeding.parcel import MaskedParcel
-from building_seeding.settlement_seeding import Districts, min_spanning_tree
+from building_seeding import Districts, min_spanning_tree, Parcel, VillageSkeleton, BuildingType, MaskedParcel
 from generation.building_palette import get_biome_palette
 from interfaceUtils import sendBlocks
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
@@ -55,11 +53,11 @@ class Settlement:
 
         # init road net
         if self.districts.n_districts >= 2:
-            main_roads = min_spanning_tree(self.districts.seeds)
+            main_roads = min_spanning_tree(self.districts.district_centers)
             for p1, p2 in main_roads:
                 self._road_network.create_road(p1, p2)
         else:
-            self._road_network.create_road(self.districts.seeds[0], self.districts.seeds[0])
+            self._road_network.create_road(self.districts.district_centers[0], self.districts.district_centers[0])
         self.init_road_network()
 
         # mark town centers

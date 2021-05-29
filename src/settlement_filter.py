@@ -3,12 +3,10 @@ Main script
 TODO : wait for GDMC instructions on how to link the client to the server
 """
 import logging
-from pstats import SortKey, Stats
 from time import gmtime, strftime, time
 
 from settlement import Settlement
 from terrain import TerrainMaps
-from utils import interfaceUtils, WorldSlice, BuildArea
 
 logging.basicConfig(filename='settlement_log_{}.log'.format(strftime('%Y-%m-%d_%H-%M-%S', gmtime())), level=logging.INFO)
 
@@ -42,6 +40,5 @@ def main(**options):
 
 
 if __name__ == '__main__':
-    import cProfile
-    # main(debug=True)
-    stats: Stats = cProfile.run(f"main({time_limit}=900)", sort=SortKey.CUMULATIVE)
+    main()
+    # stats: Stats = cProfile.run(f"main({time_limit}=900)", sort=SortKey.CUMULATIVE)

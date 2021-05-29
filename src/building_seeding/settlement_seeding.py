@@ -1,6 +1,5 @@
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Dict
 import numpy as np
-import numba
 import random
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
@@ -11,7 +10,7 @@ from sklearn.metrics import silhouette_score
 from terrain import TerrainMaps
 from terrain.map import Map
 from utils import Point, product, manhattan, full, BuildArea, bernouilli, euclidean
-from utils.misc_objects_functions import argmax, argmin
+from utils.misc_objects_functions import argmax, argmin, _in_limits
 
 
 class Districts:
@@ -25,12 +24,13 @@ class Districts:
         self.__cluster_map = full((self.width, self.length), 0)
         self.__scaler = StandardScaler()
         self.__coord_scale = 1
-        self.seeds: List[Point] = None
-        self.town_centers: List[Point] = None
+        self.district_centers: List[Point] = None  # All district centers (ie means of kmeans)
+        self.town_centers: List[Point] = None  # Subset of district centers, which are meant to be built on
         self.district_map: Map = None
         self.cluster_size = {}
         self.cluster_suitability = {}
-        self.built_seeds = set()
+        self.town_indexes = set()  # indexes of built districts
+        self.seeders: Dict[int, DistrictSeeder] = {}
 
     def build(self, maps: TerrainMaps, **kwargs):
         visualize = kwargs.get("visualize", False)
@@ -72,28 +72,35 @@ class Districts:
 
         labels = set(model.labels_)
         for label in labels:
-            cluster = X[model.labels_ == label]
+            cluster = Xu[model.labels_ == label]
             score = cluster[:, 2].mean()
             self.cluster_suitability[label] = score
             self.cluster_size[label] = cluster.shape[0]
+        print(self.cluster_size, self.cluster_suitability)
 
         centers = self.__scaler.inverse_transform(model.cluster_centers_ / self.__coord_scale)
         seeds = [Point(round(_[0]), round(_[1])) for _ in centers]
         samples = [Point(Xu[i, 0], Xu[i, 1]) for i in range(Xu.shape[0])]
-        self.seeds = [argmin(samples, key=lambda sample: euclidean(seed, sample)) for seed in seeds]
+        self.district_centers = [argmin(samples, key=lambda sample: euclidean(seed, sample)) for seed in seeds]
 
         def select_town_clusters():
-            surface_to_build = X.shape[0] * .25
+            surface_to_build = X.shape[0] * .7
             surface_built = 0
+            best_suitability = max(self.cluster_suitability.values())
             for index, _ in sorted(self.cluster_suitability.items(), key=lambda _: _[1], reverse=True):
-                self.built_seeds.add(index)
+                self.town_indexes.add(index)
+                self.seeders[index] = DistrictSeeder(
+                    self.district_centers[index],
+                    Xu[:, 0][model.labels_ == label].std(),
+                    Xu[:, 1][model.labels_ == label].std()
+                )
                 surface_built += self.cluster_size[index]
-                if surface_built >= surface_to_build:
+                if surface_built >= surface_to_build or self.cluster_suitability[index] < best_suitability / 2:
                     break
-            return list(sorted(self.built_seeds, key=(lambda i: self.cluster_suitability[i]), reverse=True))
+            return list(sorted(self.town_indexes, key=(lambda i: self.cluster_suitability[i]), reverse=True))
 
         town_indexes = select_town_clusters()
-        self.town_centers = [self.seeds[index] for index in town_indexes]
+        self.town_centers = [self.district_centers[index] for index in town_indexes]
 
         self.__build_cluster_map(model, Xu, town_indexes)
 
@@ -128,7 +135,7 @@ class Districts:
 
     @staticmethod
     def suitability(x, z, terrain: TerrainMaps):
-        return terrain.height_map.steepness(x, z)
+        return np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
 
     def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray, town_indexes: List[int]):
         town_score = {label: 1 / (index + 1) for (index, label) in enumerate(town_indexes)}
@@ -154,11 +161,31 @@ class Districts:
 
     @property
     def n_districts(self):
-        return len(self.seeds)
+        return len(self.district_centers)
 
     @property
     def buildable_surface(self):
-        return sum(self.cluster_size[i] for i in self.built_seeds)
+        return sum(self.cluster_size[i] for i in self.town_indexes)
+
+    def seed(self):
+        """
+        Returns a random position suitable for building
+        """
+        town_centers = list(self.town_indexes)
+        town_cluster_probs = [self.cluster_size[i] for i in town_centers]
+        town_cluster_probs = np.array(town_cluster_probs) / sum(town_cluster_probs)
+        while True:
+            seed_cluster = np.random.choice(town_centers, p=town_cluster_probs)
+            seed: Point = self.seeders[seed_cluster].seed()
+            if _in_limits(seed.coords, self.width, self.length):
+                return seed
+
+    def register_seed(self, seed):
+        """
+        Register a seed for the computation of other ones
+        """
+        seed_cluster = argmin(self.town_indexes, lambda center: euclidean(seed, center))
+        self.seeders[seed_cluster].register_seed(seed)
 
 
 def min_spanning_tree(points: List[Point]) -> Set[Tuple[Point, Point]]:
@@ -191,6 +218,19 @@ def min_spanning_tree(points: List[Point]) -> Set[Tuple[Point, Point]]:
             tree_edges.add((points[i], points[j]))
 
     return tree_edges
+
+
+class DistrictSeeder:
+    def __init__(self, district_center, sigma_x, sigma_z):
+        self.__center = district_center
+        self.n_parcels = 0
+        self.stdev_x = sigma_x
+        self.stdev_z = sigma_z
+
+    def seed(self):
+        x = random.normalvariate(self.__center.x, self.stdev_x)
+        z = random.normalvariate(self.__center.z, self.stdev_z)
+        return Point(int(round(x)), int(round(z)))
 
 
 if __name__ == '__main__':

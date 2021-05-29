@@ -21,11 +21,11 @@ class HeightMap(Map):
         # uses absolute coordinates
         self.__origin = Point(area.x, area.z)
 
-        self.__steepness_x = cv2.Scharr(np.array(self[:], dtype=np.uint8), -1, 1, 0) / 32
-        self.__steepness_z = cv2.Scharr(np.array(self[:], dtype=np.uint8), -1, 0, 1) / 32
+        self.__steepness_x = cv2.Scharr(np.array(self[:], dtype=np.uint8), 5, 1, 0)
+        self.__steepness_z = cv2.Scharr(np.array(self[:], dtype=np.uint8), 5, 0, 1)
 
-        self.__steepness_x = cv2.GaussianBlur(self.__steepness_x, (5, 5), 0)
-        self.__steepness_z = cv2.GaussianBlur(self.__steepness_z, (5, 5), 0)
+        self.__steepness_x = cv2.GaussianBlur(self.__steepness_x, (5, 5), 0) / 32
+        self.__steepness_z = cv2.GaussianBlur(self.__steepness_z, (5, 5), 0) / 32
 
     def upper_height(self, xr: Point or int, zr=None):
         """

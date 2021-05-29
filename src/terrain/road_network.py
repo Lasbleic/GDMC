@@ -14,6 +14,7 @@ MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 32
 MIN_DISTANCE_CYCLE = 16
 DIST_BETWEEN_NODES = 12
+CYCLE_ALTERNATIVES = 8
 maxint = 1 << 32
 
 
@@ -224,7 +225,7 @@ class RoadNetwork:
         self.nodes.add(point_to_connect)
 
         _t1, cycles = None, []
-        for node in self.nodes:
+        for node in sorted(self.nodes, key=lambda n: euclidean(n, point_to_connect))[1:min(CYCLE_ALTERNATIVES, len(self.nodes))]:
             new_path: List[Point] = self.cycle_creation_condition(node, point_to_connect)
             if new_path:
                 if _t1 is None:
@@ -232,7 +233,7 @@ class RoadNetwork:
                 old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
                 new_path = self.create_road(path=new_path)
                 cycles.append(set(old_path).union(set(new_path)))
-                if len(cycles) > 1:
+                if len(cycles) == 2:
                     # allow max 2 new cycles
                     break
         if _t1 is not None:

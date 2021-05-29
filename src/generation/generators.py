@@ -233,8 +233,10 @@ class CropGenerator(MaskedGenerator):
                 self._sub_generator_function = self._gen_crop_v1
             else:
                 self._sub_generator_function = self._gen_animal_farm
+        elif bernouilli(.7):
+            self._sub_generator_function = self._gen_crop_v1
         else:
-            self._sub_generator_function = choice([self._gen_harvested_crop, self._gen_crop_v1, self._gen_animal_farm])
+            self._sub_generator_function = self._gen_animal_farm
 
     def generate(self, level, height_map=None, palette=None):
         self.__terraform(height_map)
@@ -350,8 +352,8 @@ class CropGenerator(MaskedGenerator):
                 b = BlockAPI.blocks.Farmland
             setBlock(Point(x, z, y), b)
         h = height_map
-        irrigation_height = min(h[h.shape[0] // 2, h.shape[1] // 2], h.max()) + 1 - self._box.miny
-        irrigation_box = TransformBox((self.mean.x, self._box.miny, self.mean.z), (1, 1, 1))
+        irrigation_height = min(h[h.shape[0] // 2, h.shape[1] // 2], h.max()) - self._box.miny
+        irrigation_box = TransformBox((self.mean.x, self._box.miny-1, self.mean.z), (1, 1, 1))
         fillBlocks(irrigation_box, BlockAPI.blocks.Water)
 
     def __terraform(self, height_map):
@@ -464,10 +466,11 @@ class DoorGenerator(Generator):
 
 class WindmillGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
-        # todo: reactivate windmills
 
         # Compute windmill position
         box = self._box
+        if box.width < 7 or box.length < 7:
+            return
         x, z = box.minx + box.width // 2, box.minz + box.length // 2
         y = height_map[box.width//2, box.length//2]
 

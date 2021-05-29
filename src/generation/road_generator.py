@@ -85,20 +85,21 @@ class RoadGenerator(Generator):
 
         # Computes local road height depending of the height of road blocks +-1 block away
         surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
-        surround_alt = {Point(x1, z1): height_map[x1, z1] for (x1, z1) in surround_iter if
-                        self.__network.is_road(x1, z1) and ((x1 == x) or (z1 == z) or not self.__network.is_road(x, z))}
+        surround_alt = {Point(x1, z1, height_map[x1, z1]) for (x1, z1) in surround_iter if self.__network.is_road(x1, z1)}
         if not surround_alt:
             return height_map[x, z], material
-        y = mean(surround_alt.values())
-        h = y - min(surround_alt.values())
+
+        surround_y = [_.y for _ in surround_alt]
+        y = mean(surround_y)
+        h = y - min(surround_y)
         if h < .5:
             return int(y), material
         elif h < .84:
             return int(ceil(y)), BlockAPI.getSlab(stair_material)
         else:
-            mx, my, mz = mean([p.x for p in surround_alt.keys()]), y, mean([p.z for p in surround_alt.keys()])
-            x_slope = sum((p.x - mx) * (y - my) for p, y in surround_alt.items())
-            z_slope = sum((p.z - mz) * (y - my) for p, y in surround_alt.items())
+            mx, my, mz = mean([p.x for p in surround_alt]), y, mean([p.z for p in surround_alt])
+            x_slope = sum((p.x - mx) * (p.y - my) for p in surround_alt)
+            z_slope = sum((p.z - mz) * (p.y - my) for p in surround_alt)
             try:
                 direction = Direction.of(dx=x_slope, dz=z_slope)
                 return int(round(y - 0.33)), BlockAPI.getStairs(stair_material, facing=direction)

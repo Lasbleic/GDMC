@@ -42,16 +42,19 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parc
 
 
 def sociability(building_type, scenario, settlement_seeds, size):
-    sociability_map = np.zeros(size)
+    sociability_all = np.zeros(size)
+    unreachable = np.full(size, False)
 
-    # for x, z, in product(range(size[0]), range(size[1])):
-    #     sociability_map[x, z] = local_sociability(x, z, building_type, scenario, settlement_seeds)
     for seed in settlement_seeds:
         neighbor_type, pos = seed.building_type, seed.center
         lambdas = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][building_type.name + "-" + neighbor_type.name]
-        sociability_map += sociability_one_seed(*lambdas, pos.x, pos.z, size)
+        sociability_one = sociability_one_seed(*lambdas, pos.x, pos.z, size)
+        unreachable |= (sociability_one == -1)
+        sociability_all += sociability_one
 
-    return sociability_map / len(settlement_seeds)
+    sociability_all /= len(settlement_seeds)
+    sociability_all[unreachable] = -1
+    return sociability_all
 
 
 @njit()

@@ -14,9 +14,9 @@ class Point:
     """
 
     def __init__(self, x, z, y=0):
-        self._x = int(x)
-        self._z = int(z)
-        self._y = int(y)
+        self._x = x if x % 1 else int(x)
+        self._z = z if z % 1 else int(z)
+        self._y = y if y % 1 else int(y)
 
     def __str__(self):
         res = "(x:{}".format(self._x)
