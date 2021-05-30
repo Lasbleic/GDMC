@@ -12,9 +12,9 @@ from time import time
 from settlement import Settlement
 from terrain import TerrainMaps
 
-time_opt = "time_limit"  # "10' limit"
-debug_opt = "debug"  # "Debug mode: does not catch exceptions in generation"
-visu_opt = "visualization"  # "Visualization tool: plots iterations of building placement"
+time_opt = "time_opt"  # "10' limit"
+debug_opt = "debug_opt"  # "Debug mode: does not catch exceptions in generation"
+visu_opt = "visu_opt"  # "Visualization tool: plots iterations of building placement"
 
 
 def main(**options):
@@ -30,12 +30,12 @@ def main(**options):
 
     settlement = Settlement(terrain)
     settlement.build_districts(visualize=do_visu)
-    # exit(0)
     t2 = time()
     settlement.build_skeleton(time_lim, do_visu)  # define buildings list and seed them
-    print("computing village skeleton", time() - t2)
+    print(" computing village skeleton", time() - t2)
     settlement.clean_road_network()
     settlement.define_parcels()  # define parcels around seeds
+    # return
     settlement.terraform()
     settlement.generate(terrain, options.get(debug_opt, False))      # build buildings on parcels
     print('{} seconds of execution'.format(time() - t0))
@@ -48,6 +48,11 @@ def main(**options):
 
 
 if __name__ == '__main__':
-    main()
-    # stats: Stats = cProfile.run(f"main({time_limit}=900)", sort=SortKey.CUMULATIVE)
+    do_profile = False
+    if do_profile:
+        from pstats import Stats, SortKey
+        import cProfile
+        stats: Stats = cProfile.run(f"main({time_opt}=900)", sort=SortKey.CUMULATIVE)
+    else:
+        main(debug_opt=True)
 

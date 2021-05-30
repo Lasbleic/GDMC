@@ -1,4 +1,5 @@
 # coding=utf-8
+from random import choice
 from typing import Callable
 from time import time
 
@@ -11,10 +12,11 @@ from parameters import *
 from utils import Point, euclidean
 
 MAX_FLOAT = 100000.0
-MAX_DISTANCE_CYCLE = 32
-MIN_DISTANCE_CYCLE = 16
+MAX_DISTANCE_CYCLE = 30
+MIN_DISTANCE_CYCLE = 15
 DIST_BETWEEN_NODES = 12
-CYCLE_ALTERNATIVES = 8
+MIN_CYCLE_GAIN = 2
+CYCLE_ALTERNATIVES = 6
 maxint = 1 << 32
 
 
@@ -230,7 +232,7 @@ class RoadNetwork:
             if new_path:
                 if _t1 is None:
                     _t1 = time()
-                old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost)
+                old_path = self.a_star(node, point_to_connect, RoadNetwork.road_only_cost, recursive=False)
                 new_path = self.create_road(path=new_path)
                 cycles.append(set(old_path).union(set(new_path)))
                 if len(cycles) == 2:
@@ -254,7 +256,7 @@ class RoadNetwork:
         self.dijkstra(road, self.lambda_max, force_update)
 
     def road_build_cost(self, src_point, dest_point):
-        value = scale = euclidean(src_point, dest_point)
+        value = scale = manhattan(src_point, dest_point)
         # if we don't have access to terrain info
         if self.__all_maps is None:
             return value
@@ -285,10 +287,10 @@ class RoadNetwork:
         elevation = abs(self.__all_maps.height_map.steepness(src_point, norm=False).dot(dest_point - src_point))
         value += (elevation * 0.5) ** 2
 
-        return max(1, value)
+        return max(scale, value)
 
     def road_only_cost(self, src_point, dest_point):
-        return 1 if self.is_road(dest_point) else maxint
+        return manhattan(src_point, dest_point) if self.is_road(dest_point) else maxint
 
     # return the path from the point satisfying the ending_condition to the root_point, excluded
     def dijkstra(self, root_points, max_distance, force_update):
@@ -400,7 +402,7 @@ class RoadNetwork:
             update_maps_info_at(clst_neighbor)
             update_distances(clst_neighbor)
 
-    def a_star(self, root_point, ending_point, cost_function, timer=False):
+    def a_star(self, root_point, ending_point, cost_function, timer=False, recursive=True):
         # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int]) -> List[Point]
         """
         Parameters
@@ -418,8 +420,10 @@ class RoadNetwork:
             return [root_point]
         t0 = time()
         try:
-            tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
-        except SystemError:
+            from utils.algorithms.hierarchical_astar import hierarchical_astar
+            f = hierarchical_astar if recursive else a_star
+            tuple_path = f((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
+        except SystemError or KeyError:
             return []
         if timer:
             t0 = time() - t0 + .001
@@ -427,18 +431,22 @@ class RoadNetwork:
         return [Point(u, v) for u, v in tuple_path]
 
     def cycle_creation_condition(self, node1: Point, node2: Point) -> List[Point]:
+        """
+        Evaluates whether it's useful to create a new road between two road points
+        :param node1:
+        :param node2:
+        :return:
+        """
         straight_dist = euclidean(node1, node2)
         if not (MIN_DISTANCE_CYCLE <= straight_dist <= MAX_DISTANCE_CYCLE):
             return []
 
-        try:
-            existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost)
-        except KeyError:
-            # todo: debug KeyError (0, 0)
-            return []
+        existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost, recursive=False)
         current_dist = len(existing_path)
-        straight_path = self.a_star(node1, node2, RoadNetwork.road_build_cost)
+        if current_dist / straight_dist < MIN_CYCLE_GAIN:
+            return []
+        straight_path = self.a_star(node1, node2, RoadNetwork.road_build_cost, recursive=False)
         straight_dist = len(straight_path)
-        if current_dist / straight_dist >= 2.5:
+        if straight_dist and current_dist / straight_dist >= MIN_CYCLE_GAIN:
             return straight_path
         return []

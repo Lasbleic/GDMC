@@ -1,24 +1,22 @@
-from building_seeding import Parcel
 from generation import CropGenerator
-from generation.building_palette import spruce_house_palette1
-from terrain.maps import Maps
-from pymclevel import Entity, MCLevel, BoundingBox
-from utils import TransformBox, Point2D
+from terrain import TerrainMaps
 
-displayName = "Crop generator test filter"
+#
+# def perform(level, box, options):
+#     # type: (MCLevel, BoundingBox, dict) -> None
+#     box = TransformBox(box)
+#     maps = Maps(level, box)
+#     gen = CropGenerator(box)
+#     height_map = maps.height_map.box_height(box, False)
+#     if options['type'] in Entity.entityList:
+#         gen._gen_animal_farm(level, height_map, spruce_house_palette1, options['type'])
+#     elif options['type'] == "Harvested":
+#         gen._gen_harvested_crop(level, height_map)
+#     else:
+#
 
-inputs = (("type", ("Cow", "Naive", "Harvested")), ("Creator: Charlie", "label"))
-
-
-def perform(level, box, options):
-    # type: (MCLevel, BoundingBox, dict) -> None
-    box = TransformBox(box)
-    maps = Maps(level, box)
-    gen = CropGenerator(box)
-    height_map = maps.height_map.box_height(box, False)
-    if options['type'] in Entity.entityList:
-        gen._gen_animal_farm(level, height_map, spruce_house_palette1, options['type'])
-    elif options['type'] == "Harvested":
-        gen._gen_harvested_crop(level, height_map)
-    else:
-        gen._gen_crop_v1(level, height_map)
+if __name__ == '__main__':
+    terrain = TerrainMaps.request()
+    gen = CropGenerator(terrain.box)
+    height_map = terrain.height_map.box_height(terrain.box, False)
+    gen._gen_crop_v1(height_map)

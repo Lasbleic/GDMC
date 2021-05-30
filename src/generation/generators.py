@@ -1,14 +1,14 @@
 from math import floor
-from os import sep
+import numpy as np
 from random import randint, random
 
 from numpy import percentile
-from numpy.random import choice
+from numpy.random import choice as npChoice
+from random import choice as rdChoice
 
 from generation.building_palette import HousePalette
-from interfaceUtils import sendBlocks, runCommand
+from interfaceUtils import sendBlocks, runCommand, getBlock
 from utils import *
-
 from utils.nbt_structures import StructureNBT
 
 SURFACE_PER_ANIMAL = 16
@@ -220,7 +220,7 @@ class CropGenerator(MaskedGenerator):
         samples = list(self.animal_distribution.keys())
         probs = array(list(self.animal_distribution.values()))
         probs = probs / sum(probs)
-        return choice(samples, p=probs)
+        return npChoice(samples, p=probs)
 
     def choose_sub_generator(self, parcels):
         # type: (List[Parcel]) -> None
@@ -241,9 +241,9 @@ class CropGenerator(MaskedGenerator):
     def generate(self, level, height_map=None, palette=None):
         self.__terraform(height_map)
         self._clear_trees(level)
-        self._sub_generator_function(level, height_map, palette)
+        self._sub_generator_function(height_map, palette)
 
-    def _gen_animal_farm(self, level, height_map, palette, animal=None):
+    def _gen_animal_farm(self, height_map, palette, animal=None):
         # type: (TerrainMaps, array, HousePalette, str) -> None
         # todo: surround water with trapdoors to avoid leaks
         self.refine_mask()
@@ -271,7 +271,7 @@ class CropGenerator(MaskedGenerator):
                             break
                     gate_block = BlockAPI.getFence(palette['door'], facing=str(door_dir).lower())
 
-        print(gate_pos, gate_block)
+        # print(gate_pos, gate_block)
         # place gate
         if gate_pos:
             x, z = gate_pos.x, gate_pos.z
@@ -288,57 +288,46 @@ class CropGenerator(MaskedGenerator):
                 command = f"summon {animal} {x} {y} {z}"
                 if bernouilli(.3):
                     command += "{" + f"Age:{randint(-25000, -5000)}" + "}"
-                interfaceUtils.runCommand(command)
+                runCommand(command)
                 animal_count -= 1
             else:
                 animal_count -= .1
 
-    def _gen_crop_v1(self, level, height=None, palette=None):
-        from numpy import ones
-        # todo: store max age somewhere (beetroots grow up to age 3)
-        # todo: deter water sources from leaking everywhere
-        # dimensions
+    def _gen_crop_v1(self, height=None, palette=None):
         x0, y0, z0 = self.origin
-        min_height = int(percentile(height.flatten(), 15))
-        max_height = int(percentile(height.flatten(), 85))
+        min_height = int(percentile(height.flatten(), 20))
+        max_height = int(percentile(height.flatten(), 80))
+        self._mask &= (height >= min_height) & (height <= max_height)
         # block states
         b = BlockAPI.blocks
-        crop_type = choice([b.Carrots, b.Beetroots, b.Potatoes, b.Wheat])
-        crop_age = randint(2, 5)
+        crop_type, max_age = rdChoice([(b.Carrots, 7), (b.Beetroots, 3), (b.Potatoes, 7), (b.Wheat, 7)])
+        crop_age = randint(max_age // 4, 1 + max_age * 3 // 4)
 
-        # each water source irrigates a 9x9 flat zone
-        water_source_count = (1 + (self.width - 1) // 9) * (1 + (self.length - 1) // 9)
-        if self.width <= 3 or self.length <= 3:
-            water_source_count = 0
+        # Irrigate the field by sampling dry positions until there is none
         water_sources = set()
-        for _ in range(water_source_count):
-            xs, zs = x0 + randint(1, self.width - 2), z0 + randint(1, self.length - 2)
-            for xd, zd in product(range(max(x0, xs - 4), min(x0 + self.width, xs + 5)),
-                                  range(max(z0, zs - 4), min(z0 + self.length, zs + 5))):
-                if height is not None:
-                    y0 = height[xd - x0, zd - z0]
-                    if y0 < min_height:
-                        fillBlocks(BoundingBox((xd, y0, zd), (1, min_height - y0, 1)), BlockAPI.blocks.CoarseDirt)
-                        y0 = min_height
-                    elif y0 > max_height:
-                        continue
-                if not self.is_masked(xd, zd, True):
-                    continue
-                if (xd, zd) == (xs, zs):
-                    # water source
-                    setBlock(Point(xd, zd, y0), BlockAPI.blocks.Water)
-                    water_sources.add((xd, zd))
-                elif (xd, zd) not in water_sources:
-                    # farmland
-                    setBlock(Point(xd, zd, y0), f"farmland[moisture=7]")
+        irrigated: ndarray = self._mask[:].astype(int)
+        spread = 4
+        while irrigated.sum():
+            dry = np.where(irrigated == 1)
+            new_water_index = np.random.randint(len(dry[0]))
+            x, z = dry[0][new_water_index], dry[1][new_water_index]
+            water_sources.add((x + x0, z + z0))
+            place_water_source(x + x0, height[x, z], z + z0, water_sources)
+            mask = (height == height[x, z])[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)]
+            irrigated[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)][mask] = 0
 
-                    # crop
-                    crop_age = crop_age + random() - .5
-                    int_crop_age = pos_bound(int(round(crop_age)), 7)
-                    crop_block = f"{crop_type}[age={int_crop_age}]"
-                    setBlock(Point(xd, zd, y0+1), crop_block)
+        # Place crops
+        for x, y, z in self.surface_pos(height):
+            if (x, z) not in water_sources:
+                # farmland
+                setBlock(Point(x, z, y), f"farmland[moisture=7]")
+                # crop
+                crop_age = crop_age + random() - .5
+                int_crop_age = pos_bound(int(round(crop_age)), max_age)
+                crop_block = f"{crop_type}[age={int_crop_age}]"
+                setBlock(Point(x, z, y+1), crop_block)
 
-    def _gen_harvested_crop(self, level, height_map, palette=None):
+    def _gen_harvested_crop(self, height_map, palette=None):
         # TODO: fix water sources
         mx, mz = randint(0, 1), randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
@@ -494,48 +483,63 @@ class WindmillGenerator(Generator):
         runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]')
 
 
-class WoodTower(Generator): pass
-
-
-#     def generate(self, level, height_map=None, palette=None):
-#         self._clear_trees(level)
-#         origin_x = self._box.minx + randint(0, self.width - 4)
-#         origin_z = self._box.minz + randint(0, self.length - 4)
-#         origin_y = height_map[origin_x + 2 - self._box.minx, origin_z + 2 - self._box.minz] + 1
-#         nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'wooden_watch_tower.nbt']))
-#         schem = nbt.toSchematic()
-#         # todo: rotate schematic to face door to entry point
-#         copyBlocksWrap(level, schem, schem.bounds, (origin_x, origin_y, origin_z))
-
-
-class StoneTower(Generator): pass
-
-
-#     def generate(self, level, height_map=None, palette=None):
-#         self._clear_trees(level)
-#         # relative coords
-#         origin_x = randint(0, self.width - 8) if self.width > 8 else 0
-#         origin_z = randint(0, self.length - 8) if self.length > 8 else 0
-#         try:
-#             origin_y = height_map[origin_x + 4, origin_z + 4] + 1
-#         except IndexError:
-#             origin_y = int(round(height_map.mean()))
-#         # absolute coords
-#         origin_x += self._box.minx
-#         origin_z += self._box.minz
-#         nbt = VoidStructureNBT(sep.join([get_project_path(), 'structures', 'stone_watch_tower.nbt']))
-#         schem = nbt.toSchematic()
-#         # todo: rotate schematic to face door to entry point
-#         copyBlocksWrap(level, schem, schem.bounds, (origin_x, origin_y, origin_z))
-
-
-def place_street_lamp(level, x, y, z, material):
+def place_street_lamp(x, y, z, material):
     fillBlocks(BoundingBox((x, y + 1, z), (1, 3, 1)), BlockAPI.getFence(material))
     setBlock(Point(x, z, y + 4), BlockAPI.blocks.RedstoneLamp)
     setBlock(Point(x, z, y + 5), f"daylight_detector[inverted=true]")
+
+
+def place_water_source(x, y, z, protected_points=None):
+    p = Point(x, z, y)
+    for dir in cardinal_directions(False):  # type: Direction
+        dpos = p + dir.value
+        if getBlock(*dpos.coords).split(':')[-1] not in ground_blocks:
+            state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
+            setBlock(dpos, state)
+            if protected_points:
+                protected_points.add((dpos.x, dpos.z))
+    setBlock(p, BlockAPI.blocks.Water)
+
+
+def sign_rotation_for_direction(p: Point):
+    from math import acos, pi
+    rad = acos(p.x / p.norm)
+    if p.z < 0:
+        rad = 2 * pi - rad
+    ang = rad / pi * 8
+    return int(round((ang + 4))) % 16
+
+
+def place_sign(position: Point, material: str, direction: Point, **kwargs):
+    """
+    Place a sign at a given position
+    :param position:
+    :param material:
+    :param direction: direction faced by the sign
+    :param kwargs:
+    :keyword Text1: (str) First line of the sign. Goes on to Text4
+    :keyword Color: (str) Color of the text
+    :return: nothing
+    """
+    if 'wall' in material:
+        state = material + f"facing={Direction.of(*position.coords).name.lower()}" + "{"
+    else:
+        state = material + f"[rotation={sign_rotation_for_direction(direction)}]" + "{"
+    state += f'Color: "{kwargs.get("Color", "black")}", '
+    state += f'x: {position.x}, y: {position.y}, z: {position.z}, id: "minecraft:sign", '
+    state += 'Text1: \'{"text":"' + kwargs.get("Text1", "") + '"}\', '
+    state += 'Text2: \'{"text":"' + kwargs.get("Text2", "") + '"}\', '
+    state += 'Text3: \'{"text":"' + kwargs.get("Text3", "") + '"}\', '
+    state += 'Text4: \'{"text":"' + kwargs.get("Text4", "") + '"}\''
+    state += "}"
+    command = f"setblock {position.x} {position.y} {position.z} {state}"
+    print(command)
+    runCommand(command)
 
 
 if __name__ == '__main__':
     gen = CropGenerator(TransformBox((0, 0, 0), (1, 1, 1)))
     print(gen.animal_distribution)
     print(gen._pick_animal())
+    for dir in cardinal_directions(False):
+        print(dir.name, sign_rotation_for_direction(dir.value))

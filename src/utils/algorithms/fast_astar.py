@@ -7,7 +7,7 @@ import numpy as np
 
 from utils.misc_objects_functions import _in_limits
 
-maxint = 1 << 15
+maxint = (1 << 31) + .1
 
 
 @jit(forceobj=True)
@@ -23,20 +23,20 @@ def a_star(root_point, ending_point, dimensions, cost_function):
     -------
     best first path from root_point to ending_point if any exists
     """
-    distance_map, neighbors, predecessor_map, heuristic_map = astar_env = _init(root_point, dimensions)
+    distance_map, neighbours, predecessor_map, heuristic_map = astar_env = _init(root_point, dimensions)
 
     clst_neighbor = root_point
     n_steps = 0
-    while len(neighbors) > 0 and (clst_neighbor != ending_point):
+    while len(neighbours) > 0 and (clst_neighbor != ending_point):
         n_steps += 1
         clst_neighbor = _closest_neighbor(astar_env, ending_point)
-        neighbors.remove(clst_neighbor)
+        neighbours.remove(clst_neighbor)
         _update_distances(astar_env + (cost_function,), dimensions, clst_neighbor)
 
     if clst_neighbor != ending_point:
         return []
     else:
-        return _path_to_dest(predecessor_map, root_point, ending_point)
+        return _path_to_dest(predecessor_map, root_point, ending_point, True)
 
 
 @njit
@@ -44,7 +44,7 @@ def _init(point, dims):
     x, z = point
     _distance_map = np.full(dims, maxint)
     _distance_map[x, z] = 0
-    _neighbours = {point}
+    _neighbours = [point]
     _predecessor_map = np.full((*dims, 2), max(dims))
     _heuristic_map = np.full(dims, maxint)
     return _distance_map, _neighbours, _predecessor_map, _heuristic_map
@@ -53,20 +53,20 @@ def _init(point, dims):
 @njit(cache=True)
 def _closest_neighbor(env, destination):
 
-    distance_map, neighbors = env[:2]
+    distance_map, neighbours = env[:2]
     heuristic_map = env[3]
     closest_neighbors = [(0, 0)]
     min_heuristic = maxint
-    for neighbor in neighbors:
-        x, z = neighbor
-        if heuristic_map[neighbor] == maxint:
-            heuristic_map[neighbor] = _heuristic(neighbor, destination)
-        current_heuristic = distance_map[x, z] + heuristic_map[neighbor]
+    for neighbour in neighbours:
+        x, z = neighbour
+        if heuristic_map[neighbour] == maxint:
+            heuristic_map[neighbour] = _heuristic(neighbour, destination)
+        current_heuristic = distance_map[x, z] + heuristic_map[neighbour]
         if current_heuristic < min_heuristic:
-            closest_neighbors = [neighbor]
+            closest_neighbors = [neighbour]
             min_heuristic = current_heuristic
         elif current_heuristic == min_heuristic:
-            closest_neighbors += [neighbor]
+            closest_neighbors.append(neighbour)
     return closest_neighbors[np.random.randint(0, len(closest_neighbors))]
 
 
@@ -74,7 +74,7 @@ def _closest_neighbor(env, destination):
 def _heuristic(point, destination):
     x0, z0 = point
     xf, zf = destination
-    return 1.1 * np.sqrt((xf - x0) ** 2 + (zf - z0) ** 2)
+    return 1.3 * np.sqrt((xf - x0) ** 2 + (zf - z0) ** 2)
 
 
 @jit(forceobj=True)
@@ -87,7 +87,7 @@ def _update_distance(env, updated_point, neighbor):
     new_distance = distance_map[updated_point] + edge_cost
     previous_distance = distance_map[neighbor]
     if previous_distance >= maxint:
-        neighbors.add(neighbor)
+        neighbors.append(neighbor)
     if previous_distance > new_distance:
         distance_map[neighbor] = new_distance
         predecessor_map[neighbor] = updated_point
@@ -101,7 +101,7 @@ def _update_distances(env, dims, point):
 
 
 @njit(cache=True)
-def _path_to_dest(predecessor_map, origin, destination):
+def _path_to_dest(predecessor_map, origin, destination, fill_missing_points):
     current_point = destination
     path = [destination]
     while current_point != origin:
@@ -111,7 +111,7 @@ def _path_to_dest(predecessor_map, origin, destination):
             path[-1] = current_point
         else:
             dist = abs_distance(path[-1], current_point)
-            if dist > 1:
+            if fill_missing_points and dist > 1:
                 # because of the large steps in exploration_neighbourhood, the path is sometimes "incomplete"
                 # here we add intermediate blocks by exploring convex points between the last element of path and
                 # the current one
@@ -136,7 +136,7 @@ def nb_reversed(arr: list):
 @njit(cache=True)
 def _exploration_neighbourhood(x, z, width, length):
     neighbourhood = set()
-    for dx, dz in [(0, 1), (-1, 2), (0, 2), (1, 2), (-1, 3), (0, 3), (1, 3)]:
+    for dx, dz in [(0, 1), (1, 1), (-1, 2), (0, 2), (1, 2)]:
         for _ in numba.prange(4):
             dx, dz = dz, -dx
             x0, z0 = x+dx, z+dz

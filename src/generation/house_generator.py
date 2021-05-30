@@ -106,7 +106,7 @@ class _RoomSymbol(CardinalGenerator):
         self._has_base = has_base
 
     def generate(self, level, height_map=None, palette=None):
-        print("Generating Room at", self._get_box().origin, self._get_box().size)
+        # log.debug("Generating Room at", self._get_box().origin, self._get_box().size)
         if self._has_base:
             h = 1 if height_map is None else max(1, self.origin.y - height_map.min())
             self.children.append(_BaseSymbol(TransformBox(self.origin - (0, h, 0), (self.width, h, self.length))))
@@ -188,8 +188,7 @@ class _RoomSymbol(CardinalGenerator):
             door_x X coordinate of the door on the parcel border
             door_z Z coordinate of the door on the parcel border
         """
-        mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2  # center of the room
-        local_door_dir = Direction.of(dx=door_x-mean_x, dz=door_z-mean_z)  # direction of the door relative to this room
+        local_door_dir = Direction.of(dx=door_x-self.mean.x, dz=door_z-self.mean.z)  # direction of the door relative to this room
         if self[local_door_dir] is not None and isinstance(self[local_door_dir], _RoomSymbol):
             try:
                 # passes the door to an annex room
@@ -398,7 +397,7 @@ class _WallSymbol(Generator):
             if sum(is_win) == 0: is_win = [1 for _ in range(len(is_win))]
             door_val = [euclidean(entry, Point(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
             # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
-            door_z = argmin(door_val)
+            door_z = argmin([float(_) for _ in door_val])
             door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
             if door_z > 0 and is_win[door_z - 1]:
                 door_box.expand(Direction.of(dz=-1), inplace=True)
@@ -408,7 +407,7 @@ class _WallSymbol(Generator):
         else:
             is_win = [int(getBlock(box.minx+_, box.miny+1, box.minz).endswith(palette['window'])) for _ in range(box.width)]
             if sum(is_win) == 0: is_win = [1 for _ in range(len(is_win))]
-            door_val = [euclidean(entry, Point(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.width)]
+            door_val = [euclidean(entry, Point(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000. for _ in range(box.width)]
             door_x = argmin(door_val)
             door_box = TransformBox(box.origin + (door_x, 0, 0), (1, box.height, 1))
             if door_x > 0 and is_win[door_x - 1]:

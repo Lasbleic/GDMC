@@ -1,4 +1,4 @@
-from building_seeding.settlement_seeding import Districts, DistrictSeeder, min_spanning_tree
+from building_seeding.districts import Districts, DistrictSeeder
 from building_seeding.building_pool import BuildingPool, BuildingType, BuildingType
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.parcel import Parcel, MaskedParcel

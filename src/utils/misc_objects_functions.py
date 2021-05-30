@@ -1,6 +1,6 @@
 from os.path import realpath, sep
 from random import random
-from numba import njit
+from numba import njit, jit
 from typing import Tuple
 
 
@@ -17,9 +17,7 @@ def get_project_path():
 
 def argmin(values, key=None):
     if key is None:
-        tmp = values
-        values = list(range(len(tmp)))
-        key = lambda x: tmp[x]
+        return index_argmin(values)
 
     def rec_argmin(sub_values):
         if len(sub_values) == 1:
@@ -30,7 +28,16 @@ def argmin(values, key=None):
             v1, k1 = rec_argmin(sub_values[L:])
             return (v0, k0) if k0 <= k1 else (v1, k1)
 
-    return rec_argmin(values)[0]
+    return rec_argmin(list(values))[0]
+
+
+@njit()
+def index_argmin(values) -> int:
+    idx_min, val_min = 0, values[0]
+    for idx, val in enumerate(values):
+        if val < val_min:
+            idx_min, val_min = idx, val
+    return idx_min
 
 
 def argmax(values, key=None):

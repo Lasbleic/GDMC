@@ -46,7 +46,7 @@ class StructureNBT:
             blockState = self.__palette[blockTag.get('state').value]
             if blockTag.get('nbt'):
                 blockState += self.parse_data(blockTag.get('nbt'))
-                print(runCommand(f"setblock {blockPoint.x} {blockPoint.y} {blockPoint.z} {blockState}"))
+                runCommand(f"setblock {blockPoint.x} {blockPoint.y} {blockPoint.z} {blockState}")
             else:
                 setBlock(blockPoint, blockState)
 

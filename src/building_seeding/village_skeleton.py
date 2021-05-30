@@ -5,13 +5,13 @@ Village skeleton growth
 from numpy import argmin
 from statistics import mean
 
-from building_seeding.settlement_seeding import Districts
+from building_seeding.districts import Districts
 from terrain import TerrainMaps
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.interest.pre_processing import VisuHandler
 from building_seeding.parcel import Parcel, MaskedParcel
 from building_seeding.interest import InterestSeeder
-from parameters import MIN_PARCEL_SIDE, AVERAGE_PARCEL_SIZE
+from parameters import MIN_PARCEL_SIZE, AVERAGE_PARCEL_SIZE
 from utils import *
 
 
@@ -25,7 +25,7 @@ class VillageSkeleton:
         buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
         self.building_iterator = BuildingPool(districts.buildable_surface)
         self.__parcel_list = parcel_list
-        self.parcel_size = MIN_PARCEL_SIDE
+        self.parcel_size = MIN_PARCEL_SIZE
 
         # parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
         self.__interest = InterestSeeder(maps, districts, parcel_list, scenario)

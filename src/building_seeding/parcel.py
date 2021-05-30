@@ -11,7 +11,7 @@ from terrain import ObstacleMap, TerrainMaps
 from utils import *
 import terrain
 
-ENTRY_POINT_MARGIN = (MIN_PARCEL_SIDE + MAX_ROAD_WIDTH) // 2
+ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
 
 
 class Parcel:
@@ -23,7 +23,7 @@ class Parcel:
         self._center = seed
         self.building_type: BuildingType = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
-        self._entry_point = seed if building_type is BuildingType.ghost else self.__compute_entry_point()
+        self._entry_point = seed if building_type is BuildingType.ghost else self.compute_entry_point()
         self._relative_box = None  # type: TransformBox
         self._box = None  # type: TransformBox
         self._mask = None
@@ -37,51 +37,25 @@ class Parcel:
     def __str__(self):
         return "{} parcel at {}".format(self.building_type.name, self.center)
 
-    def __compute_entry_point(self):
+    def compute_entry_point(self):
         road_net = self._map.road_network
 
-        # If path from road_net to seed has already been computed, project the entry point on this path
-        if road_net.is_accessible(self._center):
-            path = road_net.path_map[self._center.x, self._center.z]  # path[-1] == seed
-            distance_threshold = AVERAGE_PARCEL_SIZE + MAX_ROAD_WIDTH // 2
-            if len(path) <= distance_threshold:
-                # beyond this distance, no need to build a new road, parcel is considered accessible
-                return path[0] if len(path) else self._center
-            else:
-                # len(path) > distance_threshold, compute the local direction of the road
-                index = len(path) - distance_threshold
-                target_road_pt = path[index]
-        else:
-            # have no clue where the nearest road is, aim for the middle of the map
-            target_road_pt = Point(self._map.width // 2, self._map.length // 2)
-
-        local_road_x = target_road_pt.x - self._center.x
-        local_road_z = target_road_pt.z - self._center.z
-        local_road_dir = Direction.of(dx=local_road_x, dz=local_road_z)
-
-        # compute the secondary local direction of the road (orthogonal to the main one)
-        # this direction determines what side of the parcel will be along the road
-        resid_road_x = local_road_x if local_road_dir.z else 0  # note: resid for residual
-        resid_road_z = local_road_z if local_road_dir.x else 0
-        if resid_road_z != 0 or resid_road_x != 0:
-            resid_road_dir = Direction.of(dx=resid_road_x, dz=resid_road_z)
-        else:
-            resid_road_dir = local_road_dir.rotate() if bernouilli() else -local_road_dir.rotate()
-        entry_point = self._center + resid_road_dir.value * ENTRY_POINT_MARGIN
-        if not (0 <= entry_point.x < self._map.width and 0 <= entry_point.z < self._map.length):
-            entry_point = target_road_pt
-        return entry_point
+        def key(road_block):
+            road_y = self._map.height_map[road_block.x, road_block.z]
+            self_y = self._map.height_map[self.mean_x, self.mean_z]
+            return manhattan(Point(self.mean_x, self.mean_z, self_y), Point(road_block.x, road_block.z, road_y))
+        return argmin(road_net.road_blocks, key=key)
 
     def __initialize_limits(self):
         # build parcel box
         margin = AVERAGE_PARCEL_SIZE // 2
-        assert margin > (MIN_PARCEL_SIDE // 2)
+        assert margin > (MIN_PARCEL_SIZE // 2)
         shifted_x = max(margin, pos_bound(self._center.x - margin, self._map.width - margin))  # type: int
         shifted_z = max(margin, pos_bound(self._center.z - margin, self._map.length - margin))  # type:int
         self._center = Point(shifted_x + margin, shifted_z + margin)
 
-        origin = (self.center.x - (MIN_PARCEL_SIDE // 2), 0, self.center.z - (MIN_PARCEL_SIDE // 2))
-        size = (MIN_PARCEL_SIDE, 1, MIN_PARCEL_SIDE)
+        origin = (self.center.x - (MIN_PARCEL_SIZE // 2), 0, self.center.z - (MIN_PARCEL_SIZE // 2))
+        size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
         self._relative_box = TransformBox(origin, size)
         self._mask = full((self.width, self.length), True)
         # in cases where the parcel hits the limits, does not change anything otherwise
@@ -224,7 +198,7 @@ class Parcel:
             self._box.translate(dx=move_x, dz=move_z, inplace=True)
         self._center = new_seed
         self._entry_point += Point(move_x, move_z)
-        self.mark_as_obstacle(self._map.obstacle_map)  # todo: also update interest maps (sociability)
+        self.mark_as_obstacle(self._map.obstacle_map)
 
     def biome(self, level: TerrainMaps):
         b = self._relative_box

@@ -2,13 +2,13 @@ from __future__ import division, print_function
 
 import logging
 from enum import Enum
-
-from numpy.random import random, choice
 from typing import Dict
+
+from numpy.random import choice
 
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
-from generation.generators import WoodTower, StoneTower, Generator
+from generation.generators import Generator
 from generation.plaza import PlazaGenerator
 from parameters import AVERAGE_PARCEL_SIZE
 
@@ -42,7 +42,7 @@ class BuildingPool:
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
-        average_parcel_surface = AVERAGE_PARCEL_SIZE**2  # todo: calibrate this parameter
+        average_parcel_surface = AVERAGE_PARCEL_SIZE**2
         self._settlement_limit = int((exploitable_surface / average_parcel_surface) ** .95)
         self._settlement_limit = max(self._settlement_limit, 1)
         # self._settlement_limit = min(self._settlement_limit, 50)

@@ -9,12 +9,12 @@ BUILDING_ENCYCLOPEDIA = {
     "Flat_scenario": {
 
         "Sociability": {
-            "house-house": (8, 14, 80),
+            "house-house": (10, 16, 80),
             "house-crop": (12, 20, 100),
             "house-windmill": (15, 40, 100),
             "house-ghost": (5, 10, 100),
             "crop-crop": (10, 13, 50),
-            "crop-house": (10, 25, 50),
+            "crop-house": (12, 25, 50),
             "crop-windmill": (11, 15, 100),
             "crop-ghost": (5, 30, 100),
             "windmill-windmill": (20, 30, 100),

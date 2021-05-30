@@ -8,13 +8,15 @@ from typing import List
 from numpy import percentile
 from numpy.random import geometric, normal
 
-from building_seeding import Districts, min_spanning_tree, Parcel, VillageSkeleton, BuildingType, MaskedParcel
+from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
 from generation.building_palette import get_biome_palette
+from generation.generators import place_sign
 from interfaceUtils import sendBlocks
-from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIDE
+from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIZE
 from terrain import TerrainMaps
 from terrain.road_network import RoadNetwork
 from utils import *
+from utils.algorithms import min_spanning_tree, tree_distance
 
 MEAN_ROAD_COVERED_SURFACE = 64  # to compute number of roads, max 1 external connexion per 1/64 of the settlement size
 SETTLEMENT_ACCESS_DIST = 25  # maximum distance from settlement center to road net
@@ -64,7 +66,6 @@ class Settlement:
         for town_center in self.districts.town_centers:
             self._parcels.append(Parcel(town_center, BuildingType.ghost, self._maps))
             self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
-
 
     def init_road_network(self):
         # out_connections = [self.__random_border_point()]
@@ -163,14 +164,23 @@ class Settlement:
 
         print("Defining parcels' and buildings' heights")
         for p in self._parcels:
+            p.compute_entry_point()
             define_parcels_heights(p)
             # translate all parcels to absolute coordinates
             p.translate_to_absolute_coords(self._origin)
 
     def generate(self, terrain: TerrainMaps, print_stack=False):
         self._road_network.generate(terrain)
+        self.__generate_road_signs()
 
         for parcel in self._parcels:  # type: Parcel
+            def in_bounds():
+                corner1 = parcel.origin + self._origin
+                corner2 = corner1 + Point(parcel.width, parcel.length) - Point(1, 1)
+                return corner1 in self._maps.area and corner2 in self._maps.area
+
+            if not in_bounds():
+                continue
             parcel_biome = parcel.biome(terrain)
             palette = get_biome_palette(parcel_biome)
             if isinstance(parcel, MaskedParcel):
@@ -275,3 +285,19 @@ class Settlement:
                 unset_road(extremity)
                 extremity = get_neighbour(extremity)
                 truncated_length += 1
+
+    def __generate_road_signs(self):
+        roads = min_spanning_tree(self.districts.district_centers)
+        distance_map = tree_distance(roads)
+        for point in self.districts.district_centers:
+            towns = sorted(filter(lambda u: point != u, self.districts.town_centers), key=lambda town: distance_map[point, town])
+            towns = towns[:3] if len(towns) > 3 else towns
+            for dy, town in enumerate(towns):
+                y = self._maps.height_map[point] + 1
+                dir = town - point
+                dir = Point(-dir.z, dir.x)
+                pos = point + self._origin + Direction.Top.value * (y + dy)
+                if point in self.districts.town_centers and town == towns[-1]:
+                    place_sign(pos, BlockAPI.blocks.OakSign, dir, Text1=self.districts.town_names[point], Text2="--------", Text3=f"{self.districts.town_names[town]}", Text4=f"<--- {int(distance_map[point, town])}m")
+                else:
+                    place_sign(pos, BlockAPI.blocks.OakSign, dir, Text2=f"{self.districts.town_names[town]}", Text3=f"<--- {int(distance_map[point, town])}m")
