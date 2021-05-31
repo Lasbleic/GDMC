@@ -1,10 +1,9 @@
 from numba.typed import List as nbList
 from numpy.random import randint
 
-from utils.algorithms.fast_astar import _init, abs_distance, jit, njit, numba, _in_limits, _update_distance, maxint, \
-    _path_to_dest, _heuristic as euclidean
+from utils.algorithms.fast_astar import abs_distance, numba, _in_limits, maxint, \
+    _path_to_dest, _heuristic as euclidean, njit, np, jit
 from utils.misc_objects_functions import index_argmin
-
 
 GAMMA = 4
 
@@ -129,3 +128,31 @@ def _exploration_neighbourhood(x, z, width, length, step):
             if _in_limits((x0, 0, z0), width, length):
                 neighbourhood.add((x0, z0))
     return neighbourhood
+
+
+@njit
+def _init(point, dims):
+    x, z = point
+    _distance_map = np.full(dims, maxint)
+    _distance_map[x, z] = 0
+    _neighbours = [point]
+    _predecessor_map = np.full((*dims, 2), max(dims))
+    _heuristic_map = np.full(dims, maxint)
+    return _distance_map, _neighbours, _predecessor_map, _heuristic_map
+
+
+@jit(forceobj=True)
+def _update_distance(env, updated_point, neighbor):
+    distance_map, neighbors, predecessor_map, h_map, cost = env
+    edge_cost = cost(updated_point, neighbor)
+    if edge_cost == maxint:
+        return
+
+    new_distance = distance_map[updated_point] + edge_cost
+    previous_distance = distance_map[neighbor]
+    if previous_distance >= maxint:
+        neighbors.append(neighbor)
+    if previous_distance > new_distance:
+        distance_map[neighbor] = new_distance
+        predecessor_map[neighbor] = updated_point
+

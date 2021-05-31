@@ -239,14 +239,15 @@ class CropGenerator(MaskedGenerator):
             self._sub_generator_function = self._gen_animal_farm
 
     def generate(self, level, height_map=None, palette=None):
-        self.__terraform(height_map)
         self._clear_trees(level)
         self._sub_generator_function(height_map, palette)
 
     def _gen_animal_farm(self, height_map, palette, animal=None):
         # type: (TerrainMaps, array, HousePalette, str) -> None
-        # todo: surround water with trapdoors to avoid leaks
+        # todo: add torches to surround the gate
+        # todo: clean terrain within fences
         self.refine_mask()
+        self.__terraform(height_map)
         if not animal:
             animal = self._pick_animal()
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
@@ -331,9 +332,7 @@ class CropGenerator(MaskedGenerator):
         # TODO: fix water sources
         mx, mz = randint(0, 1), randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
-            if x % 9 in [5, (self.width - 4) % 9] and z % 9 in [5, (self.length - 4) % 9]:
-                b = BlockAPI.blocks.Water
-            if (x % 2 == mx and (z + x // 2) % 3 == mz) and bernouilli(0.35):
+            if (x % 2 == mx and (z + x // 2) % 3 == mz) and bernouilli():
                 setBlock(Point(x, z, y), BlockAPI.blocks.Dirt)  # dirt under hay bales
                 b = BlockAPI.blocks.HayBlock
                 y += 1
@@ -341,9 +340,7 @@ class CropGenerator(MaskedGenerator):
                 b = BlockAPI.blocks.Farmland
             setBlock(Point(x, z, y), b)
         h = height_map
-        irrigation_height = min(h[h.shape[0] // 2, h.shape[1] // 2], h.max()) - self._box.miny
-        irrigation_box = TransformBox((self.mean.x, self._box.miny-1, self.mean.z), (1, 1, 1))
-        fillBlocks(irrigation_box, BlockAPI.blocks.Water)
+        place_water_source(self.mean.x, y, self.mean.z)
 
     def __terraform(self, height_map):
         # type: (MCLevel, ndarray) -> ndarray

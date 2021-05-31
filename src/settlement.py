@@ -292,8 +292,9 @@ class Settlement:
         for point in self.districts.district_centers:
             towns = sorted(filter(lambda u: point != u, self.districts.town_centers), key=lambda town: distance_map[point, town])
             towns = towns[:3] if len(towns) > 3 else towns
+            y = self._maps.height_map[point] + 1
+            setBlock(Point(point.x, point.z, y-1), BlockAPI.blocks.PolishedDiorite)
             for dy, town in enumerate(towns):
-                y = self._maps.height_map[point] + 1
                 dir = town - point
                 dir = Point(-dir.z, dir.x)
                 pos = point + self._origin + Direction.Top.value * (y + dy)

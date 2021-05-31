@@ -66,6 +66,7 @@ class RoadGenerator(Generator):
                     b = network_palette[b_id]
                     xa, za = x + x0, z + z0
                     fillBlocks(TransformBox((xa, y, za), (1, 4, 1)), BlockAPI.blocks.Air)
+                    setBlock(Point(xa, za, y-1), BlockAPI.blocks.Dirt)
                     setBlock(Point(xa, za, y), b)
                     if "slab" not in b and "stair" not in b and bernouilli(0.1):
                         place_torch(terrain.level, xa, y + 1, za)
@@ -170,15 +171,14 @@ class RoadGenerator(Generator):
                     point = path[updated_point_index]
                     self.__maps.obstacle_map.map[point.x, point.z] += 1
 
-        else:
-            # todo: debug why end can't be computed sometimes
-            elevation = numpy.abs(numpy.diff(path_height))
-            length = len(elevation)
-            begin = next(i for i in range(length) if elevation[i] > 1)
-            end = next(length-i for i in range(length) if elevation[length-i-1] > 1)
-            self.children.append(RampStairs(path[begin], path[end], self.__maps.height_map))
-            for _ in range(end-begin-1):
-                path.pop(begin)
+        # else:
+        #     elevation = numpy.abs(numpy.diff(path_height))
+        #     length = len(elevation)
+        #     begin = next(i for i in range(length) if elevation[i] > 1)
+        #     end = next(length-i for i in range(length) if elevation[length-i-1] > 1)
+        #     self.children.append(RampStairs(path[begin], path[end], self.__maps.height_map))
+        #     for _ in range(end-begin-1):
+        #         path.pop(begin)
 
 
 class Bridge(Generator):

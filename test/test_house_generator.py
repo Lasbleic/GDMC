@@ -18,13 +18,13 @@ def perform(level, box, options):
     gen = ProcHouseGenerator(box)
     palette_str = options["palette"]
     if palette_str == "Oak":
-        palette = oak_house_palette1
+        palette = oak_palette1
     elif palette_str == "Birch":
         palette = birch_house_palette1
     elif palette_str == "Dark Oak":
         palette = dark_oak_house_palette1
     elif palette_str == "Spruce":
-        palette = spruce_house_palette1
+        palette = spruce_palette1
     elif palette_str == "Acacia":
         palette = acacia_house_palette1
     elif palette_str == "Jungle":

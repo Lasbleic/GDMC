@@ -1,4 +1,4 @@
-from random import randint
+from random import randint, choice
 
 from utils import BlockAPI
 
@@ -41,8 +41,20 @@ class HousePalette(dict):
 
 stony_palette = {"cobblestone": 0.7, "gravel": 0.2, "stone": 0.1}
 
-oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.OakWood, b.OakPlanks,
-                                  b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'oak')
+oak_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.OakWood, b.OakPlanks,
+                            b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'oak')
+
+oak_palette2 = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakLog, b.Cobblestone,
+                                  b.WhiteStainedGlassPane, 'gable', 'oak', 'oak')
+
+oak_palette3 = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakWood, b.StoneBricks,
+                                  b.WhiteStainedGlassPane, 'gable', 'oak', 'oak')
+
+oak_spruce_palette = HousePalette(b.Stone, b.SprucePlanks, b.StrippedSpruceWood, b.OakPlanks,
+                                  b.WhiteStainedGlassPane, 'gable', 'spruce', 'oak')
+
+oak_birch_palette = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakWood, b.BirchPlanks,
+                                  b.WhiteStainedGlassPane, 'gable', 'oak', 'oak')
 
 birch_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.BirchWood, b.BirchPlanks,
                                     b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'birch')
@@ -50,8 +62,17 @@ birch_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.BirchWood, b.B
 dark_oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.DarkOakWood, b.DarkOakPlanks,
                                        b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'dark_oak')
 
-spruce_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
-                                     b.LightGrayStainedGlassPane, 'gable', b.StoneBrick, 'spruce')
+spruce_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
+                               b.LightGrayStainedGlassPane, 'gable', b.StoneBrick, 'spruce')
+
+spruce_palette4 = HousePalette(b.Stone, b.OakPlanks, b.SpruceWood, b.MossyCobblestone,
+                                     b.LightGrayStainedGlassPane, 'gable', 'spruce', 'spruce')
+
+spruce_palette2 = HousePalette(b.MossyCobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
+                               b.LightGrayStainedGlassPane, 'gable', b.Cobblestone, 'spruce')
+
+spruce_palette3 = HousePalette(b.MossyCobblestone, b.OakPlanks, b.StrippedSpruceWood, b.SprucePlanks,
+                               b.LightGrayStainedGlassPane, 'gable', b.Cobblestone, 'spruce')
 
 acacia_house_palette1 = HousePalette(b.Cobblestone, b.BirchPlanks, b.AcaciaWood, b.AcaciaPlanks,
                                      b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'acacia')
@@ -68,6 +89,9 @@ red_sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothRe
 terracotta_palette1 = HousePalette(b.RedSandstone, b.SprucePlanks, b.OakWood, b.Clay,
                                    b.SpruceFence, 'flat', b.Terracotta, 'oak')
 
+oak_palettes = (oak_palette1, oak_palette2, oak_palette3)
+spruce_palettes = (spruce_palette1, spruce_palette2, spruce_palette3, spruce_palette4, oak_spruce_palette)
+
 # Defines for each biome the acceptable palettes. Adapted from pymclevel.biome_types
 biome_palettes = {
     'badlands': [terracotta_palette1, red_sand_house_palette1],
@@ -75,7 +99,7 @@ biome_palettes = {
     'bamboo_jungle': [jungle_house_palette1],
     'bamboo_jungle_hills': [jungle_house_palette1],
     # 'basalt_deltas': [],
-    'beach': [oak_house_palette1],
+    'beach': [*oak_palettes],
     'birch_forest': [birch_house_palette1],
     'birch_forest_hills': [birch_house_palette1],
     # 'cold_ocean': [],
@@ -94,61 +118,61 @@ biome_palettes = {
     # 'end_highlands': [],
     # 'end_midlands': [],
     'eroded_badlands': [terracotta_palette1],
-    'flower_forest': [oak_house_palette1, birch_house_palette1],
-    'forest': [oak_house_palette1, birch_house_palette1, dark_oak_house_palette1],
+    'flower_forest': [*oak_palettes, birch_house_palette1],
+    'forest': [*oak_palettes, birch_house_palette1, oak_birch_palette, oak_spruce_palette],
     # 'frozen_ocean': [],
     # 'frozen_river': [],
-    'giant_spruce_taiga': [spruce_house_palette1],
-    'giant_spruce_taiga_hills': [spruce_house_palette1],
-    'giant_tree_taiga': [spruce_house_palette1],
-    'giant_tree_taiga_hills': [spruce_house_palette1],
-    'gravelly_mountains': [spruce_house_palette1],
-    'ice_spikes': [spruce_house_palette1, oak_house_palette1],
+    'giant_spruce_taiga': [*spruce_palettes],
+    'giant_spruce_taiga_hills': [*spruce_palettes],
+    'giant_tree_taiga': [*spruce_palettes],
+    'giant_tree_taiga_hills': [*spruce_palettes],
+    'gravelly_mountains': [*spruce_palettes],
+    'ice_spikes': [*spruce_palettes, *oak_palettes],
     'jungle': [jungle_house_palette1],
     'jungle_edge': [jungle_house_palette1],
     'jungle_hills': [jungle_house_palette1],
     # 'lukewarm_ocean': [],
     'modified_badlands_plateau': [terracotta_palette1],
-    'modified_gravelly_mountains': [spruce_house_palette1],
+    'modified_gravelly_mountains': [*spruce_palettes],
     'modified_jungle': [jungle_house_palette1],
     'modified_jungle_edge': [jungle_house_palette1],
-    'modified_wooded_badlands_plateau': [terracotta_palette1, oak_house_palette1],
-    'mountain_edge': [spruce_house_palette1, oak_house_palette1],
-    'mountains': [spruce_house_palette1, oak_house_palette1],
+    'modified_wooded_badlands_plateau': [terracotta_palette1, oak_palette1],
+    'mountain_edge': [*spruce_palettes, *oak_palettes],
+    'mountains': [*spruce_palettes, oak_palette2, oak_palette3],
     'mushroom_field_shore': [],
     'mushroom_fields': [],
     # 'nether_wastes': [],
     # 'ocean': [],
-    'plains': [oak_house_palette1],
-    'river': [oak_house_palette1],
+    'plains': [*oak_palettes, oak_birch_palette],
+    'river': [*oak_palettes],
     'savanna': [acacia_house_palette1],
     'savanna_plateau': [acacia_house_palette1],
     'shattered_savanna': [acacia_house_palette1],
     'shattered_savanna_plateau': [acacia_house_palette1],
     # 'small_end_islands': [],
-    'snowy_beach': [oak_house_palette1],
-    'snowy_mountains': [spruce_house_palette1],
-    'snowy_taiga': [spruce_house_palette1],
-    'snowy_taiga_hills': [spruce_house_palette1],
-    'snowy_taiga_mountains': [spruce_house_palette1],
-    'snowy_tundra': [spruce_house_palette1],
+    'snowy_beach': [*oak_palettes],
+    'snowy_mountains': [spruce_palette1],
+    'snowy_taiga': [spruce_palette1],
+    'snowy_taiga_hills': [spruce_palette1],
+    'snowy_taiga_mountains': [spruce_palette1],
+    'snowy_tundra': [spruce_palette1],
     # 'soul_sand_valley': [],
-    'stone_shore': [oak_house_palette1],
-    'sunflower_plains': [oak_house_palette1],
-    'swamp': [oak_house_palette1],
-    'swamp_hills': [oak_house_palette1],
-    'taiga': [spruce_house_palette1],
-    'taiga_hills': [spruce_house_palette1],
-    'taiga_mountains': [spruce_house_palette1],
-    'tall_birch_forest': [birch_house_palette1],
-    'tall_birch_hills': [birch_house_palette1],
+    'stone_shore': [*oak_palettes],
+    'sunflower_plains': [*oak_palettes],
+    'swamp': [*oak_palettes, *spruce_palettes],
+    'swamp_hills': [*oak_palettes],
+    'taiga': [*spruce_palettes],
+    'taiga_hills': [*spruce_palettes],
+    'taiga_mountains': [*spruce_palettes],
+    'tall_birch_forest': [birch_house_palette1, oak_birch_palette],
+    'tall_birch_hills': [birch_house_palette1, oak_birch_palette],
     # 'the_end': [],
     # 'the_void': [],
     # 'warm_ocean': [],
     # 'warped_forest': [],
-    'wooded_badlands_plateau': [terracotta_palette1, oak_house_palette1],
-    'wooded_hills': [oak_house_palette1],
-    'wooded_mountains': [spruce_house_palette1, oak_house_palette1]
+    'wooded_badlands_plateau': [terracotta_palette1, oak_palette1],
+    'wooded_hills': [oak_palette1],
+    'wooded_mountains': [spruce_palette1, oak_palette1]
 }
 
 
@@ -158,8 +182,7 @@ def get_biome_palette(biome):
         if len(palette_options) == 0:
             return palette_options[0]
         else:
-            palette_index = randint(0, len(palette_options) - 1)
-            return palette_options[palette_index]
+            return choice(palette_options)
     except Exception:
         print("Exception occurred when getting palette for biome: {}".format(biome))
-        return oak_house_palette1
+        return oak_palette1
