@@ -824,7 +824,7 @@ def clear_tree_at(terrain, point: Point) -> None:
     terrain.trees.remove_tree_at(point - terrain.area.origin)
 
 
-def place_torch(level: WorldSlice, x, y, z):
+def place_torch(x, y, z):
     if getBlock(x, y, z).endswith(":air"):
         torch = BlockAPI.getTorch()
         setBlock(Point(x, z, y), torch)

@@ -139,7 +139,7 @@ class RampStairs(Generator):
         clear_tree_at(level, box, Point2D(box.minx, box.minz))
         # place_torch(level, randint(box.minx, box.maxx-1), box.maxy, randint(box.minz, box.maxz-1))
         if euclidean(p1, p2) > self.RAMP_WIDTH:
-            place_torch(level, randint(box.minx, box.maxx-1), box.maxy, randint(box.minz, box.maxz-1))
+            place_torch(randint(box.minx, box.maxx - 1), box.maxy, randint(box.minz, box.maxz - 1))
 
         y = min(p2.y, min(self.__heightAt(Point2D(p2.x+dx, p2.z+dz), True, height) for dx, dz in product(range(-e, w-e), range(-e, w-e))))
         box = TransformBox((p2.x - e, y, p2.z - e), (w, 1+p2.y-y, w))

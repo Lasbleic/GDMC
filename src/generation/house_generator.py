@@ -208,7 +208,7 @@ class _RoomSymbol(CardinalGenerator):
         xM, zM = x0 + self.width - 3, z0 + self.length - 3
         if xM >= x0 and zM >= z0:
             x, z = randint(x0, xM), randint(z0, zM)
-            place_torch(level, x, y, z)
+            place_torch(x, y, z)
 
 
 class _RoofSymbol(CardinalGenerator):

@@ -16,3 +16,4 @@ import utils.parameters
 
 X_ARRAY: ndarray = array([[x for z in range(BuildArea().length)] for x in range(BuildArea().width)])
 Z_ARRAY: ndarray = array([[z for z in range(BuildArea().length)] for x in range(BuildArea().width)])
+alpha = BlockAPI.blocks

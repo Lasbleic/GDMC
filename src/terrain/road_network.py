@@ -94,7 +94,7 @@ class RoadNetwork:
         else:
             if self.distance_map[x][z] == maxint:
                 return maxint
-            return max(0, self.distance_map[x][z] - self.get_road_width(self.__get_closest_road_point(Point(x, z))))
+            return max(0, self.distance_map[x][z] - self.get_road_width(self.get_closest_road_point(Point(x, z))))
 
     def __set_road_block(self, xp, z=None):
         # type: (Point or int, None or int) -> None
@@ -121,7 +121,7 @@ class RoadNetwork:
         else:
             return self.network[x][z] > 0
 
-    def __get_closest_road_point(self, point):
+    def get_closest_road_point(self, point):
         # type: (Point) -> Point
         if self.is_road(point):
             return point

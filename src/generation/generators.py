@@ -123,10 +123,10 @@ class MaskedGenerator(Generator):
         for x, y, z in self.surface_pos(height_map):
             if y > mean_y:
                 vbox = BoundingBox((x, mean_y + 1, z), (1, y - mean_y + 1, 1))
-                fillBlocks(vbox, BlockAPI.blocks.Air)
+                fillBlocks(vbox, alpha.Air)
             elif y < mean_y:
                 vbox = BoundingBox((x, y + 1, z), (1, mean_y - y, 1))
-                material = BlockAPI.blocks.StoneBricks if self.is_lateral(x, z) else BlockAPI.blocks.Dirt
+                material = alpha.StoneBricks if self.is_lateral(x, z) else alpha.Dirt
                 fillBlocks(vbox, material)
         terraform_map[:] = mean_y
         return terraform_map
@@ -268,19 +268,20 @@ class CropGenerator(MaskedGenerator):
                 if (gate_pos is None or new_gate_dist < gate_dist) and not self.is_corner(new_gate_pos):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
                     door_dir_vec = self._entry_point - self.mean
-                    door_dir = Direction.of(dx=door_dir_vec.x, dz=door_dir_vec.z)
+                    door_dir: Direction = Direction.of(dx=door_dir_vec.x, dz=door_dir_vec.z)
                     for direction in cardinal_directions(False):
                         if not self.is_masked(gate_pos + direction.value, absolute_coords=True):
                             door_dir = direction
                             break
                     gate_block = BlockAPI.getFence(palette['door'], facing=str(door_dir).lower())
 
-        # print(gate_pos, gate_block)
-        # place gate
         if gate_pos:
             x, z = gate_pos.x, gate_pos.z
             y = height_map[x - self.origin.x, z - self.origin.z] + 1
             setBlock(Point(x, z, y), gate_block)
+            for dir in (door_dir.rotate(), -door_dir.rotate()):  # type: Direction
+                if getBlock(dir.x, dir.y, dir.z).endswith(fence_block):
+                    place_torch(dir.y + 1, dir.z)
 
         # place animals
         animal_count = sum(self._mask.flat) // SURFACE_PER_ANIMAL
@@ -303,7 +304,7 @@ class CropGenerator(MaskedGenerator):
         max_height = int(percentile(height.flatten(), 80))
         self._mask &= (height >= min_height) & (height <= max_height)
         # block states
-        b = BlockAPI.blocks
+        b = alpha
         crop_type, max_age = rdChoice([(b.Carrots, 7), (b.Beetroots, 3), (b.Potatoes, 7), (b.Wheat, 7)])
         crop_age = randint(max_age // 4, 1 + max_age * 3 // 4)
 
@@ -336,11 +337,11 @@ class CropGenerator(MaskedGenerator):
         mx, mz = randint(0, 1), randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
             if (x % 2 == mx and (z + x // 2) % 3 == mz) and bernouilli():
-                setBlock(Point(x, z, y), BlockAPI.blocks.Dirt)  # dirt under hay bales
-                b = BlockAPI.blocks.HayBlock
+                setBlock(Point(x, z, y), alpha.Dirt)  # dirt under hay bales
+                b = alpha.HayBlock
                 y += 1
             else:
-                b = BlockAPI.blocks.Farmland
+                b = alpha.Farmland
             setBlock(Point(x, z, y), b)
         place_water_source(self.mean.x, y, self.mean.z)
 
@@ -361,9 +362,9 @@ class CropGenerator(MaskedGenerator):
         for x, _, z in self.surface_pos(height_map):
             h = height_map[x - self.origin.x, z - self.origin.z]
             if h == (ref_height - 1):
-                setBlock(Point(x, z, ref_height), BlockAPI.blocks.Dirt)
+                setBlock(Point(x, z, ref_height), alpha.Dirt)
             elif h == (ref_height + 1):
-                setBlock(Point(x, z, h), BlockAPI.blocks.Air)
+                setBlock(Point(x, z, h), alpha.Air)
         height_map[height_mask] = ref_height
         return height_map
 
@@ -432,7 +433,7 @@ class DoorGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
             setBlock(Point(x, z, y), self._resource(x, y, z, palette))
-        fillBlocks(self._box.translate(self._direction).split(dy=2)[0], BlockAPI.blocks.Air, ground_blocks)
+        fillBlocks(self._box.translate(self._direction).split(dy=2)[0], alpha.Air, ground_blocks)
 
     def _resource(self, x, y, z, palette):
         if self._box.miny <= y <= self._box.miny + 1:
@@ -465,11 +466,11 @@ class WindmillGenerator(Generator):
 
         # Build floor
         ground_box = TransformBox((x-2, y, z-2), (5, 1, 5))
-        fillBlocks(ground_box, BlockAPI.blocks.CoarseDirt)
+        fillBlocks(ground_box, alpha.CoarseDirt)
 
         # Build windmill frames
         box = TransformBox((x-5, y-31, z-4), (11, 11, 8))
-        fillBlocks(box.expand(1), BlockAPI.blocks.Bedrock)  # protective shell around windmill frames
+        fillBlocks(box.expand(1), alpha.Bedrock)  # protective shell around windmill frames
         mech_nbt = StructureNBT('gdmc_windmill_mech.nbt')
         mech_nbt.build(*box.origin)
 
@@ -482,10 +483,18 @@ class WindmillGenerator(Generator):
         runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]')
 
 
-def place_street_lamp(x, y, z, material):
-    fillBlocks(BoundingBox((x, y + 1, z), (1, 3, 1)), BlockAPI.getFence(material))
-    setBlock(Point(x, z, y + 4), BlockAPI.blocks.RedstoneLamp)
-    setBlock(Point(x, z, y + 5), f"daylight_detector[inverted=true]")
+def place_street_lamp(x, y, z, material, h=0):
+    h = max(1, 3+h)
+    fillBlocks(BoundingBox((x, y + 1, z), (1, h, 1)), BlockAPI.getFence(material))
+    setBlock(Point(x, z, y + h + 1), alpha.RedstoneLamp)
+    setBlock(Point(x, z, y + h + 2), f"{alpha.DaylightDetector}[inverted=true]")
+
+
+def place_torch_post(x, y, z, block=None):
+    if block is None:
+        block = rdChoice([alpha.OakFence, alpha.CobblestoneWall, alpha.MossyCobblestoneWall, alpha.SpruceFence])
+    setBlock(Point(x, z, y+1), block)
+    place_torch(x, y+2, z)
 
 
 def place_water_source(x, y, z, protected_points=None):
@@ -497,7 +506,7 @@ def place_water_source(x, y, z, protected_points=None):
             setBlock(dpos, state)
             if protected_points:
                 protected_points.add((dpos.x, dpos.z))
-    setBlock(p, BlockAPI.blocks.Water)
+    setBlock(p, alpha.Water)
 
 
 def sign_rotation_for_direction(p: Point):

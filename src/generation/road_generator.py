@@ -1,15 +1,12 @@
-from math import ceil, sqrt
-from random import randint
+from math import ceil
 from time import sleep
 
 import numpy
 from numpy import uint8
 from numpy.random.mtrand import choice
 
-from generation.generators import Generator
-from terrain import HeightMap
+from generation.generators import Generator, place_street_lamp, place_torch_post
 from utils import *
-alpha = BlockAPI.blocks
 
 from utils.misc_objects_functions import raytrace
 
@@ -36,7 +33,7 @@ class RoadGenerator(Generator):
         sleep(.001)
 
         for road_block in self.__network.road_blocks.union(self.__network.special_road_blocks):
-            road_width = (self.__network.calculate_road_width(road_block.x, road_block.z) - 1) / 2.0
+            road_width = (self.__network.get_road_width(road_block.x, road_block.z) - 1) / 2.0
             clear_tree_at(terrain, road_block + Point(x0, z0))
             for x in sym_range(road_block.x, road_width, self.width):
                 for z in sym_range(road_block.z, road_width, self.length):
@@ -63,15 +60,61 @@ class RoadGenerator(Generator):
                     fillBlocks(TransformBox((xa, y, za), (1, 4, 1)), alpha.Air)
                     setBlock(Point(xa, za, y-1), alpha.Dirt)
                     setBlock(Point(xa, za, y), b)
-                    if "slab" not in b and "stair" not in b and bernouilli(0.1):
-                        place_torch(terrain.level, xa, y + 1, za)
+                    # if "slab" not in b and "stair" not in b and bernouilli(0.1):
+                    #     place_torch(terrain.level, xa, y + 1, za)
                     h = height_map[x, z]
                     if h < y:
                         pole_box = TransformBox((xa, h, za), (1, y-h, 1))
                         fillBlocks(pole_box, alpha.StoneBricks)
 
+        self.__generate_street_lamps(terrain, palette)
+
         Generator.generate(self, terrain, height_map)  # generate bridges
         print("OK")
+
+    def __generate_street_lamps(self, terrain, districts):
+        unlit_array: ndarray = zeros((self.width, self.length), dtype=numpy.uint8)
+        network = self.__network
+        W, L = self.width, self.length
+        for dw in range(2, -1, -1):  # dw in (2, 1, 0):
+            for road_point in network.road_blocks:  # type: Point
+                w0: int = network.get_road_width(road_point) // 2
+                x, z = road_point.x, road_point.z
+                w1 = w0 + dw
+                unlit_array[max(0, x - w1):min(W, x + w1 + 1), max(0, z - w1):min(W, z + w1 + 1)] = dw
+        unlit_array[terrain.obstacle_map[:] > 0] = 0  # lamps don't spawn on obstacles
+        del w0, w1, dw, x, z
+
+        x0, z0 = self.__origin.x, self.__origin.z
+        while unlit_array.sum():
+            unlit_pos = numpy.where(unlit_array > 0)
+            unlit_idx = numpy.random.randint(len(unlit_pos[0])) if len(unlit_pos[0]) > 1 else 0
+            x, z = unlit_pos[0][unlit_idx], unlit_pos[1][unlit_idx]
+            y = terrain.height_map[x, z]
+            r = network.get_closest_road_point(Point(x, z))
+            h = terrain.height_map[r.x, r.z]
+            in_village = districts[x, z] < 1
+            if abs(y - h) <= 2:
+                if in_village:
+                    place_street_lamp(x + x0, y, z + z0, 'oak', h - y)
+                else:
+                    place_torch_post(x + x0, y, z + z0)
+            elif unlit_array[x, z] == 1:
+                if in_village:
+                    setBlock(Point(x, z, h), alpha.ChiseledStoneBricks)
+                    place_street_lamp(x + x0, h, z + z0, 'oak')
+                else:
+                    setBlock(Point(x, z, h), alpha.StrippedOakWood)
+                    place_torch_post(x + x0, h, z + z0)
+            else:
+                # unsuitable position
+                unlit_array[x, z] = 0
+                continue
+
+            m = 10
+            for dx, dz in filter(lambda dxz: (abs(dxz[0]) + abs(dxz[1])) <= m, product(range(-m, m+1), range(-m, m+1))):
+                if 0 <= (x + dx) < W and 0 <= (z + dz) < L:
+                    unlit_array[x+dx, z+dz] = 0
 
     def __compute_road_at(self, x, z, height_map, districts):
         # type: (int, int, array, object) -> (int, str)
