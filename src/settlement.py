@@ -170,7 +170,7 @@ class Settlement:
             p.translate_to_absolute_coords(self._origin)
 
     def generate(self, terrain: TerrainMaps, print_stack=False):
-        self._road_network.generate(terrain)
+        self._road_network.generate(terrain, self.districts)
         self.__generate_road_signs()
 
         for parcel in self._parcels:  # type: Parcel

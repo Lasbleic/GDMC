@@ -239,6 +239,9 @@ class CropGenerator(MaskedGenerator):
             self._sub_generator_function = self._gen_animal_farm
 
     def generate(self, level, height_map=None, palette=None):
+        if self.width < 5 and self.length < 5:
+            print(f"Parcel ({self.width}, {self.length}) at {self.mean} too small to generate a crop")
+            return
         self._clear_trees(level)
         self._sub_generator_function(height_map, palette)
 
@@ -339,7 +342,6 @@ class CropGenerator(MaskedGenerator):
             else:
                 b = BlockAPI.blocks.Farmland
             setBlock(Point(x, z, y), b)
-        h = height_map
         place_water_source(self.mean.x, y, self.mean.z)
 
     def __terraform(self, height_map):

@@ -244,9 +244,9 @@ class RoadNetwork:
 
     # endregion
 
-    def generate(self, level):
+    def generate(self, level, districts):
         hm = level.height_map[:]  # type: terrain.HeightMap
-        self.__generator.generate(level, hm[:])
+        self.__generator.generate(level, hm[:], districts)
 
     def __update_distance_map(self, road, force_update=False):
         self.dijkstra(road, self.lambda_max, force_update)

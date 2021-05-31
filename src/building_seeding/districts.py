@@ -1,6 +1,7 @@
 import random
 from typing import List, Dict
 
+import numba
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
@@ -10,18 +11,23 @@ from sklearn.preprocessing import StandardScaler
 
 from terrain import TerrainMaps
 from terrain.map import Map
-from utils import Point, product, full, BuildArea, bernouilli, euclidean
+from utils import Point, product, full, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY
 from utils.misc_objects_functions import argmax, argmin, _in_limits
 
 
-class Districts:
+class Districts(Map):
     """
     Districts construction -> partitions the build area and select zones that will become settlements.
     Was implemented to add structure to large inputs
+
+    As instance of Map, holds local "density", ie a scalar value indicating how close we are to a city center.
+    0 = city center
+    ~1 = downtown
+    ~2/3 = outskirts
+    more = countryside
     """
     def __init__(self, area: BuildArea):
-        self.width = area.width
-        self.length = area.length
+        super().__init__(np.ones((area.width, area.length)))
         self.__cluster_map = full((self.width, self.length), 0)
         self.__scaler = StandardScaler()
         self.__coord_scale = 1
@@ -172,6 +178,21 @@ class Districts:
         # store results
         self.district_map = Map(neighborhood)
         self.score_map = Map(values)
+
+        density_matrix = None
+        for town_index in self.town_indexes:
+            center = self.district_centers[town_index]
+            dist = self.seeders[town_index]
+            sig_x = dist.stdev_x
+            sig_z = dist.stdev_z
+
+            if density_matrix is None:
+                density_matrix = density_one_district((center.x, center.z), (sig_x, sig_z))
+            else:
+                district_density = density_one_district((center.x, center.z), (sig_x, sig_z))
+                density_matrix = np.minimum(density_matrix, district_density)
+
+        self._values = density_matrix
 
     @property
     def n_districts(self):
@@ -370,6 +391,18 @@ class CityNameGenerator:
                     and name not in self.__name_trash:
                 self.__name_trash.add(name)
                 return name
+
+
+@numba.njit()
+def density_one_district(xz, sigma):
+    x, z = xz
+    sig_x, sig_z = sigma
+
+    x_dist = np.abs(X_ARRAY - x) / sig_x
+    z_dist = np.abs(Z_ARRAY - z) / sig_z
+
+    dist = np.sqrt(x_dist ** 2 + z_dist ** 2)
+    return dist
 
 
 if __name__ == '__main__':

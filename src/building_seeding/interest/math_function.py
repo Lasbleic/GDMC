@@ -2,12 +2,9 @@
 Function used to compute interests
 """
 
-from numba import njit, vectorize
 import numpy as np
-from utils import BuildArea
+from numba import njit, vectorize
 
-X_ARRAY = np.array([[x for z in range(BuildArea().length)] for x in range(BuildArea().width)])
-Z_ARRAY = np.array([[z for z in range(BuildArea().length)] for x in range(BuildArea().width)])
 
 # @njit
 @vectorize(cache=True)

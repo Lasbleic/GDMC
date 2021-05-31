@@ -5,7 +5,6 @@ Function used to compute sociability
 
 from __future__ import division
 
-from itertools import product
 from typing import List
 
 import numpy as np
@@ -13,8 +12,8 @@ from numba import njit
 
 from building_seeding import Parcel
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from building_seeding.interest.math_function import attraction_repulsion, X_ARRAY, Z_ARRAY
-from utils import Point, euclidean
+from building_seeding.interest.math_function import attraction_repulsion
+from utils import Point, euclidean, X_ARRAY, Z_ARRAY
 
 
 def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parcel]):

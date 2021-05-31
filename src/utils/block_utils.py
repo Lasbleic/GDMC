@@ -690,21 +690,16 @@ class BlockAPI:
     @staticmethod
     def getStairs(material: str, **kwargs):
         """
-        Parameters
-        ----------
-        material
-        kwargs
-            facing : "north"
-            "half": "bottom"
-            "shape": "straight"
-            "waterlogged": "false"
 
-        Returns
-        -------
-
+        :param material: material or stairs block as str
+        :keyword facing: "north"
+        :keyword half: "bottom"
+        :keyword shape: "straight"
+        :keyword waterlogged: "false"
+        :return: stair block with properties
         """
         stairs_state_default = {"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": "false"}
-        block_str = f"{material}_stairs"
+        block_str = material if material.endswith("_stairs") else f"{material}_stairs"
         if kwargs:
             block_str += BlockAPI.__buildBlockState(stairs_state_default, **kwargs)
         return block_str

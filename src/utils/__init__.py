@@ -13,3 +13,6 @@ from utils.geometry_utils import TransformBox
 from utils.block_utils import BlockAPI, setBlock, water_blocks, lava_blocks, fillBlocks, clear_tree_at, connected_component, place_torch, ground_blocks, getBlockRelativeAt
 import utils.parameters
 
+
+X_ARRAY: ndarray = array([[x for z in range(BuildArea().length)] for x in range(BuildArea().width)])
+Z_ARRAY: ndarray = array([[z for z in range(BuildArea().length)] for x in range(BuildArea().width)])

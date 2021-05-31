@@ -35,17 +35,17 @@ class BuildingType(Enum):
 class BuildingPool:
     def __init__(self, exploitable_surface):
         self._building_count = 0  # type: int
-        self._settlement_limit = 0  # type: int
+        self._buildings_max = 0  # type: int
         self.__current_type: BuildingType = BuildingType.house
         self.__init_building_count(exploitable_surface)
 
     def __init_building_count(self, exploitable_surface):
         average_parcel_surface = AVERAGE_PARCEL_SIZE**2
-        self._settlement_limit = int((exploitable_surface / average_parcel_surface) ** .95)
-        self._settlement_limit = max(self._settlement_limit, 1)
+        self._buildings_max = int((exploitable_surface / average_parcel_surface) ** .85)
+        self._buildings_max = max(self._buildings_max, 1)
         # self._settlement_limit = min(self._settlement_limit, 50)
         # self.settlement_limit = geometric(1 / average_parcel_count)  # yielded values too high
-        logging.info('New BuildingPool will generate {} parcels'.format(self._settlement_limit))
+        logging.info('New BuildingPool will generate {} parcels'.format(self._buildings_max))
 
     def __iter__(self):
         return self
@@ -66,7 +66,7 @@ class BuildingPool:
         #     return btype
 
         # second version, markov chain based:
-        if 0 < self._building_count < self._settlement_limit:
+        if 0 < self._building_count < self._buildings_max:
             transition_matrix = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["markov"]
             transition_states = transition_matrix[self.__current_type.name]  # type: Dict[str, int]
             types = list(transition_states.keys())
@@ -74,7 +74,7 @@ class BuildingPool:
             probs = [p / sum(probs) for p in probs]
             next_type = choice(types, p=probs)
             self.__current_type = BuildingType[next_type]
-        elif self._building_count >= self._settlement_limit:
+        elif self._building_count >= self._buildings_max:
             raise StopIteration
 
         self._building_count += 1
@@ -82,7 +82,7 @@ class BuildingPool:
 
     @property
     def size(self):
-        return self._settlement_limit
+        return self._buildings_max
 
     @property
     def count(self):
