@@ -530,7 +530,6 @@ def place_sign(position: Point, material: str, direction: Point, **kwargs):
     state += 'Text4: \'{"text":"' + kwargs.get("Text4", "") + '"}\''
     state += "}"
     command = f"setblock {position.x} {position.y} {position.z} {state}"
-    print(command)
     runCommand(command)
 
 

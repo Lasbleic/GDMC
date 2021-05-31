@@ -14,9 +14,9 @@ alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=50):
     res = setBlockDefault(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
-    if res:
-        for res in filter(lambda _: len(_) > 1, res.split('\n')):
-            print(res)
+    # if res:
+    #     for res in filter(lambda _: len(_) > 1, res.split('\n')):
+    #         print(res)
 
 
 def getBlockRelativeAt(world_slice: WorldSlice, x: int, y: int, z: int):

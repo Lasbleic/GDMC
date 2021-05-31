@@ -1,5 +1,3 @@
-from __future__ import division, print_function
-
 from random import randint
 
 from building_seeding.building_pool import BuildingType

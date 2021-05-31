@@ -1,5 +1,7 @@
 import sys
 from os import sep
+import warnings
+warnings.filterwarnings("ignore")
 
 # Managing dependencies and Python path
 this_path = str(__file__)  # path to this file
@@ -19,7 +21,7 @@ visu_opt = "visu_opt"  # "Visualization tool: plots iterations of building place
 
 def main(**options):
     # Get options
-    time_lim: int = options.get(time_opt, None)
+    time_lim: int = options.get(time_opt, None)  # time limit in seconds
     do_debug: bool = options.get(debug_opt, False)
     do_visu: bool = options.get(visu_opt, False)
 
@@ -50,9 +52,10 @@ def main(**options):
 if __name__ == '__main__':
     do_profile = False
     if do_profile:
+        # code profiler
         from pstats import Stats, SortKey
         import cProfile
         stats: Stats = cProfile.run(f"main({time_opt}=900)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=False, time_opt=1200)
+        main(debug_opt=False, time_opt=900)
 

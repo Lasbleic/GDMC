@@ -38,7 +38,6 @@ def a_star(root_point, ending_point, dimensions, cost_function):
         return []
     else:
         path = _path_to_dest(predecessor_map, root_point, ending_point, True)
-        print(n_steps / _heuristic(root_point, ending_point))
         return path
 
 
