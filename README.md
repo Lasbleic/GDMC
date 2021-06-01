@@ -1,4 +1,4 @@
-![Background image] (https://github.com/Lasbleic/GDMC/blob/develop/visu/sample_img2.png?raw=true)
+![Background image](visu/sample_img2.png?raw=true)
 # Welcome to our repo for the 2021 [GDMC competition](https://gendesignmc.engineering.nyu.edu/)
 
 Our submission works on the GDMC HTTP interface by [nilsgawlik](https://github.com/nilsgawlik/gdmc_http_interface) and is based on the [Python client](https://github.com/nilsgawlik/gdmc_http_client_python) associated with it.
@@ -9,3 +9,5 @@ $ pip install -r requirements.txt
 ```
 
 When the build area has been set, just run the `main.py` script.
+
+![example image](visu/sample_img1.png?raw=true)
