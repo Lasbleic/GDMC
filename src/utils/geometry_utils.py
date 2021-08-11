@@ -2,21 +2,23 @@ from enum import Enum
 from typing import Iterable
 
 from interfaceUtils import requestBuildArea
-from utils.pymclevel.box import BoundingBox
 from utils.misc_objects_functions import argmax
+from utils.pymclevel.box import BoundingBox
 
 
 class Point:
-
     """
-    Minecraft main coordinates are x, z, while y represents y
+    Minecraft main coordinates are x, z, while y represents altitude (from 0 to 255)
     I choose to set y as an optional coordinate so that you can work with 2D points by just ignoring the 3rd coord
     """
 
-    def __init__(self, x, z, y=0):
-        self._x = x if x % 1 else int(x)
-        self._z = z if z % 1 else int(z)
-        self._y = y if y % 1 else int(y)
+    def __init__(self, x: float, z: float, y: float = 0):
+        # self._x = x if x % 1 else int(x)
+        # self._z = z if z % 1 else int(z)
+        # self._y = y if y % 1 else int(y)
+        self._x = x
+        self._z = z
+        self._y = y
 
     def __str__(self):
         res = "(x:{}".format(self._x)
@@ -49,7 +51,7 @@ class Point:
         return Point(abs(self.x), abs(self.z), abs(self.y))
 
     def __truediv__(self, other):
-        return Point(self.x // other, self.z // other)
+        return Point(self.x / other, self.z / other)
 
     def __floordiv__(self, other):
         return Point(self.x // other, self.z // other)
@@ -84,8 +86,21 @@ class Point:
         return sqrt(self.dot(self))
 
     @property
+    def unit(self):
+        return self / self.norm
+
+    @property
     def toInt(self):
-        return Point(int(round(self.x)), int(round(self.z)))
+        return Position(self.x, self.z, self.y)
+
+
+class Position(Point):
+    """
+    Point with integer coordinates
+    """
+
+    def __init__(self, x: float, z: float, y: float = 0.):
+        super().__init__(int(round(x)), int(round(z)), int(round(y)))
 
 
 def euclidean(p1: Point, p2: Point) -> float:
@@ -117,7 +132,6 @@ class Direction(Enum):
             return Direction.of(dx.x, dx.y, dx.z)
         assert not (dx == 0 and dy == 0 and dz == 0)  # assert that at least one coordinate is not null
         # keep only one non null coordinate
-        import numpy as np
         kept_dir = argmax([abs(dx), abs(dy), abs(dz)])
         if kept_dir == 0:
             dy = dz = 0
@@ -207,6 +221,12 @@ def all_directions(as_points: bool = True) -> Iterable[Direction or Point]:
 class BuildArea:
     def __init__(self, build_area_json=None):
         if build_area_json is None:
+            # build_area_json = {
+            #     "xFrom": -445,
+            #     "zFrom": 171,
+            #     "xTo": -136,
+            #     "zTo": -9
+            # }
             build_area_json = requestBuildArea()
         XFROM, XTO, ZFROM, ZTO = 'xFrom', 'xTo', 'zFrom', 'zTo'
 

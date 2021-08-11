@@ -1,12 +1,9 @@
-from itertools import product
-
 from terrain import ObstacleMap, RoadNetwork
-from terrain.tree_map import TreesMap
-from utils import BuildArea, BoundingBox
 from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
-# from terrain.obstacle_map import Obstacle  # todo: rewrite ObstacleMap
+from terrain.tree_map import TreesMap
+from utils import BuildArea, BoundingBox
 from worldLoader import WorldSlice
 
 
@@ -32,16 +29,16 @@ class TerrainMaps:
         print(f'Computed fluid map in {time() - t1}')
 
         t1 = time()
-        self.obstacle_map = ObstacleMap(self.width, self.length, self)
-        print(f'Computed obstacle map in {time() - t1}')
-
-        t1 = time()
         self.road_network = RoadNetwork(self.width, self.length, self)  # type: RoadNetwork
         print(f'Computed road map in {time() - t1}')
 
         t1 = time()
         self.trees = TreesMap(level, self.height_map)
         print(f'Computed trees map in {time() - t1}')
+
+        t1 = time()
+        self.obstacle_map = ObstacleMap.from_terrain(self)
+        print(f'Computed obstacle map in {time() - t1}')
 
         t1 = time()
         print(f'Computed terrain maps in {t1 - t0}')
@@ -69,15 +66,15 @@ class TerrainMaps:
             return point + self.area.origin in self.area
 
     @staticmethod
-    def request():
+    def request(build_area_json=None):
         from time import time
         print("Requesting build area...", end='')
-        build_area = BuildArea()
+        build_area = BuildArea(build_area_json)
         print(f"OK: {str(build_area)}")
         print("Requesting level...")
         t0 = time()
         level = WorldSlice((build_area.x, build_area.z, build_area.width, build_area.length))
-        print(f"completed in {(time()-t0)}s")
+        print(f"completed in {(time() - t0)}s")
         return TerrainMaps(level, build_area)
 
     def undo(self):

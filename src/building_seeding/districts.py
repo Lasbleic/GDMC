@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 
 from terrain import TerrainMaps
 from terrain.map import Map
-from utils import Point, product, full, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY
+from utils import Point, product, full, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position
 from utils.misc_objects_functions import argmax, argmin, _in_limits
 
 
@@ -31,9 +31,9 @@ class Districts(Map):
         self.__cluster_map = full((self.width, self.length), 0)
         self.__scaler = StandardScaler()
         self.__coord_scale = 1
-        self.district_centers: List[Point] = None  # All district centers (ie means of kmeans)
-        self.town_centers: List[Point] = None  # Subset of district centers, which are meant to be built on
-        self.district_map: Map = None
+        self.district_centers: List[Position]  # All district centers (ie means of kmeans)
+        self.town_centers: List[Position]  # Subset of district centers, which are meant to be built on
+        self.district_map: Map
         self.cluster_size = {}
         self.cluster_suitability = {}
         self.town_indexes = set()  # indexes of built districts
@@ -92,15 +92,9 @@ class Districts(Map):
             self.cluster_size[label] = cluster.shape[0]
 
         centers = self.__scaler.inverse_transform(model.cluster_centers_ / self.__coord_scale)
-        seeds = [Point(round(_[0]), round(_[1])) for _ in centers]
-        samples = [Point(Xu[i, 0], Xu[i, 1]) for i in range(Xu.shape[0])]
+        seeds = [Position(_[0], _[1]) for _ in centers]
+        samples = [Position(Xu[i, 0], Xu[i, 1]) for i in range(Xu.shape[0])]
         self.district_centers = [argmin(samples, key=lambda sample: euclidean(seed, sample)) for seed in seeds]
-
-        map_center = Point(maps.width // 2, maps.length // 2)
-        if min(euclidean(map_center, district) for district in self.district_centers) > 15:
-            # todo: under the assumption that the GDMC judges will spawn at the middle of the building area,
-            #  we place a marker there so that they can find their way
-            self.district_centers.append(map_center)
 
         def select_town_clusters():
             surface_to_build = X.shape[0] * .7
@@ -125,11 +119,19 @@ class Districts(Map):
         self.__build_cluster_map(model, Xu, town_indexes)
 
     def __build_data(self, maps: TerrainMaps, coord_scale=1.15):
-        n_samples = min(1e5, self.width * self.length)
-        keep_rate = n_samples / (self.width * self.length)
-        Xu = np.array([[x, z, Districts.suitability(x, z, maps)]
-                      for x, z in product(range(maps.width), range(maps.length))
-                      if bernouilli(keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)])
+        """
+        Builds a dataset to perform cluster analysis in order to find suitable positions to build villages
+        """
+        n_samples = min(2e5, self.width * self.length)  # target number of samples
+        keep_rate = n_samples / (self.width * self.length)  # resulting portion of positions taken into account
+        raw_samples = [[x, z, Districts.suitability(x, z, maps)]
+                       for x, z in product(range(maps.width), range(maps.length))
+                       if bernouilli(keep_rate) and not maps.fluid_map.is_close_to_fluid(x,
+                                                                                         z)]  # list of samples (x, z, score)
+        threshold_score = np.median([_[-1] for _ in raw_samples])  # median score of the samples
+        raw_samples = list(
+            filter(lambda sample: sample[-1] >= threshold_score, raw_samples))  # only keeps samples with a decent score
+        Xu = np.array(raw_samples)
         X = self.__scaler.fit_transform(Xu)
         X[:, :2] = X[:, :2] * coord_scale
         self.__coord_scale = coord_scale
@@ -155,7 +157,16 @@ class Districts(Map):
 
     @staticmethod
     def suitability(x, z, terrain: TerrainMaps):
-        return np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
+        """
+        Score between -1 and 1 representing the suitability of a given coordinate to host a village
+        """
+        pos: Position = Position(x, z)
+        from building_seeding import soft_balance
+        if not terrain.obstacle_map.is_accessible(pos):
+            return -1
+        a = np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
+        b = soft_balance(terrain.biome.temperature(pos), 0.3, 0.8, 1.2)
+        return (a + b) / 2
 
     def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray, town_indexes: List[int]):
         town_score = {label: 1 / (index + 1) for (index, label) in enumerate(town_indexes)}

@@ -1,10 +1,70 @@
+from enum import Enum
 from itertools import product
 
 from numpy import zeros, array
 
 from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import BuildArea, Point
 from terrain.map import Map
+from utils import BuildArea, Point, Position
+
+
+class Biomes(Enum):
+    Badlands = (2.0, "Dry", "badlands")
+    Desert = (2.0, "Dry", "desert")
+    Savanna = (1.2, "Dry", "savanna")
+    ShatteredSavanna = (1.1, "Dry", "shattered_savanna")
+    SavannaPlateau = (1.0, "Dry", "savanna_plateau")
+    ShatteredSavannaPlateau = (1.0, "Dry", "shattered_savanna_plateau")
+    Jungle = (0.95, "Temperate", "jungle")
+    MushroomFields = (0.9, "Temperate", "mushroom_fields")
+    Beach = (0.8, "Temperate", "beach")
+    Plains = (0.8, "Temperate", "plains")
+    Swamp = (0.8, "Temperate", "swamp")
+    DripstoneCaves = (0.8, "Temperate", "dripstone_caves")
+    DarkForest = (0.7, "Temperate", "dark_forest")
+    Forest = (0.7, "Temperate", "forest")
+    TallBirchForest = (0.6, "Temperate", "tall_birch_forest")
+    Birchforest = (0.6, "Temperate", "birch_forest")
+    Lushcaves = (0.5, "Temperate", "lush_caves")
+    River = (0.5, "Temperate", "river")
+    Ocean = (0.5, "Aquatic", "ocean")
+    DeepFrozenOcean = (0.5, "Aquatic", "deep_frozen_ocean")
+    MountainMeadow = (0.3, "Cold", "mountain_meadow")
+    GiantTreeTaiga = (0.3, "Cold", "giant_tree_taiga")
+    GiantSpruceTaiga = (0.25, "Cold", "giant_spruce_taiga")
+    Taiga = (0.25, "Cold", "taiga")
+    StoneShore = (0.2, "Cold", "stone_shore")
+    ExtremeHills = (0.2, "Cold", "extreme_hills")
+    SnowyBeach = (0.05, "Snowy", "snowy_beach")
+    FrozenOcean = (0.0, "Snowy", "frozen_ocean")
+    FrozenRiver = (0.0, "Snowy", "frozen_river")
+    SnowyTundra = (0.0, "Snowy", "snowy_tundra")
+    MountainGrove = (-0.2, "Snowy", "mountain_grove")
+    Snowyslopes = (-0.3, "Snowy", "snowy_slopes")
+    Snowytaiga = (-0.5, "Snowy", "snowy_taiga")
+    Loftypeaks = (-0.7, "Snowy", "lofty_peaks")
+
+    @classmethod
+    def from_name(cls, name: str):
+        biome_names = {b.name.lower(): b for b in Biomes}
+        for subname in name.split('_'):
+            match = list(filter(lambda b_name: subname in b_name, biome_names.keys()))
+            if match: return biome_names[match[0]]
+        if "mountains" in name:
+            return Biomes.ExtremeHills
+        elif "void" in name:
+            return Biomes.Loftypeaks
+        elif name == "ice_spikes":
+            return Biomes.FrozenOcean
+        return None
+
+    @property
+    def temperature(self):
+        return self.value[0]
+
+    @property
+    def type(self):
+        return self.value[1]
 
 
 class BiomeMap(Map):
@@ -30,24 +90,24 @@ class BiomeMap(Map):
 
     _biome_types = {
         ("ocean", 0), ("taiga", 5), ("plains", 1), ("mountains", 3), ("desert", 2), ("forest", 4), ("swamp", 6),
-        ("river", 7), ("nether_wastes", 8), ("the_end", 9), ("frozen_ocean", 10), ("frozen_river", 11),
+        ("river", 7), ("frozen_ocean", 10), ("frozen_river", 11),
         ("snowy_tundra", 12), ("snowy_mountains", 13), ("mushroom_fields", 14), ("mushroom_field_shore", 15),
         ("beach", 16), ("desert_hills", 17), ("wooded_hills", 18), ("taiga_hills", 19), ("mountain_edge", 20),
         ("jungle", 21), ("jungle_hills", 22), ("jungle_edge", 23), ("deep_ocean", 24), ("stone_shore", 25),
         ("snowy_beach", 26), ("birch_forest", 27), ("birch_forest_hills", 28), ("dark_forest", 29), ("snowy_taiga", 30),
         ("snowy_taiga_hills", 31), ("giant_tree_taiga", 32), ("giant_tree_taiga_hills", 33), ("wooded_mountains", 34),
         ("savanna", 35), ("savanna_plateau", 36), ("badlands", 37), ("wooded_badlands_plateau", 38),
-        ("badlands_plateau", 39), ("small_end_islands", 40), ("end_midlands", 41), ("end_highlands", 42),
-        ("end_barrens", 43), ("warm_ocean", 44), ("lukewarm_ocean", 45), ("cold_ocean", 46), ("deep_warm_ocean", 47),
+        ("badlands_plateau", 39), ("warm_ocean", 44), ("lukewarm_ocean", 45), ("cold_ocean", 46),
+        ("deep_warm_ocean", 47),
         ("deep_lukewarm_ocean", 48), ("deep_cold_ocean", 49), ("deep_frozen_ocean", 50), ("the_void", 127),
         ("sunflower_plains", 129), ("desert_lakes", 130), ("gravelly_mountains", 131), ("flower_forest", 132),
         ("taiga_mountains", 133), ("swamp_hills", 134), ("ice_spikes", 140), ("modified_jungle", 149),
-        ("modified_jungle_edge", 151), ("tall_birch_forest", 155), ("tall_birch_hills", 156), ("dark_forest_hills", 157),
+        ("modified_jungle_edge", 151), ("tall_birch_forest", 155), ("tall_birch_hills", 156),
+        ("dark_forest_hills", 157),
         ("snowy_taiga_mountains", 158), ("giant_spruce_taiga", 160), ("giant_spruce_taiga_hills", 161),
         ("modified_gravelly_mountains", 162), ("shattered_savanna", 163), ("shattered_savanna_plateau", 164),
         ("eroded_badlands", 165), ("modified_wooded_badlands_plateau", 166), ("modified_badlands_plateau", 167),
-        ("bamboo_jungle", 168), ("bamboo_jungle_hills", 169), ("soul_sand_valley", 170), ("crimson_forest", 171),
-        ("warped_forest", 172), ("basalt_deltas", 173)
+        ("bamboo_jungle", 168), ("bamboo_jungle_hills", 169)
     }
 
     # bi map from biome name to biome id
@@ -55,18 +115,30 @@ class BiomeMap(Map):
     __id_to_biome = {_[1]: _[0] for _ in _biome_types}
 
     @staticmethod
-    def getBiome(biome_id: int): return BiomeMap.__id_to_biome[biome_id]
+    def getBiome(biome_id: int):
+        return BiomeMap.__id_to_biome[biome_id]
 
     @staticmethod
-    def getBiomeId(biome_type: str): return BiomeMap.__biome_to_id[biome_type]
+    def getBiomeId(biome_type: str):
+        return BiomeMap.__biome_to_id[biome_type]
+
+    def temperature(self, point: Position) -> float:
+        # todo: build temperature map maybe ?
+        biome_name = self.getBiome(self[point])
+        biome = Biomes.from_name(biome_name)
+        return biome.temperature
 
 
 if __name__ == '__main__':
-    from terrain import TerrainMaps
     assert BiomeMap.getBiomeId("warm_ocean") == 44
     assert BiomeMap.getBiome(3) == "mountains"
     print({_ for _ in map(lambda _: _[0], BiomeMap._biome_types)})
 
-    terrain = TerrainMaps.request()
-    print(terrain.biome[0, 0])
-
+    # terrain = TerrainMaps.request()
+    # print(terrain.biome[0, 0])
+    for biome_name, _ in BiomeMap._biome_types:
+        biome = Biomes.from_name(biome_name)
+        if biome is None:
+            print("NO MATCH: ", biome_name)
+            break
+        print(biome_name, biome.name)

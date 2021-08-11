@@ -25,7 +25,6 @@ def attraction_repulsion(d, lambda_min, lambda_0, lambda_max):
 
 @njit
 def balance(d, lambda_min, lambda_0, lambda_max):
-
     if d < lambda_min or d > lambda_max:
         res = -1
 
@@ -35,6 +34,15 @@ def balance(d, lambda_min, lambda_0, lambda_max):
         res = (1 - a) * np.exp(- ((d - lambda_0) / (lambda_tilde - lambda_0)) ** 2 * np.log((a - 1) / (a + 1))) + a
 
     return res
+
+
+@njit
+def soft_balance(d, lambda_min, lambda_0, lambda_max):
+    """
+    Same shape as the balance function but converges to 0 at extremes instead of -1
+    """
+    a = balance(d, lambda_min, lambda_0, lambda_max)
+    return (a + 1) / 2
 
 
 @njit

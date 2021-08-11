@@ -3,16 +3,15 @@ from __future__ import division
 import logging
 from math import exp
 from random import choice
-from typing import List
 
 from numpy import percentile
-from numpy.random import geometric, normal
+from numpy.random import geometric
 
 from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
 from generation.building_palette import get_biome_palette
 from generation.generators import place_sign
 from interfaceUtils import sendBlocks
-from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, MIN_PARCEL_SIZE
+from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
 from terrain import TerrainMaps
 from terrain.road_network import RoadNetwork
 from utils import *
@@ -107,12 +106,12 @@ class Settlement:
         """
         print("Extending parcels")
         # self._parcels = self._parcels[1:]
-        obs = self._maps.obstacle_map
-        obs.map[:] = 0
+        from terrain import ObstacleMap
+        obs = ObstacleMap(self._maps.fluid_map.as_obstacle_array, self._maps)
         obs.add_network_to_obstacle_map()
         for parcel in self._parcels:
             parcel.mark_as_obstacle(obs)
-        obs.map += self._maps.fluid_map.as_obstacle_array
+        self._maps.obstacle_map = obs
         expendable_parcels: List[Parcel] = [p for p in self._parcels[:] if p.is_expendable()]
 
         surface = sum(p.bounds.volume for p in expendable_parcels)
@@ -247,7 +246,7 @@ class Settlement:
             surface_block = self._maps.level.getBlockAt((xa, ya, za))
             setBlock(Point(xa, za, new_y), surface_block)
 
-            if new_y > ya:
+            if ya + 4 > new_y > ya:
                 below_block = self._maps.level.getBlockAt((xa, ya - 1, za))
                 box = TransformBox((xa, ya, za), (1, new_y - ya, 1))
                 fillBlocks(box, below_block)
@@ -293,7 +292,7 @@ class Settlement:
             towns = sorted(filter(lambda u: point != u, self.districts.town_centers), key=lambda town: distance_map[point, town])
             towns = towns[:3] if len(towns) > 3 else towns
             y = self._maps.height_map[point] + 1
-            setBlock(Point(point.x, point.z, y-1), BlockAPI.blocks.PolishedDiorite)
+            setBlock(Point(point.x + self._origin.x, point.z + self._origin.z, y - 1), BlockAPI.blocks.PolishedDiorite)
             for dy, town in enumerate(towns):
                 dir = town - point
                 dir = Point(-dir.z, dir.x)

@@ -1,7 +1,6 @@
 # coding=utf-8
 from random import choice
 from typing import Callable
-from time import time
 
 from numpy import empty
 
@@ -137,22 +136,6 @@ class RoadNetwork:
     def __set_road(self, path):
         # type: ([Point]) -> None
         force_update = False
-        # if any(self.__is_point_obstacle(point) for point in path):
-        #     force_update = True
-        #     p = path[-1]
-        #     refresh_perimeter = product(sym_range(p.x, len(path), self.width), sym_range(p.z, len(path), self.length))
-        #     refresh_sources = []
-        #     for x, z in refresh_perimeter:
-        #         if self.is_road(x, z):
-        #             refresh_sources.append(Point(x, z))
-        #         else:
-        #             self.distance_map[x, z] = maxint
-        #             self.cost_map[x, z] = maxint
-        #             self.path_map[x, z] = []
-        #     self.__update_distance_map(refresh_sources)
-        #     path = self.path_map[p.x, p.z]
-        #     # path = self.a_star(path[0], path[-1])
-        # else:
         if self.__generator:
             self.__generator.handle_new_road(path)
         for point in path:
@@ -252,10 +235,12 @@ class RoadNetwork:
         self.dijkstra(road, self.lambda_max, force_update)
 
     def road_build_cost(self, src_point, dest_point):
-        value = scale = manhattan(src_point, dest_point)
+        if src_point == dest_point: return 0
+        unit_cost = 1
+        scale = manhattan(src_point, dest_point)
         # if we don't have access to terrain info
         if self.__all_maps is None or self.is_road(dest_point):
-            return value
+            return unit_cost
 
         # if dest_point is an obstacle, return inf
         is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
@@ -265,21 +250,23 @@ class RoadNetwork:
 
         # specific cost to build on water
         if self.__all_maps.fluid_map.is_water(dest_point, margin=MIN_DIST_TO_RIVER):
-            if not self.__all_maps.fluid_map.is_water(src_point):
-                return scale * BRIDGE_COST
-            return scale * BRIDGE_UNIT_COST
+            if self.__all_maps.fluid_map.is_water(src_point):
+                return scale * BRIDGE_COST  # bridge continuation
+            return BRIDGE_UNIT_COST + (scale - 1) * BRIDGE_COST  # bridge creation
 
         # discount to get roads closer to water
         src_water = self.__all_maps.fluid_map.water_distance(src_point)
         dest_water = self.__all_maps.fluid_map.water_distance(dest_point)
         if 2.5 * MIN_DIST_TO_RIVER >= src_water > dest_water > MIN_DIST_TO_RIVER:
-            value += (dest_water - src_water) * .7 * scale
+            unit_cost += dest_water - src_water
 
         # additional cost for slopes
-        elevation = abs(self.__all_maps.height_map.steepness(src_point, norm=False).dot(dest_point - src_point))
-        value += scale * elevation ** 2
+        direction: Point = (dest_point - src_point).unit
+        steepness: Point = self.__all_maps.height_map.steepness(src_point, norm=False)
+        elevation = abs(steepness.dot(direction))
+        unit_cost += (1 + elevation) ** 2 - 1  # cubic cost over slopes
 
-        return max(scale, value)
+        return max(scale, unit_cost * scale)
 
     def road_only_cost(self, src_point, dest_point):
         return manhattan(src_point, dest_point) if self.is_road(dest_point) else maxint
@@ -414,7 +401,8 @@ class RoadNetwork:
         try:
             from utils.algorithms.hierarchical_astar import hierarchical_astar
             f = hierarchical_astar if recursive else a_star
-            tuple_path = f((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length), lambda u, v: cost_function(self, Point(u[0], u[1]), Point(v[0], v[1])))
+            tuple_path = f((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length),
+                           lambda u, v: cost_function(self, Position(u[0], u[1]), Position(v[0], v[1])))
         except SystemError or KeyError or ValueError:
             return []
         if timer:

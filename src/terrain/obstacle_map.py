@@ -1,22 +1,43 @@
+import numpy as np
 
+from terrain.map import Map
 from utils import *
 
 
-class ObstacleMap:
+class ObstacleMap(Map):
 
-    def __init__(self, width, length, mc_map=None):
-        # type: (int, int, TerrainMaps) -> ObstacleMap
-        self.__width = width
-        self.__length = length
-        # self.map = full((self.__width, self.__length), True)
-        self.map = zeros((self.__width, self.__length))
-        self.__all_maps = mc_map
-        self.__init_map_with_environment(mc_map.box)
+    def __init__(self, values: np.ndarray, maps):
+        super().__init__(values)
+        self.__all_maps = maps
         self.__hidden_obstacles = []
 
-    def __init_map_with_environment(self, bounding_box):
-        # TODO: For every water/tree bloc, set bloc to un-accessible - this method should not be in this class
-        pass
+    @classmethod
+    def from_terrain(cls, terrain):
+        height_map: np.ndarray = terrain.height_map[:]
+        avg_height: float = np.percentile(height_map, 50)
+        reachable: np.ndarray = (height_map == avg_height)
+        points_to_explore = {(_[0], _[1]) for _ in np.argwhere(reachable).tolist()}
+        explored_points = set()
+        while points_to_explore:
+            point = points_to_explore.pop()
+            for dx, dz in map(lambda direction: (direction.x, direction.z), cardinal_directions()):
+                neighbour = point[0] + dx, point[1] + dz
+
+                if neighbour in explored_points:
+                    continue
+                try:
+                    if abs(height_map[point] - height_map[neighbour]) <= 1:
+                        reachable[neighbour] = True
+                        points_to_explore.add(neighbour)
+                    else:
+                        explored_points.add(neighbour)
+                except IndexError:
+                    continue
+            explored_points.add(point)
+
+        # reachable = True -> 0, unreachable = False -> 1
+        obstacle_from_reachability = (~reachable).astype(int)
+        return cls(obstacle_from_reachability, terrain)
 
     def add_obstacle(self, point, mask=None):
         # type: (Point, ndarray) -> None
@@ -35,11 +56,10 @@ class ObstacleMap:
 
     def is_accessible(self, point):
         # type: (Point) -> bool
-        return self.map[point.x, point.z] == 0
+        return self[point.x, point.z] == 0
 
     def __set_obstacle(self, x, z, cost=1):
-        # self.map[x, z] = False
-        self.map[x, z] += cost
+        self._values[x, z] += cost
 
     def __add_obstacle(self, point, mask, cost):
         for dx, dz in product(range(mask.shape[0]), range(mask.shape[1])):
@@ -66,27 +86,14 @@ class ObstacleMap:
         from terrain.road_network import RoadNetwork
         if self.__all_maps is not None:
             network = self.__all_maps.road_network  # type: RoadNetwork
-            for x0, z0 in product(range(self.__width), range(self.__length)):
+            for x0, z0 in product(range(self.width), range(self.length)):
                 if network.is_road(x0, z0):
                     # build a circular obstacle of designated width around road point
                     margin = network.get_road_width(x0, z0) / 2 - .5
                     for x1, z1 in product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
-                        if not self.map[x1, z1]:
+                        if not self[x1, z1]:
                             self.__set_obstacle(x1, z1)
 
     def box_obstacle(self, box):
-        matrix = self.map[box.minx: box.maxx, box.minz:box.maxz]
+        matrix = self[box.minx: box.maxx, box.minz:box.maxz]
         return matrix <= 1
-
-    def __getitem__(self, item):
-        if len(item) == 2:
-            x, z = item
-            return self.map[x, z] == 0
-
-    @property
-    def width(self):
-        return self.map.shape[0]
-
-    @property
-    def length(self):
-        return self.map.shape[1]
