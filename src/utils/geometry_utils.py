@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Iterable
 
 from interfaceUtils import requestBuildArea
-from utils.misc_objects_functions import argmax
+from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
 
 
@@ -90,17 +90,42 @@ class Point:
         return self / self.norm
 
     @property
-    def toInt(self):
+    def asPosition(self):
         return Position(self.x, self.z, self.y)
 
 
 class Position(Point):
     """
-    Point with integer coordinates
+    Point with integer coordinates, represents a position in the Minecraft world. Holds x, y, z coordinates relative to the building area, that can be converted to MC coords with the xa and za properties
     """
 
     def __init__(self, x: float, z: float, y: float = 0.):
         super().__init__(int(round(x)), int(round(z)), int(round(y)))
+
+    @property
+    def abs_x(self):
+        """
+        Returns
+        -------
+        Absolute X-coordinate in the Minecraft map
+        """
+        return self.x + BuildArea().x
+
+    @property
+    def abs_z(self):
+        """
+        Returns
+        -------
+        Absolute Z-coordinate in the Minecraft map
+        """
+        return self.z + BuildArea().z
+
+
+def building_positions() -> Iterable[Position]:
+    from itertools import product
+    from utils import Position
+    for x, z in product(range(BuildArea().width), range(BuildArea().length)):
+        yield Position(x, z)
 
 
 def euclidean(p1: Point, p2: Point) -> float:
@@ -218,15 +243,9 @@ def all_directions(as_points: bool = True) -> Iterable[Direction or Point]:
     return iter(directions)
 
 
-class BuildArea:
+class BuildArea(metaclass=Singleton):
     def __init__(self, build_area_json=None):
         if build_area_json is None:
-            # build_area_json = {
-            #     "xFrom": -445,
-            #     "zFrom": 171,
-            #     "xTo": -136,
-            #     "zTo": -9
-            # }
             build_area_json = requestBuildArea()
         XFROM, XTO, ZFROM, ZTO = 'xFrom', 'xTo', 'zFrom', 'zTo'
 
@@ -236,40 +255,50 @@ class BuildArea:
             elif build_area_json[key1] > build_area_json[key2]:
                 build_area_json[key1], build_area_json[key2] = build_area_json[key2], build_area_json[key1]
 
-        self.__origin: Point = Point(build_area_json[XFROM], build_area_json[ZFROM])
-        self.__destination: Point = Point(build_area_json[XTO], build_area_json[ZTO]) + Point(1, 1)
-        self.__shape: Point = abs(self.__destination - self.__origin)
+        self.__xfrom = build_area_json[XFROM]
+        self.__xto = build_area_json[XTO]
+        self.__zfrom = build_area_json[ZFROM]
+        self.__zto = build_area_json[ZTO]
 
     def __contains__(self, item):
         assert isinstance(item, Point)
-        return (self.x <= item.x < self.__destination.x) and (self.z <= item.z < self.__destination.z)
+        return (self.x <= item.x <= self.__xto) and (self.z <= item.z < self.__zto)
 
     @property
     def x(self):
-        return self.__origin.x
+        return self.__xfrom
 
     @property
     def z(self):
-        return self.__origin.z
+        return self.__zfrom
 
     @property
     def origin(self):
         return Point(self.x, self.z)
 
     @property
-    def width(self):
-        return self.__shape.x
+    def width(self) -> int:
+        return self.__xto - self.__xfrom + 1
 
     @property
     def length(self):
-        return self.__shape.z
+        return self.__zto - self.__zfrom + 1
 
     @property
     def rect(self):
         return self.x, self.z, self.width, self.length
 
+    @property
+    def json(self):
+        return {
+            "xFrom": self.x,
+            "zFrom": self.z,
+            "xTo": self.x + self.width,
+            "zTo": self.z + self.length
+        }
+
     def __str__(self):
-        return f"build area of size {self.__shape} starting in {self.origin}"
+        return f"build area of size {Point(self.width, self.length)} starting in {self.origin}"
 
 
 class TransformBox(BoundingBox):

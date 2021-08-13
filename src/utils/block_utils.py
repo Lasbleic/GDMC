@@ -5,10 +5,11 @@
 #
 # water_blocks = [BlockAPI.block.Water, BlockAPI.block.WaterActive, BlockAPI.block.Ice]
 from itertools import product
+from typing import Iterable
 
 from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
 from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import Point, BoundingBox, Iterable
+from utils import Point, BoundingBox
 
 alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=50):

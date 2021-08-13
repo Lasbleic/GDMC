@@ -1,7 +1,8 @@
 from os.path import realpath, sep
 from random import random
-from numba import njit, jit
 from typing import Tuple
+
+from numba import njit
 
 
 def bernouilli(success_rate=.5):
@@ -109,27 +110,11 @@ def raytrace(xyz1, xyz2):
     x2 -= 1
     y2 -= 1
     z2 -= 1
-
-    i = 0
-    dx = 0
-    dy = 0
-    dz = 0
-    l = 0
-    m = 0
-    n = 0
-    x_inc = 0
-    y_inc = 0
-    z_inc = 0
-    err_1 = 0
-    err_2 = 0
-    dx2 = 0
-    dy2 = 0
-    dz2 = 0
     point = [x1, y1, z1]
 
     dx = x2 - x1
-    dy = y2 - y1;
-    dz = z2 - z1;
+    dy = y2 - y1
+    dz = z2 - z1
     x_inc = -1 if dx < 0 else 1
     l = abs(dx)
     y_inc = -1 if dy < 0 else 1
@@ -197,6 +182,15 @@ def raytrace(xyz1, xyz2):
     np = (point[0], point[1], point[2])
     output.append(np)
     return output
+
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 
 if __name__ == '__main__':

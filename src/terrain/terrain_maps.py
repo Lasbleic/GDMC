@@ -3,7 +3,8 @@ from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
 from terrain.tree_map import TreesMap
-from utils import BuildArea, BoundingBox
+from utils import BuildArea, BoundingBox, Position
+from utils.geometry_utils import building_positions
 from worldLoader import WorldSlice
 
 
@@ -82,13 +83,17 @@ class TerrainMaps:
         Undo all modifications to the terrain for debug purposes
         """
         from utils import setBlock, Point
-        from gdmc_http_client_python.interfaceUtils import runCommand
-        from utils.block_utils import alterated_pos
-        for xa, za in filter(lambda xz: self.in_limits(Point(xz[0], xz[1]), True), alterated_pos):
-            x, z = xa - self.area.x, za - self.area.z
-            ya = self.height_map.upper_height(x, z) + 1
-            for y in range(self.height_map.lower_height(x, z)-3, ya):
-                setBlock(Point(xa, za, y), self.level.getBlockAt((xa, y, za)), 1000)
-            runCommand(f'fill {xa} {ya} {za} {xa} {255} {za} minecraft:air')
+        current_terrain = TerrainMaps.request(self.area.json)
+        old_level = self.level
+        new_level = current_terrain.level
+        for pos in building_positions():  # type: Position
+            min_y = min(self.height_map.lower_height(pos.x, pos.z),
+                        current_terrain.height_map.lower_height(pos.x, pos.z))
+            max_y = max(self.height_map.upper_height(pos.x, pos.z),
+                        current_terrain.height_map.upper_height(pos.x, pos.z))
+            for y in range(min_y - 2, max_y + 2):
+                coords = pos.abs_x, y, pos.abs_z
+                if old_level.getBlockAt(coords) != new_level.getBlockAt(coords):
+                    setBlock(Point(pos.abs_x, pos.abs_z, y), old_level.getBlockAt(coords))
         from interfaceUtils import sendBlocks
         sendBlocks()

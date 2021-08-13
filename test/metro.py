@@ -4,9 +4,9 @@ from __future__ import division
 from typing import Dict, Set, List, Iterable
 
 import numpy as np
-
 from pymclevel.block_copy import copyBlocksFrom
 from pymclevel.block_fill import fillBlocks
+
 from terrain import Maps
 from utils import *
 
@@ -31,7 +31,7 @@ def hermit_curve(p0, q0, p1, q1):
         return ((p0 * hp0) + (p1 * hp1) + (q0 * hq0) + (q1 * hq1)).toInt
 
     distance = int(manhattan(p0, p1))
-    curve = {hermit(i / distance).toInt for i in range(distance + 1)}
+    curve = {hermit(i / distance).asPosition for i in range(distance + 1)}
     ordered_curve = sorted(curve, key=lambda pt: euclidean(p0, pt))
     return ordered_curve
 
