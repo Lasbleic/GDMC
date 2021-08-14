@@ -5,11 +5,11 @@
 #
 # water_blocks = [BlockAPI.block.Water, BlockAPI.block.WaterActive, BlockAPI.block.Ice]
 from itertools import product
-from typing import Iterable
+from typing import Iterable, Set, Callable, Tuple
 
 from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
 from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import Point, BoundingBox
+from utils import Point, BoundingBox, ndarray
 
 alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=50):
@@ -788,11 +788,10 @@ water_blocks = {b.Water, b.Ice, b.FrostedIce, b.PackedIce, b.BlueIce}
 lava_blocks = {b.Lava}
 
 
-def connected_component(maps, source_point, connection_condition, early_stopping_condition=None, check_limits=True):
-    # type: (Maps, Point, Callable[[Point, Point, Maps], bool], Callable[[Set], bool]) -> (Point, ndarray)
+def connected_component(source_point, connection_condition, early_stopping_condition=None, check_limits=True):
+    # type: (Point, Callable[[Point, Point], bool], Callable[[Set], bool], bool) -> (Point, ndarray)
     from numpy import full
     component, points_to_explore = set(), {source_point}
-
     # firstly, get all connected points in a set
     while points_to_explore:
         if early_stopping_condition and early_stopping_condition(component):
@@ -804,9 +803,11 @@ def connected_component(maps, source_point, connection_condition, early_stopping
         for dx, dz in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
             x, z = comp_point.x + dx, comp_point.z + dz
             neighbour = Point(x, z)
-            valid_x, valid_z = (0 <= x < maps.width), (0 <= z < maps.length)
-            if (not check_limits or (valid_x and valid_z)) and connection_condition(comp_point, neighbour,
-                                                                                    maps) and neighbour not in component:
+            from utils import BuildArea
+            valid_x, valid_z = (0 <= x < BuildArea().width), (0 <= z < BuildArea().length)
+            if (not check_limits or (valid_x and valid_z)) \
+                    and connection_condition(comp_point, neighbour) \
+                    and neighbour not in component:
                 points_to_explore.add(neighbour)
 
     # secondly, generate a mask and a masked parcel to hold relevant info

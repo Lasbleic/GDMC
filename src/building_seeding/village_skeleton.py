@@ -29,7 +29,7 @@ class VillageSkeleton:
         # parcel_list.append(Parcel(ghost_position, BuildingType.from_name('ghost'), maps))
         self.__interest = InterestSeeder(maps, districts, parcel_list, scenario)
 
-    def add_parcel(self, seed, building_type):
+    def add_parcel(self, seed: Point or Parcel, building_type: BuildingType = None):
         if isinstance(seed, Point):
             if building_type.name in ["crop"]:
                 new_parcel = MaskedParcel(seed, building_type, self.maps)
@@ -37,7 +37,6 @@ class VillageSkeleton:
                 new_parcel = Parcel(seed, building_type, self.maps)
         elif isinstance(seed, Parcel):
             new_parcel = seed
-            new_parcel.building_type = BuildingType.ghost
         else:
             raise TypeError("Expected Point or Parcel, found {}".format(seed.__class__))
         self.__parcel_list.append(new_parcel)
@@ -107,18 +106,17 @@ class CityBlock:
         self.__origin = Point(min(_.x for _ in road_cycle), min(_.z for _ in road_cycle))
         self.__limits = Point(max(_.x for _ in road_cycle), max(_.z for _ in road_cycle))
 
-    @staticmethod
-    def connection(src_point, dst_point, maps):
-        return not maps.road_network.is_road(dst_point)
+    def connection(self, src_point, dst_point):
+        return not self.__maps.road_network.is_road(dst_point)
 
     def parcels(self):
         seed = Point(int(mean(p.x for p in self.__road_points)), int(mean(p.z for p in self.__road_points)))
-        origin, mask = connected_component(self.__maps, seed, CityBlock.connection)
+        origin, mask = connected_component(seed, self.connection)
         parcel_origin = Point(max(origin.x, self.minx), max(origin.z, self.minz))
-        parcel_limits = Point(min(origin.x+mask.shape[0], self.maxx), min(origin.z+mask.shape[1], self.maxz))
+        parcel_limits = Point(min(origin.x + mask.shape[0], self.maxx), min(origin.z + mask.shape[1], self.maxz))
         parcel_shapes = Point(1, 1) + parcel_limits - parcel_origin
         parcel_mask = mask[(parcel_origin.x - origin.x): (parcel_origin.x - origin.x + parcel_shapes.x),
-                           (parcel_origin.z - origin.z): (parcel_origin.z - origin.z + parcel_shapes.z)]
+                      (parcel_origin.z - origin.z): (parcel_origin.z - origin.z + parcel_shapes.z)]
         return MaskedParcel(parcel_origin, BuildingType.ghost, self.__maps, parcel_mask)
 
     @property

@@ -43,6 +43,9 @@ class Parcel:
             road_y = self._map.height_map[road_block.x, road_block.z]
             self_y = self._map.height_map[self.mean_x, self.mean_z]
             return manhattan(Point(self.mean_x, self.mean_z, self_y), Point(road_block.x, road_block.z, road_y))
+
+        if not road_net.road_blocks:
+            return Position(0, 0)
         return argmin(road_net.road_blocks, key=key)
 
     def __initialize_limits(self):

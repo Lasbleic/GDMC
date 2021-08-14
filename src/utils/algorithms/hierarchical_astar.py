@@ -69,18 +69,20 @@ def hierarchical_astar(source, target, dimensions, cost_function):
             else:
                 return _path_to_dest(predecessor_map, source, target, True)
         else:
-            rough_path = _path_to_dest(predecessor_map, source, clst_neighbour, False) + [target]
+            rough_path = _path_to_dest(predecessor_map, source, clst_neighbour, False)
+            if rough_path[-1] != target:
+                rough_path.append(target)
             step //= GAMMA
 
 
-# @njit
+@njit
 def _heuristic_index(point, path):
     distance_to_path = nbList()
     [distance_to_path.append(euclidean(point, point2)) for point2 in path]
     return index_argmin(distance_to_path)
 
 
-# @njit()
+@njit()
 def _heuristic(point, path, path_heuristic):
     i = _heuristic_index(point, path)
     if i == len(path) - 1:
@@ -89,12 +91,12 @@ def _heuristic(point, path, path_heuristic):
     return euclidean(point, target) + path_heuristic[i + 1]
 
 
-# @njit()
+@njit()
 def _closest_neighbor(env, path, path_heuristic):
     distance_map, neighbors = env[:2]
     heuristic_map = env[3]
     closest_neighbors = nbList()
-    # closest_neighbors.append((1 << 16, 1 << 16))
+    closest_neighbors.append((1 << 16, 1 << 16))
     min_heuristic = maxint + 1
     for neighbor in neighbors:
         x, z = neighbor
@@ -110,7 +112,7 @@ def _closest_neighbor(env, path, path_heuristic):
     return closest_neighbors[randint(len(closest_neighbors))]
 
 
-# @jit(forceobj=True, parallel=True)
+@jit(forceobj=True, parallel=True)
 def _update_distances(env, dims, point):
     """
     :param env: (...)
@@ -122,7 +124,7 @@ def _update_distances(env, dims, point):
         _update_distance(env, point, xz)
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def _exploration_neighbourhood(x, z, width, length, step):
     neighbourhood = set()
     for dx, dz in [(0, step), (step, step), (-step, 2 * step), (0, 2 * step), (step, 2 * step)]:

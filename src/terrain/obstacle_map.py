@@ -37,7 +37,11 @@ class ObstacleMap(Map, metaclass=Singleton):
 
         # reachable = True -> 0, unreachable = False -> 1
         obstacle_from_reachability = (~reachable).astype(int)
-        return cls(obstacle_from_reachability, terrain)
+        obs = cls(obstacle_from_reachability, terrain)
+        from terrain.structure_detection import StructureDetector
+        for parcel in StructureDetector(terrain).get_structure_parcels():
+            obs.add_obstacle(*parcel.obstacle(2))
+        return obs
 
     def add_obstacle(self, point, mask=None):
         # type: (Point, ndarray) -> None

@@ -20,6 +20,7 @@ class BuildingType(Enum):
     house = ProcHouseGenerator
     crop = CropGenerator
     windmill = WindmillGenerator
+    structure = Generator
 
     def new_instance(self, box) -> Generator:
         return self.value(box)
