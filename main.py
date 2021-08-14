@@ -14,7 +14,7 @@ sys.path.insert(0, this_path + sep + 'src')  # path to our code
 from time import time
 
 from settlement import Settlement
-from terrain import TerrainMaps
+from terrain import TerrainMaps, ObstacleMap
 
 time_opt = "time_opt"  # "10' limit"
 debug_opt = "debug_opt"  # "Debug mode: does not catch exceptions in generation"
@@ -31,6 +31,7 @@ def main(**options):
     print("Hello Settlers!")
     # get & parse building zone
     terrain: TerrainMaps = TerrainMaps.request()
+    ObstacleMap.from_terrain(terrain)  # initialize obstacle map from the terrain
 
     settlement = Settlement(terrain)
     settlement.build_districts(visualize=do_visu)
@@ -40,7 +41,7 @@ def main(**options):
     settlement.clean_road_network()
     settlement.define_parcels()  # define parcels around seeds
     # return
-    settlement.terraform()
+    # settlement.terraform()
     settlement.generate(terrain, options.get(debug_opt, False))      # build buildings on parcels
     print('{} seconds of execution'.format(time() - t0))
 
@@ -59,4 +60,4 @@ if __name__ == '__main__':
         import cProfile
         stats: Stats = cProfile.run(f"main({time_opt}=900)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=True, time_opt=900)
+        main(debug_opt=False, time_opt=900)

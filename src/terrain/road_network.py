@@ -9,6 +9,7 @@ from generation.generators import *
 from generation.road_generator import RoadGenerator
 from parameters import *
 from utils import Point, euclidean
+from .obstacle_map import ObstacleMap
 
 MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 30
@@ -45,12 +46,6 @@ class RoadNetwork:
         self.__all_maps = mc_map
 
     # region GETTER AND SETTER
-
-    def __is_point_obstacle(self, point):
-        if self.__all_maps is not None:
-            return not self.__all_maps.obstacle_map.is_accessible(point)
-        else:
-            return False
 
     def get_road_width(self, x: Point or int, z: int = None) -> int:
         """
@@ -89,7 +84,7 @@ class RoadNetwork:
 
     def get_distance(self, x: Point or int, z: int = None) -> float:
         if z is None:
-            return maxint if self.__is_point_obstacle(x) else self.get_distance(x.x, x.z)
+            return maxint if not ObstacleMap().is_accessible(x) else self.get_distance(x.x, x.z)
         else:
             if self.distance_map[x][z] == maxint:
                 return maxint
@@ -101,7 +96,7 @@ class RoadNetwork:
             # steep roads are not marked as road points
             maps = self.__all_maps
             if maps and (maps.height_map.steepness(xp.x, xp.z) >= 0.35 or maps.fluid_map.is_water(xp)
-                         or not maps.obstacle_map.is_accessible(xp)):
+                         or not ObstacleMap().is_accessible(xp)):
                 self.special_road_blocks.add(xp)
             else:
                 self.road_blocks.add(xp)
@@ -146,21 +141,14 @@ class RoadNetwork:
         path = self.path_map[point.x][point.z]
         return type(path) == list and (len(path) > 0 or self.is_road(point))
 
-    # endregion
-    def calculate_road_width(self, x, z):
-        """
-        todo: algorithme simulationniste ? dépendance au centre ?
-        """
-        # return self.network[x, z]
-        return 3
-
     # region PUBLIC INTERFACE
 
     def create_road(self, root_point=None, ending_point=None, path=None):
         # type: (Point, Point, List[Point]) -> List[Point]
         if path is None:
             assert root_point is not None and ending_point is not None
-            print(f"[RoadNetwork] Compute road path from {str(root_point + self.__all_maps.area.origin)} towards {str(ending_point + self.__all_maps.area.origin)}", end="")
+            print(f"[RoadNetwork] Compute road path from {str(root_point + self.__all_maps.area.origin)} "
+                  f"towards {str(ending_point + self.__all_maps.area.origin)}", end="")
             _t0 = time()
             path = self.a_star(root_point, ending_point, RoadNetwork.road_build_cost)
             self.nodes.update({root_point, ending_point})
@@ -168,7 +156,7 @@ class RoadNetwork:
         self.__set_road(path)
         return path
 
-    def connect_to_network(self, point_to_connect: Point, margin: int = 0) -> List[Set[Point]]:
+    def connect_to_network(self, target: Point, margin: int = 0) -> List[Set[Point]]:
         """
         Create roads to connect a point to the network. Creates at least one road, and potential other roads (to create
         cycles)
@@ -183,18 +171,18 @@ class RoadNetwork:
         """
 
         # safe check: the point is already connected
-        if self.is_road(point_to_connect):
+        if self.is_road(target):
             return []
 
         # either the path is precomputed or computed with a*
         path: List[Point]
-        if self.is_accessible(point_to_connect):
-            path = self.path_map[point_to_connect.x][point_to_connect.z]
-            print(f"[RoadNetwork] Found existing road towards {str(point_to_connect)}")
+        if self.is_accessible(target):
+            path = self.path_map[target.x][target.z]
+            print(f"[RoadNetwork] Found existing road towards {str(target)}")
         else:
             _t0 = time()
-            path = self.a_star(self.__get_closest_node(point_to_connect), point_to_connect, RoadNetwork.road_build_cost)
-            print(f"[RoadNetwork] Computed road path towards {str(point_to_connect)} in {(time()-_t0):0.2f}s")
+            path = self.a_star(self.__get_closest_node(target), target, RoadNetwork.road_recording_cost)
+            print(f"[RoadNetwork] Computed road path towards {str(target)} in {(time() - _t0):0.2f}s")
 
         # if a* fails, return
         if not path:
@@ -202,23 +190,24 @@ class RoadNetwork:
 
         # else, register new road(s)
         if margin > 0:
-            truncate_index = next(i for i, p in enumerate(path) if manhattan(p, point_to_connect) <= margin)
+            truncate_index = next(i for i, p in enumerate(path) if manhattan(p, target) <= margin)
             path = path[:truncate_index]
-            if not path: return []
-            point_to_connect = path[-1]
+            if not path:
+                return []
+            target = path[-1]
         self.__set_road(path)
-        self.nodes.add(point_to_connect)
+        self.nodes.add(target)
 
         _t1, cycles = time(), []
-        for node in sorted(self.nodes, key=lambda n: euclidean(n, point_to_connect))[1:min(CYCLE_ALTERNATIVES, len(self.nodes))]:
-            old_path, new_path = self.cycle_creation_condition(node, point_to_connect)
+        for node in sorted(self.nodes, key=lambda n: euclidean(n, target))[1:min(CYCLE_ALTERNATIVES, len(self.nodes))]:
+            old_path, new_path = self.cycle_creation_condition(node, target)
             if new_path:
                 new_path = self.create_road(path=new_path)
                 cycles.append(set(old_path).union(set(new_path)))
                 if len(cycles) == 2:
                     # allow max 2 new cycles
                     break
-        print(f"[RoadNetwork] Computed {len(cycles)} new road cycles in {(time()-_t1):0.2f}s")
+        print(f"[RoadNetwork] Computed {len(cycles)} new road cycles in {(time() - _t1):0.2f}s")
 
         if path and all(euclidean(path[0], node) > DIST_BETWEEN_NODES for node in self.nodes):
             self.nodes.add(path[0])
@@ -235,7 +224,6 @@ class RoadNetwork:
         self.dijkstra(road, self.lambda_max, force_update)
 
     def road_build_cost(self, src_point, dest_point):
-        if src_point == dest_point: return 0
         unit_cost = 1
         scale = manhattan(src_point, dest_point)
         # if we don't have access to terrain info
@@ -243,7 +231,7 @@ class RoadNetwork:
             return unit_cost
 
         # if dest_point is an obstacle, return inf
-        is_dest_obstacle = not self.__all_maps.obstacle_map.is_accessible(dest_point)
+        is_dest_obstacle = not ObstacleMap().is_accessible(dest_point)
         is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=MIN_DIST_TO_LAVA)
         if is_dest_obstacle:
             return maxint
@@ -270,6 +258,15 @@ class RoadNetwork:
 
     def road_only_cost(self, src_point, dest_point):
         return manhattan(src_point, dest_point) if self.is_road(dest_point) else maxint
+
+    def road_recording_cost(self, src_point, dest_point):
+        if self.is_road(dest_point):
+            return 0
+        path = self.path_map[src_point.x, src_point.z]
+        if path:
+            # Use Dijkstra optimal path to road network if it exists
+            return 0 if dest_point in path else 1000
+        return self.road_build_cost(src_point, dest_point)
 
     # return the path from the point satisfying the ending_condition to the root_point, excluded
     def dijkstra(self, root_points, max_distance, force_update):
@@ -382,7 +379,7 @@ class RoadNetwork:
             update_distances(clst_neighbor)
 
     def a_star(self, root_point, ending_point, cost_function, timer=False, recursive=True):
-        # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int]) -> List[Point]
+        # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int], bool, bool) -> List[Point]
         """
         Parameters
         ----------
@@ -407,7 +404,8 @@ class RoadNetwork:
             return []
         if timer:
             t0 = time() - t0 + .001
-            print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, avg: {int(len(tuple_path)/t0)}mps")
+            print(f"Fast a*'ed a {len(tuple_path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, "
+                  f"avg: {int(len(tuple_path) / t0)}mps")
         return [Point(u, v) for u, v in tuple_path]
 
     def cycle_creation_condition(self, node1: Point, node2: Point) -> (List[Point], List[Point]):

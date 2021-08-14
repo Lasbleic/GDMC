@@ -1,6 +1,6 @@
-from collections import namedtuple
 import itertools
 import math
+from collections import namedtuple
 
 _Vector = namedtuple("_Vector", ("x", "y", "z"))
 
@@ -223,7 +223,7 @@ class BoundingBox(object):
     @property
     def chunkPositions(self):
         # iterate through all of the chunk positions within this selection box
-        return itertools.product(xrange(self.mincx, self.maxcx), xrange(self.mincz, self.maxcz))
+        return itertools.product(range(self.mincx, self.maxcx), range(self.mincz, self.maxcz))
 
     @property
     def chunkCount(self):

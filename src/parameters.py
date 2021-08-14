@@ -14,7 +14,7 @@ BRIDGE_UNIT_COST = 4
 MAX_HEIGHT = 10  # 12 -> max 3 floors
 BUILDING_HEIGHT_SPREAD = 80  # at that distance from the center, buildings' height is a third of max height (1/e ~ .36)
 AVERAGE_PARCEL_SIZE = 12
-MIN_PARCEL_SIZE = 3
+MIN_PARCEL_SIZE = 1
 MIN_RATIO_SIDE = .5
 
 # distances

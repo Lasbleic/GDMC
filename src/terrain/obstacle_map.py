@@ -1,12 +1,12 @@
 import numpy as np
 
-from terrain.map import Map
 from utils import *
+from .map import Map
 
 
-class ObstacleMap(Map):
+class ObstacleMap(Map, metaclass=Singleton):
 
-    def __init__(self, values: np.ndarray, maps):
+    def __init__(self, values: np.ndarray = None, maps=None):
         super().__init__(values)
         self.__all_maps = maps
         self.__hidden_obstacles = []

@@ -9,7 +9,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
-from terrain import TerrainMaps
+from terrain import TerrainMaps, ObstacleMap
 from terrain.map import Map
 from utils import Point, product, full, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position
 from utils.misc_objects_functions import argmax, argmin, _in_limits
@@ -162,7 +162,7 @@ class Districts(Map):
         """
         pos: Position = Position(x, z)
         from building_seeding import soft_balance
-        if not terrain.obstacle_map.is_accessible(pos):
+        if not ObstacleMap().is_accessible(pos):
             return -1
         a = np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
         b = soft_balance(terrain.biome.temperature(pos), 0.3, 0.8, 1.2)

@@ -1,13 +1,13 @@
 from random import randint
 
+import terrain
+from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.building_pool import BuildingType
 from generation.generators import Generator, MaskedGenerator
 from parameters import *
-from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 # from pymclevel.biome_types import biome_types
 from terrain import ObstacleMap, TerrainMaps
 from utils import *
-import terrain
 
 ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
 
@@ -26,6 +26,7 @@ class Parcel:
         self._box = None  # type: TransformBox
         self._mask = None
         self.__initialize_limits()
+        self.__obstacle = None
 
     def __eq__(self, other):
         if not isinstance(other, Parcel):
@@ -61,11 +62,11 @@ class Parcel:
     def expand(self, direction):
         # type: (Direction) -> None
         assert self.is_expendable(direction)  # trust the user
-        self._map.obstacle_map.hide_obstacle(self.origin, self._mask, False)
+        ObstacleMap().hide_obstacle(*self.obstacle(forget=True), False)
         self._relative_box.expand(direction, inplace=True)
         self._mask = full((self.width, self.length), True)
         # mark parcel points on obstacle terrain
-        self.mark_as_obstacle(self._map.obstacle_map)
+        ObstacleMap().add_obstacle(*self.obstacle())
 
     def is_expendable(self, direction=None):
         # type: (Direction or None) -> bool
@@ -76,18 +77,16 @@ class Parcel:
         else:
             # try:
             expanded = self._relative_box.expand(direction)  # expanded parcel
-            obstacle = self._map.obstacle_map  # type: terrain.ObstacleMap  # obstacle terrain
+            obstacle = ObstacleMap()  # type: terrain.ObstacleMap  # obstacle terrain
             ext = expanded - self._relative_box  # extended part of the expanded parcel
 
             if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
                 return False
 
-            obstacle.hide_obstacle(self.origin, self._mask)
-            no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].all()
+            no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].sum() == 0
             # h = self._map.height_map.box_height(expanded, True)
             # flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
             flat_extend = True
-            obstacle.reveal_obstacles()
             valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
             return no_obstacle and valid_sizes and valid_ratio and flat_extend
@@ -97,14 +96,18 @@ class Parcel:
         self._box.translate(dx=origin.x, dz=origin.z, inplace=True)
         self._entry_point += Point(origin.x, origin.z)
 
-    def mark_as_obstacle(self, obstacle_map, margin=0):
-        # type: (ObstacleMap) -> None
-        if margin > 0:
+    def obstacle(self, margin=0, forget=False):
+        if self.__obstacle:
+            obs = self.__obstacle
+            if forget:
+                self.__obstacle = None
+        elif margin > 0:
             point = self.origin - Point(margin, margin)
-            mask = full((self.width + 2*margin, self.length + 2*margin), True)
-            obstacle_map.add_obstacle(point, mask)
+            mask = full((self.width + 2 * margin, self.length + 2 * margin), True)
+            obs = self.__obstacle = point, mask
         else:
-            obstacle_map.add_obstacle(self.origin, self._mask)
+            obs = self.__obstacle = self.origin, self._mask
+        return obs
 
     @property
     def entry_x(self):
@@ -188,7 +191,7 @@ class Parcel:
 
     def move_center(self, new_seed):
         # type: (Point) -> None
-        self._map.obstacle_map.hide_obstacle(self.origin, self._mask, False)
+        ObstacleMap().hide_obstacle(*self.obstacle(forget=True), False)
         move_x = new_seed.x - self.center.x
         move_z = new_seed.z - self.center.z
         self._relative_box.translate(dx=move_x, dz=move_z, inplace=True)
@@ -196,7 +199,7 @@ class Parcel:
             self._box.translate(dx=move_x, dz=move_z, inplace=True)
         self._center = new_seed
         self._entry_point += Point(move_x, move_z)
-        self.mark_as_obstacle(self._map.obstacle_map)
+        ObstacleMap().add_obstacle(*self.obstacle())
 
     def biome(self, level: TerrainMaps):
         b = self._relative_box
@@ -219,7 +222,7 @@ class MaskedParcel(Parcel):
 
     def __valid_extended_point(self, x, z, direction):
         """Can we extend the parcel to the point x, z from a given direction"""
-        obstacle = self._map.obstacle_map
+        obstacle = ObstacleMap()
         point = Point(x, z)
         source = point - direction.value  # type: Point
         return obstacle.is_accessible(source) and obstacle.is_accessible(direction)
@@ -234,7 +237,7 @@ class MaskedParcel(Parcel):
             """
             Will basically try to extend the parcel's mask
             """
-            obstacle = self._map.obstacle_map  # type: terrain.ObstacleMap  # obstacle terrain
+            obstacle = ObstacleMap()  # type: terrain.ObstacleMap  # obstacle terrain
             expanded = self._relative_box.expand(direction)  # expanded parcel
             ext = expanded - self._relative_box  # extended part of the expanded parcel
 
@@ -258,7 +261,7 @@ class MaskedParcel(Parcel):
             Parcel.expand(self, direction)
             return
 
-        self._map.obstacle_map.hide_obstacle(self.origin, self._mask, False)
+        ObstacleMap().hide_obstacle(*self.obstacle(forget=True), False)
 
         # compute extended mask and mark it on the obstacle map
         ext = self._relative_box.expand(direction) - self._relative_box
@@ -269,7 +272,7 @@ class MaskedParcel(Parcel):
 
         self._relative_box.expand(direction, inplace=True)
         self._mask = insert(self._mask, index[direction], array(mask_extension), axis=axis[direction])
-        self.mark_as_obstacle(self._map.obstacle_map)
+        ObstacleMap().add_obstacle(*self.obstacle())
 
     @property
     def generator(self):

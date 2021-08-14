@@ -1,9 +1,7 @@
-from abc import ABC
-
 from utils import Point
 
 
-class Map(ABC):
+class Map:
     def __init__(self, values):
         self._values = values
 

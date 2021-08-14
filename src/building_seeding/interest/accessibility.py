@@ -5,10 +5,6 @@ Function used to compute accessibility
 
 from __future__ import division
 
-from itertools import product
-
-import numpy as np
-
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.interest.math_function import attraction_repulsion
 

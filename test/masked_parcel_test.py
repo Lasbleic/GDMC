@@ -1,13 +1,13 @@
 # Name to display in MCEdit filter menu
 
-import logging
-from time import gmtime, strftime, time
+from time import time
 
-from building_seeding import VillageSkeleton, BuildingType
+from pymclevel import BoundingBox, MCLevel
+from terrain.maps import Maps
+
+from building_seeding import VillageSkeleton
 from building_seeding.village_skeleton import CityBlock
 from settlement import Settlement
-from terrain.maps import Maps
-from pymclevel import BoundingBox, MCLevel
 from utils import TransformBox, Point2D
 
 displayName = "Masked Parcels test"
@@ -37,7 +37,7 @@ def perform(level, box, options):
     city_block = CityBlock(maps.road_network.road_blocks, maps)
     block_parcel = city_block.parcels()
     skeleton.add_parcel(block_parcel, BuildingTypes.ghost)
-    block_parcel.mark_as_obstacle(maps.obstacle_map)
+    # block_parcel.mark_as_obstacle(ObstacleMap())
 
     settlement._parcels.pop(0)
     settlement.define_parcels()     # define parcels around seeds

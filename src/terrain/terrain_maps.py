@@ -1,4 +1,4 @@
-from terrain import ObstacleMap, RoadNetwork
+from terrain import RoadNetwork
 from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
@@ -36,10 +36,6 @@ class TerrainMaps:
         t1 = time()
         self.trees = TreesMap(level, self.height_map)
         print(f'Computed trees map in {time() - t1}')
-
-        t1 = time()
-        self.obstacle_map = ObstacleMap.from_terrain(self)
-        print(f'Computed obstacle map in {time() - t1}')
 
         t1 = time()
         print(f'Computed terrain maps in {t1 - t0}')

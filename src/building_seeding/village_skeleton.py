@@ -2,16 +2,15 @@
 Village skeleton growth
 """
 
-from numpy import argmin
 from statistics import mean
 
-from building_seeding.districts import Districts
-from terrain import TerrainMaps
 from building_seeding.building_pool import BuildingPool, BuildingType
+from building_seeding.districts import Districts
+from building_seeding.interest import InterestSeeder
 from building_seeding.interest.pre_processing import VisuHandler
 from building_seeding.parcel import Parcel, MaskedParcel
-from building_seeding.interest import InterestSeeder
 from parameters import MIN_PARCEL_SIZE, AVERAGE_PARCEL_SIZE
+from terrain import TerrainMaps, ObstacleMap
 from utils import *
 
 
@@ -42,33 +41,34 @@ class VillageSkeleton:
         else:
             raise TypeError("Expected Point or Parcel, found {}".format(seed.__class__))
         self.__parcel_list.append(new_parcel)
-        new_parcel.mark_as_obstacle(self.maps.obstacle_map, margin=AVERAGE_PARCEL_SIZE//3)
+        ObstacleMap().add_obstacle(*new_parcel.obstacle(AVERAGE_PARCEL_SIZE // 3))
 
     def __handle_new_road_cycles(self, cycles):
-
-        for road_cycle in cycles:
-            city_block = CityBlock(road_cycle, self.maps)
-            block_parcel = city_block.parcels()
-            seed = block_parcel.center
-            # block_seed = Point(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
-            block_type = self.__interest.get_optimal_type(seed)
-            if block_type:
-                self.add_parcel(seed, block_type)
-                # self._create_masked_parcel(block_seed, BuildingType().ghost)
-                # parcel is considered already linked to road network
-            else:
-                # if there already is a parcel in the block, or very close, it is moved to the block seed
-                dist_to_parcels = list(map(lambda parcel: euclidean(parcel.center, seed), self.__parcel_list))
-                if min(dist_to_parcels) <= AVERAGE_PARCEL_SIZE / 2:
-                    index = int(argmin(dist_to_parcels))
-                    old_parcel = self.__parcel_list[index]
-                    self.maps.obstacle_map.hide_obstacle(old_parcel.origin, old_parcel.mask, False)
-                    block_parcel.mark_as_obstacle(self.maps.obstacle_map)
-                    block_parcel.building_type = old_parcel.building_type
-                    self.__parcel_list[index] = block_parcel
-                else:
-                    # add a park or plaza in the new cycle
-                    self.add_parcel(block_parcel, BuildingType.ghost)
+        raise NotImplementedError()
+        # for road_cycle in cycles:
+        #     city_block = CityBlock(road_cycle, self.maps)
+        #     block_parcel = city_block.parcels()
+        #     seed = block_parcel.center
+        #     # block_seed = Point(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
+        #     block_type = self.__interest.get_optimal_type(seed)
+        #     if block_type:
+        #         self.add_parcel(seed, block_type)
+        #         # self._create_masked_parcel(block_seed, BuildingType().ghost)
+        #         # parcel is considered already linked to road network
+        #     else:
+        #         # if there already is a parcel in the block, or very close, it is moved to the block seed
+        #         dist_to_parcels = list(map(lambda parcel: euclidean(parcel.center, seed), self.__parcel_list))
+        #         if min(dist_to_parcels) <= AVERAGE_PARCEL_SIZE / 2:
+        #             index = int(argmin(dist_to_parcels))
+        #             old_parcel = self.__parcel_list[index]
+        #             ObstacleMap().hide_obstacle(old_parcel.origin, old_parcel.mask, False)
+        #             ObstacleMap().add_obstacle(*block_parcel.obstacle())
+        #             block_parcel.mark_as_obstacle(ObstacleMap())
+        #             block_parcel.building_type = old_parcel.building_type
+        #             self.__parcel_list[index] = block_parcel
+        #         else:
+        #             # add a park or plaza in the new cycle
+        #             self.add_parcel(block_parcel, BuildingType.ghost)
 
     def grow(self, time_limit: int, do_visu: bool):
         print("Seeding parcels")

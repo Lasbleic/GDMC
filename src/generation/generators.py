@@ -1,10 +1,10 @@
 from math import floor
-import numpy as np
+from random import choice as rdChoice
 from random import randint, random
 
+import numpy as np
 from numpy import percentile
 from numpy.random import choice as npChoice
-from random import choice as rdChoice
 
 from generation.building_palette import HousePalette
 from interfaceUtils import sendBlocks, runCommand, getBlock
@@ -241,6 +241,9 @@ class CropGenerator(MaskedGenerator):
     def generate(self, level, height_map=None, palette=None):
         if self.width < 5 and self.length < 5:
             print(f"Parcel ({self.width}, {self.length}) at {self.mean} too small to generate a crop")
+            # for x, z in product(range(self.width), range(self.length)):
+            #     pos = Point(x + self.origin.x, z + self.origin.z, height_map[x, z] + 1)
+            #     setBlock(pos, BlockAPI.blocks.DiamondBlock)
             return
         self._clear_trees(level)
         self._sub_generator_function(height_map, palette)

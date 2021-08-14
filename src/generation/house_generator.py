@@ -16,6 +16,9 @@ class ProcHouseGenerator(Generator):
             self._generate_main_building()
         except ValueError:
             print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))
+            # for x, z in product(range(self.width), range(self.length)):
+            #     pos = Point(x + self.origin.x, z + self.origin.z, height_map[x, z] + 1)
+            #     setBlock(pos, BlockAPI.blocks.GoldBlock)
             return
         self._generate_annex()
         self._center_building()

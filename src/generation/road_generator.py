@@ -6,6 +6,7 @@ from numpy import uint8
 from numpy.random.mtrand import choice
 
 from generation.generators import Generator, place_street_lamp, place_torch_post
+from terrain import ObstacleMap
 from utils import *
 from utils.misc_objects_functions import raytrace
 
@@ -81,7 +82,7 @@ class RoadGenerator(Generator):
                 x, z = road_point.x, road_point.z
                 w1 = w0 + dw
                 unlit_array[max(0, x - w1):min(W, x + w1 + 1), max(0, z - w1):min(W, z + w1 + 1)] = dw
-        unlit_array[terrain.obstacle_map[:] > 0] = 0  # lamps don't spawn on obstacles
+        unlit_array[ObstacleMap()[:] > 0] = 0  # lamps don't spawn on obstacles
         del w0, w1, dw, x, z
 
         x0, z0 = self.__origin.x, self.__origin.z
@@ -202,7 +203,7 @@ class RoadGenerator(Generator):
                 self.children.append(CarvedRoad(path, orig_path_height, self.__origin))
                 for updated_point_index in filter(lambda _: path_height[_] != orig_path_height[_], range(len(path))):
                     point = path[updated_point_index]
-                    self.__maps.obstacle_map.add_obstacle(point)
+                    ObstacleMap().add_obstacle(point)
 
         # else:
         #     elevation = numpy.abs(numpy.diff(path_height))

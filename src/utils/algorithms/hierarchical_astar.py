@@ -30,7 +30,11 @@ def hierarchical_astar(source, target, dimensions, cost_function):
         """
         l = [0]
         for i in range(len(rough_path) - 1, 0, -1):
-            l.append(l[-1] + cost_function(rough_path[i], rough_path[i - 1]))
+            try:
+                l.append(l[-1] + cost_function(rough_path[i], rough_path[i - 1]))
+            except ZeroDivisionError:
+                print(rough_path, i)  # todo: figure out why rough_path[i] == rough_path[i-1] sometimes
+                raise ZeroDivisionError()
         res = nbList()
         [res.append(_) for _ in reversed(l)]
         return res

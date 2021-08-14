@@ -12,7 +12,7 @@ from generation.building_palette import get_biome_palette
 from generation.generators import place_sign
 from interfaceUtils import sendBlocks
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
-from terrain import TerrainMaps
+from terrain import TerrainMaps, ObstacleMap
 from terrain.road_network import RoadNetwork
 from utils import *
 from utils.algorithms import min_spanning_tree, tree_distance
@@ -64,7 +64,6 @@ class Settlement:
         # mark town centers
         for town_center in self.districts.town_centers:
             self._parcels.append(Parcel(town_center, BuildingType.ghost, self._maps))
-            self._parcels[-1].mark_as_obstacle(self._maps.obstacle_map)
 
     def init_road_network(self):
         # out_connections = [self.__random_border_point()]
@@ -107,11 +106,11 @@ class Settlement:
         print("Extending parcels")
         # self._parcels = self._parcels[1:]
         from terrain import ObstacleMap
-        obs = ObstacleMap(self._maps.fluid_map.as_obstacle_array, self._maps)
-        obs.add_network_to_obstacle_map()
+        ObstacleMap().add_network_to_obstacle_map()
+        ObstacleMap().add_obstacle(Point(0, 0), self._maps.fluid_map.as_obstacle_array)
         for parcel in self._parcels:
-            parcel.mark_as_obstacle(obs)
-        self._maps.obstacle_map = obs
+            ObstacleMap().hide_obstacle(*parcel.obstacle(forget=True), False)
+            ObstacleMap().add_obstacle(*parcel.obstacle())
         expendable_parcels: List[Parcel] = [p for p in self._parcels[:] if p.is_expendable()]
 
         surface = sum(p.bounds.volume for p in expendable_parcels)
@@ -183,7 +182,7 @@ class Settlement:
             parcel_biome = parcel.biome(terrain)
             palette = get_biome_palette(parcel_biome)
             if isinstance(parcel, MaskedParcel):
-                obstacle_mask = self._maps.obstacle_map.box_obstacle(parcel.bounds)
+                obstacle_mask = ObstacleMap().box_obstacle(parcel.bounds)
                 parcel.add_mask(obstacle_mask)
             if print_stack:
                 gen = parcel.generator
