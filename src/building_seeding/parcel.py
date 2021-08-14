@@ -249,7 +249,7 @@ class MaskedParcel(Parcel):
 
             assert ext.height == 1
 
-            obstacle.hide_obstacle(self.origin, self._mask)
+            obstacle.hide_obstacle(*self.obstacle())
             validity = [self.__valid_extended_point(x, z, direction) for x, y, z in ext.positions]
             obstacle.reveal_obstacles()
             return sum(validity) >= len(validity) // 2
