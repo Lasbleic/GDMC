@@ -61,5 +61,4 @@ def sociability_one_seed(l0, l1, l2, x, z, size):
     X = np.full(size, x)
     Z = np.full(size, z)
     D = np.sqrt((X - X_ARRAY) ** 2 + (Z - Z_ARRAY) ** 2)
-    # return np.vectorize(lambda d: attraction_repulsion(d, l0, l1, l2))(D)
     return attraction_repulsion(D, l0, l1, l2)

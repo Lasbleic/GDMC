@@ -58,6 +58,7 @@ if __name__ == '__main__':
         # code profiler
         from pstats import Stats, SortKey
         import cProfile
+
         stats: Stats = cProfile.run(f"main({time_opt}=900)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=False, time_opt=900)
+        main(debug_opt=True, time_opt=900, visu_opt=False)

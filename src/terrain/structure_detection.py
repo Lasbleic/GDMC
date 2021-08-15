@@ -55,6 +55,6 @@ class StructureDetector:
                     pos = Position(struct_origin.x + dx, struct_origin.z + dz)
                     if pos in points_to_explore:
                         points_to_explore.remove(pos)
-            components.append(MaskedParcel(struct_origin, BuildingType.structure, self.terrain, struct_mask))
+            components.append(MaskedParcel(struct_origin, BuildingType.cave, self.terrain, struct_mask))
 
         return components

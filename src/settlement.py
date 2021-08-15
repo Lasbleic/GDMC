@@ -69,7 +69,8 @@ class Settlement:
         # out_connections = [self.__random_border_point()]
         max_road_count = max(1, min(self.limits.width, self.limits.length) // MEAN_ROAD_COVERED_SURFACE)
         # logging.debug('Max road count: {}'.format(max_road_count))
-        road_count = min(geometric(1./max_road_count), max_road_count*3//2)
+        road_count = min(geometric(1. / max_road_count), max_road_count * 3 // 2)
+        road_count = 0
         logging.debug('New settlement will have {} external connections B)'.format(road_count))
         # logging.debug('First border point @{}'.format(str(out_connections[0])))
         # self._road_network.create_road(self._parcels[0].entry_point, out_connections[0])

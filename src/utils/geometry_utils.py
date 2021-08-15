@@ -4,6 +4,7 @@ from typing import Iterable
 from interfaceUtils import requestBuildArea
 from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
+from utils import ndarray
 
 
 class Point:
@@ -414,10 +415,27 @@ class TransformBox(BoundingBox):
         else:
             return self.is_lateral(x, None) or self.is_lateral(None, z)
 
-
     @property
     def surface(self):
         return self.width * self.length
+
+
+class posarray(ndarray):
+    @classmethod
+    def of(cls, values: ndarray):
+        array = posarray(values.shape, dtype=values.dtype)
+        array[:] = values[:]
+        return array
+
+    def __getitem__(self, item):
+        if isinstance(item, Point):
+            return self[item.x, item.z]
+        return super(posarray, self).__getitem__(item)
+
+    def __setitem__(self, key, value):
+        if isinstance(key, Point):
+            return self.__setitem__((key.x, key.z), value)
+        return super(posarray, self).__setitem__(key, value)
 
 
 if __name__ == '__main__':

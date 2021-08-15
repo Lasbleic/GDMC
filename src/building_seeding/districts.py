@@ -73,6 +73,8 @@ class Districts(Map):
                     sample = np.random.randint(X.shape[0], size=10000)
                     scores.append(silhouette_score(X[sample, :], model.labels_[sample]))
                 print("silhouette", scores[-1])
+                if len(scores) >= 2 and scores[-1] / scores[-2] < .98:
+                    break
 
             if visualize:
                 plt.plot(range(2, max_clusters + 1), scores)

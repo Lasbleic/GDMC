@@ -16,9 +16,4 @@ def local_accessibility(x, z, building_type, scenario, road_network):
 
 
 def accessibility(building_type, scenario, road_network, size):
-    # accessibility_map = np.zeros(size)
-    #
-    # for x, z, in product(range(size[0]), range(size[1])):
-    #     accessibility_map[x, z] = local_accessibility(x, z, building_type, scenario, road_network)
-
     return attraction_repulsion(road_network.distance_map[:], *BUILDING_ENCYCLOPEDIA[scenario]["Accessibility"][building_type.name])

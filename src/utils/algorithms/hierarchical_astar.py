@@ -4,7 +4,6 @@ from numpy.random import randint
 from utils.algorithms.fast_astar import abs_distance, numba, _in_limits, maxint, \
     _path_to_dest, _heuristic as euclidean, njit, np, jit
 from utils.misc_objects_functions import index_argmin
-
 GAMMA = 4
 
 
@@ -97,13 +96,13 @@ def _closest_neighbor(env, path, path_heuristic):
     heuristic_map = env[3]
     closest_neighbors = nbList()
     closest_neighbors.append((1 << 16, 1 << 16))
-    min_heuristic = maxint + 1
+    min_heuristic = maxint
     for neighbor in neighbors:
         x, z = neighbor
         if heuristic_map[neighbor] >= maxint:
             heuristic_map[neighbor] = _heuristic(neighbor, path, path_heuristic)
         current_heuristic = distance_map[x, z] + heuristic_map[neighbor]
-        if not closest_neighbors or current_heuristic < min_heuristic:
+        if min_heuristic == maxint or current_heuristic < min_heuristic:
             closest_neighbors = nbList()
             closest_neighbors.append(neighbor)
             min_heuristic = current_heuristic

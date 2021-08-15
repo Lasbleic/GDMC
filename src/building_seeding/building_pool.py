@@ -21,6 +21,7 @@ class BuildingType(Enum):
     crop = CropGenerator
     windmill = WindmillGenerator
     structure = Generator
+    cave = Generator
 
     def new_instance(self, box) -> Generator:
         return self.value(box)

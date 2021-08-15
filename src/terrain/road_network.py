@@ -2,7 +2,7 @@
 from random import choice
 from typing import Callable
 
-from numpy import empty
+from numpy import empty, nan
 
 import terrain
 from generation.generators import *
@@ -20,22 +20,24 @@ CYCLE_ALTERNATIVES = 4
 maxint = 1 << 32
 
 
-class RoadNetwork:
+class RoadNetwork(metaclass=Singleton):
     """
     Road network, computes and stores roads to reach every location. If used correctly, the road network should be
     continuous, ie you can walk from every road point to every other road points by only walking on paths.
     The road network is built simultaneously with the RoadGenerator, which concretely builds the paths
     """
+    INSTANCE = None
+
     def __init__(self, width, length, mc_map=None):
         # type: (int, int, terrain.TerrainMaps) -> RoadNetwork
         self.width = width
         self.length = length
-        self.network = zeros((width, length), dtype=int)
+        self.network = posarray.of(zeros((width, length), dtype=int))
         # Representing the distance from the network + the path to the network
-        self.cost_map = full((width, length), maxint)
-        self.distance_map = full((width, length), maxint)
+        self.cost_map = posarray.of(full((width, length), maxint))
+        self.distance_map = posarray.of(full((width, length), maxint))
         # paths from existing road points to every reachable destination
-        self.path_map = empty((width, length), dtype=object)
+        self.path_map = posarray.of(empty((width, length), dtype=list))
         self.lambda_max = MAX_LAMBDA
 
         # points passed through create_road or connect_to_network
@@ -43,7 +45,8 @@ class RoadNetwork:
         self.road_blocks: Set[Point] = set()
         self.special_road_blocks: Set[Point] = set()
         self.__generator = RoadGenerator(self, mc_map.box, mc_map) if mc_map else None
-        self.__all_maps = mc_map
+        self.terrain = mc_map
+        RoadNetwork.INSTANCE = self
 
     # region GETTER AND SETTER
 
@@ -94,7 +97,7 @@ class RoadNetwork:
         # type: (Point or int, None or int) -> None
         if z is None:
             # steep roads are not marked as road points
-            maps = self.__all_maps
+            maps = self.terrain
             if maps and (maps.height_map.steepness(xp.x, xp.z) >= 0.35 or maps.fluid_map.is_water(xp)
                          or not ObstacleMap().is_accessible(xp)):
                 self.special_road_blocks.add(xp)
@@ -120,13 +123,14 @@ class RoadNetwork:
         if self.is_road(point):
             return point
         if self.is_accessible(point):
-            return self.path_map[point.x][point.z][0]
+            return self.path_map[point][0]
         else:
             return self.__get_closest_node(point)
 
     def __invalidate(self, point):
-        self.distance_map[point.x][point.z] = maxint
-        self.path_map[point.x][point.z] = None
+        self.distance_map[point] = maxint
+        self.cost_map[point] = maxint
+        self.path_map[point] = None
 
     def __set_road(self, path):
         # type: ([Point]) -> None
@@ -138,7 +142,7 @@ class RoadNetwork:
         self.__update_distance_map(path, force_update)
 
     def is_accessible(self, point: Point) -> bool:
-        path = self.path_map[point.x][point.z]
+        path = self.path_map[point]
         return type(path) == list and (len(path) > 0 or self.is_road(point))
 
     # region PUBLIC INTERFACE
@@ -147,10 +151,10 @@ class RoadNetwork:
         # type: (Point, Point, List[Point]) -> List[Point]
         if path is None:
             assert root_point is not None and ending_point is not None
-            print(f"[RoadNetwork] Compute road path from {str(root_point + self.__all_maps.area.origin)} "
-                  f"towards {str(ending_point + self.__all_maps.area.origin)}", end="")
+            print(f"[RoadNetwork] Compute road path from {str(root_point + self.terrain.area.origin)} "
+                  f"towards {str(ending_point + self.terrain.area.origin)}", end="")
             _t0 = time()
-            path = self.a_star(root_point, ending_point, RoadNetwork.road_build_cost)
+            path = self.a_star(root_point, ending_point, road_build_cost)
             self.nodes.update({root_point, ending_point})
             print(f"in {(time() - _t0):0.2f}s")
         self.__set_road(path)
@@ -177,11 +181,11 @@ class RoadNetwork:
         # either the path is precomputed or computed with a*
         path: List[Point]
         if self.is_accessible(target):
-            path = self.path_map[target.x][target.z]
+            path = self.path_map[target]
             print(f"[RoadNetwork] Found existing road towards {str(target)}")
         else:
             _t0 = time()
-            path = self.a_star(self.__get_closest_node(target), target, RoadNetwork.road_recording_cost)
+            path = self.a_star(self.__get_closest_node(target), target, road_recording_cost)
             print(f"[RoadNetwork] Computed road path towards {str(target)} in {(time() - _t0):0.2f}s")
 
         # if a* fails, return
@@ -220,53 +224,19 @@ class RoadNetwork:
         hm = level.height_map[:]  # type: terrain.HeightMap
         self.__generator.generate(level, hm[:], districts)
 
-    def __update_distance_map(self, road, force_update=False):
+    def __update_distance_map(self, road: List[Point], force_update=False):
+        # positions that have become inaccessible: road path exists but we can't reach the position anymore
+        invalid = {p for p in building_positions() if
+                   type(self.path_map[p]) is list and not ObstacleMap().is_accessible(p)}
+        # entry points of these positions. paths starting in these positions must be recomputed
+        invalid_entry_points = {self.path_map[p][0] for p in invalid}
+        # positions having one of theses entry points
+        invalid_extended = {p for p in building_positions() if type(self.path_map[p]) is list and self.path_map[p][
+            0] in invalid_entry_points and not self.is_road(p)}
+        for p in invalid_extended:
+            self.__invalidate(p)
+        road.extend(invalid_entry_points)
         self.dijkstra(road, self.lambda_max, force_update)
-
-    def road_build_cost(self, src_point, dest_point):
-        unit_cost = 1
-        scale = manhattan(src_point, dest_point)
-        # if we don't have access to terrain info
-        if self.__all_maps is None or self.is_road(dest_point):
-            return unit_cost
-
-        # if dest_point is an obstacle, return inf
-        is_dest_obstacle = not ObstacleMap().is_accessible(dest_point)
-        is_dest_obstacle |= self.__all_maps.fluid_map.is_lava(dest_point, margin=MIN_DIST_TO_LAVA)
-        if is_dest_obstacle:
-            return maxint
-
-        # specific cost to build on water
-        if self.__all_maps.fluid_map.is_water(dest_point, margin=MIN_DIST_TO_RIVER):
-            if self.__all_maps.fluid_map.is_water(src_point):
-                return scale * BRIDGE_COST  # bridge continuation
-            return BRIDGE_UNIT_COST + (scale - 1) * BRIDGE_COST  # bridge creation
-
-        # discount to get roads closer to water
-        src_water = self.__all_maps.fluid_map.water_distance(src_point)
-        dest_water = self.__all_maps.fluid_map.water_distance(dest_point)
-        if 2.5 * MIN_DIST_TO_RIVER >= src_water > dest_water > MIN_DIST_TO_RIVER:
-            unit_cost += dest_water - src_water
-
-        # additional cost for slopes
-        direction: Point = (dest_point - src_point).unit
-        steepness: Point = self.__all_maps.height_map.steepness(src_point, norm=False)
-        elevation = abs(steepness.dot(direction))
-        unit_cost += (1 + elevation) ** 2 - 1  # cubic cost over slopes
-
-        return max(scale, unit_cost * scale)
-
-    def road_only_cost(self, src_point, dest_point):
-        return manhattan(src_point, dest_point) if self.is_road(dest_point) else maxint
-
-    def road_recording_cost(self, src_point, dest_point):
-        if self.is_road(dest_point):
-            return 0
-        path = self.path_map[src_point.x, src_point.z]
-        if path:
-            # Use Dijkstra optimal path to road network if it exists
-            return 0 if dest_point in path else 1000
-        return self.road_build_cost(src_point, dest_point)
 
     # return the path from the point satisfying the ending_condition to the root_point, excluded
     def dijkstra(self, root_points, max_distance, force_update):
@@ -284,69 +254,45 @@ class RoadNetwork:
         -------
         Nothing. Result is stored in self.distance_map and self.path_map
         """
+
         def init():
-            _distance_map = full((self.width, self.length), maxint)  # on foot distance walking from road points
-            _cost_map = full((self.width, self.length), maxint)  # cost distance building from road points
+            _distance_map = posarray.of(
+                full((self.width, self.length), maxint))  # on foot distance walking from road points
+            _cost_map = posarray.of(full((self.width, self.length), maxint))  # cost distance building from road points
             for root_point in root_points:
-                _distance_map[root_point.x, root_point.z] = 0
-                _cost_map[root_point.x, root_point.z] = 0
+                _distance_map[root_point] = 0
+                _cost_map[root_point] = 0
             _neighbours = set(root_points)
-            _predecessor_map = empty((self.width, self.length), dtype=object)
+            _predecessor_map = posarray.of(empty((self.width, self.length), dtype=object))
             return _cost_map, _distance_map, _neighbours, _predecessor_map
 
         def closest_neighbor():
             _closest_neighbors = []
-            min_cost = maxint
-            for neighbor in neighbors:
-                _current_cost = cost_map[neighbor.x, neighbor.z]
-                if _current_cost < min_cost:
-                    _closest_neighbors = [neighbor]
-                    min_cost = _current_cost
-                elif _current_cost == min_cost:
-                    _closest_neighbors += [neighbor]
-            return choice(_closest_neighbors)
-            # old_neighbours = neighbors if len(neighbors) < 16 else neighbors[:16]
-            # distances = map(lambda n: distance_map[n.x, n.z], old_neighbours)
-            # return old_neighbours[argmin(distances)]
-            # return neighbors[0]
-
-        def distance(orig_point, dest_point):
-            if self.__all_maps is None:
-                return euclidean(orig_point, dest_point)
-
-            fluids = self.__all_maps.fluid_map
-            if fluids.is_lava(dest_point):
-                return maxint
-            elif fluids.is_water(dest_point):
-                return BRIDGE_UNIT_COST
-            else:
-                orig_height = self.__all_maps.height_map[orig_point]
-                dest_height = self.__all_maps.height_map[dest_point]
-                if abs(orig_height - dest_height) > 1:
-                    return maxint
-            return euclidean(orig_point, dest_point)
+            min_cost = min(cost_map[n] for n in neighbors)
+            return choice(list(filter(lambda n: cost_map[n] == min_cost, neighbors)))
 
         def update_distance(updated_point, neighbor, _neighbors):
-            edge_cost = self.road_build_cost(updated_point, neighbor)
-            edge_dist = distance(updated_point, neighbor)
-            if edge_cost == maxint or edge_dist == maxint:
+            edge_cost = road_build_cost(updated_point, neighbor)
+            edge_dist = euclidean(updated_point, neighbor)
+            if edge_cost == maxint:
                 return
 
-            new_cost = cost_map[updated_point.x][updated_point.z] + edge_cost
-            new_dist = distance_map[updated_point.x][updated_point.z] + edge_dist
-            previous_cost = cost_map[neighbor.x][neighbor.z]
+            new_cost = cost_map[updated_point] + edge_cost
+            new_dist = distance_map[updated_point] + edge_dist
+            previous_cost = cost_map[neighbor]
             if previous_cost >= maxint and new_dist <= max_distance and not self.is_road(neighbor) \
-                    and (new_cost < self.cost_map[neighbor.x][neighbor.z] or force_update):
+                    and (new_cost < self.cost_map[neighbor] or force_update):
                 _neighbors.add(neighbor)
             if previous_cost > new_cost:
-                cost_map[neighbor.x][neighbor.z] = new_cost
-                distance_map[neighbor.x][neighbor.z] = new_dist
-                predecessor_map[neighbor.x][neighbor.z] = updated_point
+                cost_map[neighbor] = new_cost
+                distance_map[neighbor] = new_dist
+                predecessor_map[neighbor] = updated_point
 
         def update_distances(updated_point):
             x, z = updated_point.x, updated_point.z
             path = path_to_dest(updated_point)
-            is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
+            # is_straight_road = (len(path) < 3) or (path[-1].x == path[-3].x) or (path[-1].z == path[-3].z)
+            is_straight_road = True
             if (x + 1 < self.width) and (is_straight_road or path[-2].z == z):
                 update_distance(updated_point, Point(x + 1, z), neighbors)
             if (x - 1 >= 0) and (is_straight_road or path[-2].z == z):
@@ -357,19 +303,17 @@ class RoadNetwork:
                 update_distance(updated_point, Point(x, z - 1), neighbors)
 
         def path_to_dest(dest_point):
-            current_point = dest_point
-            path = []
-            while not self.is_road(current_point):
-                path = [current_point] + path
-                current_point = predecessor_map[current_point.x][current_point.z]
+            path = [dest_point]
+            while not self.is_road(path[0]):
+                path.insert(0, predecessor_map[path[0]])
             return path
 
         def update_maps_info_at(point):
             x, z = point.x, point.z
             if self.cost_map[x, z] > cost_map[x, z]:
-                self.cost_map[point.x][point.z] = cost_map[point.x][point.z]
-                self.distance_map[point.x][point.z] = distance_map[point.x][point.z]
-                self.path_map[point.x][point.z] = path_to_dest(point)
+                self.cost_map[point] = cost_map[point]
+                self.distance_map[point] = distance_map[point]
+                self.path_map[point] = path_to_dest(point)
 
         cost_map, distance_map, neighbors, predecessor_map = init()
         while len(neighbors) > 0:
@@ -379,7 +323,7 @@ class RoadNetwork:
             update_distances(clst_neighbor)
 
     def a_star(self, root_point, ending_point, cost_function, timer=False, recursive=True):
-        # type: (Point, Point, Callable[[RoadNetwork, Point, Point], int], bool, bool) -> List[Point]
+        # type: (Point, Point, Callable[[Point, Point], int], bool, bool) -> List[Point]
         """
         Parameters
         ----------
@@ -399,7 +343,7 @@ class RoadNetwork:
             from utils.algorithms.hierarchical_astar import hierarchical_astar
             f = hierarchical_astar if recursive else a_star
             tuple_path = f((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length),
-                           lambda u, v: cost_function(self, Position(u[0], u[1]), Position(v[0], v[1])))
+                           lambda u, v: cost_function(Position(u[0], u[1]), Position(v[0], v[1])))
         except SystemError or KeyError or ValueError:
             return []
         if timer:
@@ -419,12 +363,62 @@ class RoadNetwork:
         if not (MIN_DISTANCE_CYCLE <= straight_dist <= MAX_DISTANCE_CYCLE):
             return [], []
 
-        existing_path = self.a_star(node1, node2, RoadNetwork.road_only_cost, recursive=False)
+        existing_path = self.a_star(node1, node2, road_only_cost, recursive=False)
         current_dist = len(existing_path)
         if current_dist / straight_dist < MIN_CYCLE_GAIN:
             return existing_path, []
-        straight_path = self.a_star(node1, node2, RoadNetwork.road_build_cost, recursive=False)
+        straight_path = self.a_star(node1, node2, road_build_cost, recursive=False)
         straight_dist = len(straight_path)
         if straight_dist and current_dist / straight_dist >= MIN_CYCLE_GAIN:
             return existing_path, straight_path
         return existing_path, []
+
+
+def road_build_cost(src_point, dest_point):
+    network = RoadNetwork.INSTANCE
+    unit_cost = 1
+    scale = manhattan(src_point, dest_point)
+    # if we don't have access to terrain info
+    if network.terrain is None or network.is_road(dest_point):
+        return unit_cost
+
+    # if dest_point is an obstacle, return inf
+    is_dest_obstacle = not ObstacleMap().is_accessible(dest_point)
+    is_dest_obstacle |= network.terrain.fluid_map.is_lava(dest_point, margin=MIN_DIST_TO_LAVA)
+    if is_dest_obstacle:
+        return maxint
+
+    # specific cost to build on water
+    if network.terrain.fluid_map.is_water(dest_point, margin=MIN_DIST_TO_RIVER):
+        if network.terrain.fluid_map.is_water(src_point):
+            return scale * BRIDGE_COST  # bridge continuation
+        return BRIDGE_UNIT_COST + (scale - 1) * BRIDGE_COST  # bridge creation
+
+    # discount to get roads closer to water
+    src_water = network.terrain.fluid_map.water_distance(src_point)
+    dest_water = network.terrain.fluid_map.water_distance(dest_point)
+    if 2.5 * MIN_DIST_TO_RIVER >= src_water > dest_water > MIN_DIST_TO_RIVER:
+        unit_cost += dest_water - src_water
+
+    # additional cost for slopes
+    direction: Point = (dest_point - src_point).unit
+    steepness: Point = network.terrain.height_map.steepness(src_point, norm=False)
+    elevation = abs(steepness.dot(direction))
+    unit_cost += (1 + elevation) ** 2 - 1  # cubic cost over slopes
+
+    return max(scale, unit_cost * scale)
+
+
+def road_only_cost(src_point, dest_point):
+    network = RoadNetwork.INSTANCE
+    return manhattan(src_point, dest_point) if network.is_road(dest_point) else maxint
+
+
+def road_recording_cost(src_point, dest_point):
+    network = RoadNetwork.INSTANCE
+    if network.is_road(dest_point):
+        return 0
+    if network.path_map[src_point] and dest_point in network.path_map[src_point]:
+        # Use Dijkstra optimal path to road network if it exists
+        return 0
+    return road_build_cost(src_point, dest_point)
