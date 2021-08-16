@@ -23,7 +23,6 @@ class Parcel:
         self._map = mc_map  # type: terrain.TerrainMaps
         self._entry_point = seed if building_type is BuildingType.ghost else self.compute_entry_point()
         self._relative_box = None  # type: TransformBox
-        self._box = None  # type: TransformBox
         self._mask = None
         self.__initialize_limits()
         self.__obstacle = None
@@ -54,7 +53,7 @@ class Parcel:
         assert margin > (MIN_PARCEL_SIZE // 2)
         shifted_x = max(margin, pos_bound(self._center.x - margin, self._map.width - margin))  # type: int
         shifted_z = max(margin, pos_bound(self._center.z - margin, self._map.length - margin))  # type:int
-        self._center = Point(shifted_x + margin, shifted_z + margin)
+        self._center = Position(shifted_x + margin, shifted_z + margin)
 
         origin = (self.center.x - (MIN_PARCEL_SIZE // 2), 0, self.center.z - (MIN_PARCEL_SIZE // 2))
         size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
@@ -93,11 +92,6 @@ class Parcel:
             valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
             valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
             return no_obstacle and valid_sizes and valid_ratio and flat_extend
-
-    def translate_to_absolute_coords(self, origin):
-        self._box = TransformBox(self._relative_box)
-        self._box.translate(dx=origin.x, dz=origin.z, inplace=True)
-        self._entry_point += Point(origin.x, origin.z)
 
     def obstacle(self, margin=0, forget=False):
         if self.__obstacle:
@@ -150,14 +144,13 @@ class Parcel:
 
     @property
     def generator(self):
-        gen = self.building_type.new_instance(self._box)  # type: Generator
+        gen = self.building_type.new_instance(self.box)  # type: Generator
         gen._entry_point = self._entry_point
         return gen
 
     @property
     def height_map(self):
-        box = self._relative_box
-        return self._map.height_map.box_height(box, True)
+        return self._map.height_map.box_height(self._relative_box, True)
 
     @property
     def center(self):
@@ -165,7 +158,7 @@ class Parcel:
 
     @property
     def absolute_mean(self):
-        return Point(self._box.minx + self.width//2, self._box.minz + self.length//2)
+        return Point(self.box.minx + self.width // 2, self.box.minz + self.length // 2)
 
     @property
     def entry_point(self):
@@ -187,6 +180,11 @@ class Parcel:
     def mask(self):
         return self._mask
 
+    @property
+    def box(self):
+        from utils import BuildArea
+        return self._relative_box.translate(BuildArea().x, 0, BuildArea().z)
+
     def set_height(self, y, h):
         self._relative_box.translate(dy=y - self._relative_box.miny, inplace=True)
         for _ in range(h - 1):
@@ -198,8 +196,8 @@ class Parcel:
         move_x = new_seed.x - self.center.x
         move_z = new_seed.z - self.center.z
         self._relative_box.translate(dx=move_x, dz=move_z, inplace=True)
-        if self._box is not None:
-            self._box.translate(dx=move_x, dz=move_z, inplace=True)
+        if self.box is not None:
+            self.box.translate(dx=move_x, dz=move_z, inplace=True)
         self._center = new_seed
         self._entry_point += Point(move_x, move_z)
         ObstacleMap().add_obstacle(*self.obstacle())
@@ -214,7 +212,7 @@ class Parcel:
 class MaskedParcel(Parcel):
 
     def __init__(self, origin, building_type, mc_map=None, mask=None):
-        # type: (Point, BuildingType, Maps, array) -> None
+        # type: (Point, BuildingType, TerrainMaps, array) -> None
         seed = origin + Point(mask.shape[0] // 2, mask.shape[1] // 2) if mask is not None else origin
         Parcel.__init__(self, seed, building_type, mc_map)
 
@@ -280,9 +278,9 @@ class MaskedParcel(Parcel):
     @property
     def generator(self):
         try:
-            return self.building_type.generator(self._box, self.entry_point, self._mask)  # type: MaskedGenerator
+            return self.building_type.generator(self.box, self.entry_point, self._mask)  # type: MaskedGenerator
         except TypeError:
-            gen = self.building_type.new_instance(self._box)  # type: Generator
+            gen = self.building_type.new_instance(self.box)  # type: Generator
             gen._entry_point = self._entry_point
             return gen
 

@@ -1,17 +1,15 @@
-from generation import MineEntry
-from pymclevel import MCLevel, BoundingBox
-from terrain import Maps
+from interfaceUtils import sendBlocks
+from settlement import Settlement
+from terrain import TerrainMaps, ObstacleMap
+from terrain.structure_detection import StructureDetector
 from utils import TransformBox
 
-displayName = "Quarry generator test filter"
+if __name__ == '__main__':
+    terrain = TerrainMaps.request()
+    ObstacleMap.from_terrain(terrain)
+    for parcel in StructureDetector(terrain).get_structure_parcels():
+        parcel.generator.generate(terrain, terrain.height_map.box_height(parcel.box, False))
+    sendBlocks()
 
-inputs = (("Quarry generator", "label"),
-          ("Depth search", 5), ("Noise scale", 0.1), ("Depth scale", 1.0))
-
-
-def perform(level, box, options):
-    # type: (MCLevel, BoundingBox, dict) -> None
-    box = TransformBox(box)
-    maps = Maps(level, box)
-    gen = MineEntry(box, options["Noise scale"], options["Depth scale"], options["Depth search"])
-    gen.generate(level, maps.height_map.box_height(box, False))
+    input("Undo ?")
+    terrain.undo()

@@ -5,9 +5,7 @@ from typing import Dict
 from numpy.random import choice
 
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
-from generation import CropGenerator, ProcHouseGenerator, WindmillGenerator
-from generation.generators import Generator
-from generation.plaza import PlazaGenerator
+from generation import *
 from parameters import AVERAGE_PARCEL_SIZE
 
 
@@ -21,7 +19,7 @@ class BuildingType(Enum):
     crop = CropGenerator
     windmill = WindmillGenerator
     structure = Generator
-    cave = Generator
+    cave = MineGenerator
 
     def new_instance(self, box) -> Generator:
         return self.value(box)

@@ -1,5 +1,3 @@
-from __future__ import division
-
 import logging
 from math import exp
 from random import choice
@@ -166,7 +164,6 @@ class Settlement:
             p.compute_entry_point()
             define_parcels_heights(p)
             # translate all parcels to absolute coordinates
-            p.translate_to_absolute_coords(self._origin)
 
     def generate(self, terrain: TerrainMaps, print_stack=False):
         self._road_network.generate(terrain, self.districts)

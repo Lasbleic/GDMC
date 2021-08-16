@@ -39,7 +39,7 @@ class Generator:
         Generates this building on the level
         Parameters
         ----------
-        level MC world
+        level MC world - TerrainMaps instance
         height_map optional height_map
 
         Returns nothing

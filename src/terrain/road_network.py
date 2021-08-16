@@ -2,7 +2,7 @@
 from random import choice
 from typing import Callable
 
-from numpy import empty, nan
+from numpy import empty
 
 import terrain
 from generation.generators import *
@@ -41,9 +41,9 @@ class RoadNetwork(metaclass=Singleton):
         self.lambda_max = MAX_LAMBDA
 
         # points passed through create_road or connect_to_network
-        self.nodes: Set[Point] = set()
-        self.road_blocks: Set[Point] = set()
-        self.special_road_blocks: Set[Point] = set()
+        self.nodes: Set[Position] = set()
+        self.road_blocks: Set[Position] = set()
+        self.special_road_blocks: Set[Position] = set()
         self.__generator = RoadGenerator(self, mc_map.box, mc_map) if mc_map else None
         self.terrain = mc_map
         RoadNetwork.INSTANCE = self
@@ -94,7 +94,7 @@ class RoadNetwork(metaclass=Singleton):
             return max(0, self.distance_map[x][z] - self.get_road_width(self.get_closest_road_point(Point(x, z))))
 
     def __set_road_block(self, xp, z=None):
-        # type: (Point or int, None or int) -> None
+        # type: (Position or int, None or int) -> None
         if z is None:
             # steep roads are not marked as road points
             maps = self.terrain
@@ -109,7 +109,7 @@ class RoadNetwork(metaclass=Singleton):
             elif self.network[x, z] < MAX_ROAD_WIDTH:
                 self.network[x, z] += 1
         else:
-            self.__set_road_block(Point(xp, z))
+            self.__set_road_block(Position(xp, z))
 
     def is_road(self, x, z=None):
         # type: (Point or int, None or int) -> bool
@@ -138,7 +138,7 @@ class RoadNetwork(metaclass=Singleton):
         if self.__generator:
             self.__generator.handle_new_road(path)
         for point in path:
-            self.__set_road_block(point)
+            self.__set_road_block(point.asPosition)
         self.__update_distance_map(path, force_update)
 
     def is_accessible(self, point: Point) -> bool:
@@ -155,7 +155,7 @@ class RoadNetwork(metaclass=Singleton):
                   f"towards {str(ending_point + self.terrain.area.origin)}", end="")
             _t0 = time()
             path = self.a_star(root_point, ending_point, road_build_cost)
-            self.nodes.update({root_point, ending_point})
+            self.nodes.update({root_point.asPosition, ending_point.asPosition})
             print(f"in {(time() - _t0):0.2f}s")
         self.__set_road(path)
         return path
@@ -200,7 +200,7 @@ class RoadNetwork(metaclass=Singleton):
                 return []
             target = path[-1]
         self.__set_road(path)
-        self.nodes.add(target)
+        self.nodes.add(target.asPosition)
 
         _t1, cycles = time(), []
         for node in sorted(self.nodes, key=lambda n: euclidean(n, target))[1:min(CYCLE_ALTERNATIVES, len(self.nodes))]:
@@ -214,7 +214,7 @@ class RoadNetwork(metaclass=Singleton):
         print(f"[RoadNetwork] Computed {len(cycles)} new road cycles in {(time() - _t1):0.2f}s")
 
         if path and all(euclidean(path[0], node) > DIST_BETWEEN_NODES for node in self.nodes):
-            self.nodes.add(path[0])
+            self.nodes.add(path[0].asPosition)
 
         return cycles
 
