@@ -34,7 +34,7 @@ def main(**options):
     ObstacleMap.from_terrain(terrain)  # initialize obstacle map from the terrain
 
     settlement = Settlement(terrain)
-    settlement.build_districts(visualize=do_visu)
+    settlement.build_districts(visualize=do_visu, n_clusters=1)
     t2 = time()
     settlement.build_skeleton(time_lim, do_visu)  # define buildings list and seed them
     print(" computing village skeleton", time() - t2)
@@ -47,18 +47,18 @@ def main(**options):
 
     # Optional erasing of the generated settlement
     if do_debug:
-        do_undo = input("Undo ? [y]/n").lower()
-        if do_undo in {"", "y"}:
-            terrain.undo()
+        # do_undo = input("Undo ? [y]/n").lower()
+        # if do_undo in {"", "y"}:
+        terrain.undo()
 
 
 if __name__ == '__main__':
-    do_profile = False
+    do_profile = True
     if do_profile:
         # code profiler
         from pstats import Stats, SortKey
         import cProfile
 
-        stats: Stats = cProfile.run(f"main({time_opt}=900)", sort=SortKey.CUMULATIVE)
+        stats: Stats = cProfile.run(f"main({time_opt}=600, {debug_opt}=True)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=True, time_opt=900, visu_opt=False)
+        main(debug_opt=False, time_opt=900, visu_opt=False)

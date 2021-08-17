@@ -128,11 +128,10 @@ class Districts(Map):
         keep_rate = n_samples / (self.width * self.length)  # resulting portion of positions taken into account
         raw_samples = [[x, z, Districts.suitability(x, z, maps)]
                        for x, z in product(range(maps.width), range(maps.length))
-                       if bernouilli(keep_rate) and not maps.fluid_map.is_close_to_fluid(x,
-                                                                                         z)]  # list of samples (x, z, score)
+                       if bernouilli(keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)]  # list (x, z, score)
         threshold_score = np.median([_[-1] for _ in raw_samples])  # median score of the samples
         raw_samples = list(
-            filter(lambda sample: sample[-1] >= threshold_score, raw_samples))  # only keeps samples with a decent score
+            filter(lambda sample: sample[-1] >= threshold_score, raw_samples))  # keep samples with a decent score
         Xu = np.array(raw_samples)
         X = self.__scaler.fit_transform(Xu)
         X[:, :2] = X[:, :2] * coord_scale

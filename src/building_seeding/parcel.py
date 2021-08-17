@@ -12,19 +12,27 @@ from utils import *
 ENTRY_POINT_MARGIN = (MIN_PARCEL_SIZE + MAX_ROAD_WIDTH) // 2
 
 
-class Parcel:
-
+class Parcel(Bounds):
     max_surfaces = BUILDING_ENCYCLOPEDIA["Flat_scenario"]["MaxSurface"]
 
-    def __init__(self, seed, building_type, mc_map):
-        # type: (Point, BuildingType, terrain.TerrainMaps) -> Parcel
-        self._center = seed
+    def __init__(self, seed, building_type, mc_map, width=MIN_PARCEL_SIZE, length=MIN_PARCEL_SIZE):
+        # type: (Point, BuildingType, terrain.TerrainMaps, int, int) -> Parcel
+
+        # build parcel box
+        margin = AVERAGE_PARCEL_SIZE // 2
+        shifted_x: int = max(margin, pos_bound(seed.x - margin, mc_map.width - margin))
+        shifted_z: int = max(margin, pos_bound(seed.z - margin, mc_map.length - margin))
+        self._center = Position(shifted_x + margin, shifted_z + margin)
+
+        origin = (self.center.x - (width // 2), 0, self.center.z - (length // 2))
+        size = (width, 1, length)
+        self._relative_box = TransformBox(origin, size)
+        super().__init__(Position(origin[0], origin[2]), Point(size[0], size[2]))
+        self._mask = full((self.width, self.length), True)
+
         self.building_type: BuildingType = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
         self._entry_point = seed if building_type is BuildingType.ghost else self.compute_entry_point()
-        self._relative_box = None  # type: TransformBox
-        self._mask = None
-        self.__initialize_limits()
         self.__obstacle = None
 
     def __eq__(self, other):
@@ -46,20 +54,6 @@ class Parcel:
         if not road_net.road_blocks:
             return Position(0, 0)
         return argmin(road_net.road_blocks, key=key)
-
-    def __initialize_limits(self):
-        # build parcel box
-        margin = AVERAGE_PARCEL_SIZE // 2
-        assert margin > (MIN_PARCEL_SIZE // 2)
-        shifted_x = max(margin, pos_bound(self._center.x - margin, self._map.width - margin))  # type: int
-        shifted_z = max(margin, pos_bound(self._center.z - margin, self._map.length - margin))  # type:int
-        self._center = Position(shifted_x + margin, shifted_z + margin)
-
-        origin = (self.center.x - (MIN_PARCEL_SIZE // 2), 0, self.center.z - (MIN_PARCEL_SIZE // 2))
-        size = (MIN_PARCEL_SIZE, 1, MIN_PARCEL_SIZE)
-        self._relative_box = TransformBox(origin, size)
-        self._mask = full((self.width, self.length), True)
-        # in cases where the parcel hits the limits, does not change anything otherwise
 
     def expand(self, direction):
         # type: (Direction) -> None
@@ -127,22 +121,6 @@ class Parcel:
         return self._center.z
 
     @property
-    def minx(self):
-        return self._relative_box.minx
-
-    @property
-    def maxx(self):
-        return self._relative_box.maxx
-
-    @property
-    def minz(self):
-        return self._relative_box.minz
-
-    @property
-    def maxz(self):
-        return self._relative_box.maxz
-
-    @property
     def generator(self):
         gen = self.building_type.new_instance(self.box)  # type: Generator
         gen._entry_point = self._entry_point
@@ -163,14 +141,6 @@ class Parcel:
     @property
     def entry_point(self):
         return self._entry_point
-
-    @property
-    def width(self):
-        return self._relative_box.width
-
-    @property
-    def length(self):
-        return self._relative_box.length
 
     @property
     def bounds(self):
@@ -213,13 +183,16 @@ class MaskedParcel(Parcel):
 
     def __init__(self, origin, building_type, mc_map=None, mask=None):
         # type: (Point, BuildingType, TerrainMaps, array) -> None
-        seed = origin + Point(mask.shape[0] // 2, mask.shape[1] // 2) if mask is not None else origin
-        Parcel.__init__(self, seed, building_type, mc_map)
 
         if mask is not None:
+            seed = origin + Point(mask.shape[0] // 2, mask.shape[1] // 2) if mask is not None else origin
+            Parcel.__init__(self, seed, building_type, mc_map, mask.shape[0], mask.shape[1])
             # for these parcels, relative box is immutable
             self._relative_box = TransformBox((origin.x, 0, origin.z), (mask.shape[0], 1, mask.shape[1]))
             self._mask = mask
+        else:
+            seed = origin + Point(MIN_PARCEL_SIZE // 2, MIN_PARCEL_SIZE // 2) if mask is not None else origin
+            Parcel.__init__(self, seed, building_type, mc_map)
 
     def __valid_extended_point(self, x, z, direction):
         """Can we extend the parcel to the point x, z from a given direction"""
@@ -257,11 +230,6 @@ class MaskedParcel(Parcel):
 
     def expand(self, direction):
         # type: (Direction) -> None
-
-        if Parcel.is_expendable(self, direction):
-            Parcel.expand(self, direction)
-            return
-
         ObstacleMap().hide_obstacle(*self.obstacle(forget=True), False)
 
         # compute extended mask and mark it on the obstacle map

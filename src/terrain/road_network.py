@@ -267,9 +267,10 @@ class RoadNetwork(metaclass=Singleton):
             return _cost_map, _distance_map, _neighbours, _predecessor_map
 
         def closest_neighbor():
-            _closest_neighbors = []
-            min_cost = min(cost_map[n] for n in neighbors)
-            return choice(list(filter(lambda n: cost_map[n] == min_cost, neighbors)))
+            return argmin(neighbors, lambda n: cost_map[n])
+            # _closest_neighbors = []
+            # min_cost = min(cost_map[n] for n in neighbors)
+            # return choice(list(filter(lambda n: cost_map[n] == min_cost, neighbors)))
 
         def update_distance(updated_point, neighbor, _neighbors):
             edge_cost = road_build_cost(updated_point, neighbor)

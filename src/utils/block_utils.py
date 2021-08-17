@@ -9,10 +9,12 @@ from typing import Iterable, Set, Callable, Tuple
 
 from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
 from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import Point, BoundingBox, ndarray
+from utils import Point, BoundingBox, ndarray, posarray
 
 alterated_pos = set()
-def setBlock(point: Point, blockstate: str, buffer_size=50):
+
+
+def setBlock(point: Point, blockstate: str, buffer_size=1000):
     res = setBlockDefault(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
     # if res:
@@ -819,7 +821,7 @@ def connected_component(source_point, connection_condition, early_stopping_condi
     mask = full((width, length), False)
     for p in component:
         mask[p.x - min_x, p.z - min_z] = True
-    return origin, mask
+    return origin, posarray.of(mask)
 
 
 def clear_tree_at(terrain, point: Point) -> None:

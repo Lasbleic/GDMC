@@ -437,6 +437,44 @@ class posarray(ndarray):
             return self.__setitem__((key.x, key.z), value)
         return super(posarray, self).__setitem__(key, value)
 
+    @property
+    def width(self):
+        return self.shape[0]
+
+    @property
+    def length(self):
+        return self.shape[1]
+
+
+class Bounds:
+    def __init__(self, origin: Position, shape: Point):
+        self.__origin = origin
+        self.__shape = shape
+
+    @property
+    def width(self):
+        return self.__shape.x
+
+    @property
+    def length(self):
+        return self.__shape.z
+
+    @property
+    def minx(self):
+        return self.__origin.x
+
+    @property
+    def maxx(self):
+        return self.minx + self.width
+
+    @property
+    def minz(self):
+        return self.__origin.z
+
+    @property
+    def maxz(self):
+        return self.minz + self.length
+
 
 if __name__ == '__main__':
     print(Direction.East, Direction.East.value, Direction.East.name)

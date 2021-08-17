@@ -2,15 +2,15 @@
 Village skeleton growth
 """
 
-from statistics import mean
+from typing import Tuple
 
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.districts import Districts
 from building_seeding.interest import InterestSeeder
 from building_seeding.interest.pre_processing import VisuHandler
 from building_seeding.parcel import Parcel, MaskedParcel
-from parameters import MIN_PARCEL_SIZE, AVERAGE_PARCEL_SIZE
-from terrain import TerrainMaps, ObstacleMap
+from parameters import MIN_PARCEL_SIZE, AVERAGE_PARCEL_SIZE, MAX_PARCELS_IN_BLOCK
+from terrain import TerrainMaps, ObstacleMap, RoadNetwork
 from utils import *
 
 
@@ -42,32 +42,31 @@ class VillageSkeleton:
         self.__parcel_list.append(new_parcel)
         ObstacleMap().add_obstacle(*new_parcel.obstacle(AVERAGE_PARCEL_SIZE // 3))
 
+    def remove_parcel(self, parcel: Parcel):
+        # todo: notify interest of parcel deletion
+        self.__parcel_list.remove(parcel)
+        ObstacleMap().hide_obstacle(*parcel.obstacle(), True)
+
     def __handle_new_road_cycles(self, cycles):
-        raise NotImplementedError()
-        # for road_cycle in cycles:
-        #     city_block = CityBlock(road_cycle, self.maps)
-        #     block_parcel = city_block.parcels()
-        #     seed = block_parcel.center
-        #     # block_seed = Point(int(mean(p.x for p in road_cycle)), int(mean(p.z for p in road_cycle)))
-        #     block_type = self.__interest.get_optimal_type(seed)
-        #     if block_type:
-        #         self.add_parcel(seed, block_type)
-        #         # self._create_masked_parcel(block_seed, BuildingType().ghost)
-        #         # parcel is considered already linked to road network
-        #     else:
-        #         # if there already is a parcel in the block, or very close, it is moved to the block seed
-        #         dist_to_parcels = list(map(lambda parcel: euclidean(parcel.center, seed), self.__parcel_list))
-        #         if min(dist_to_parcels) <= AVERAGE_PARCEL_SIZE / 2:
-        #             index = int(argmin(dist_to_parcels))
-        #             old_parcel = self.__parcel_list[index]
-        #             ObstacleMap().hide_obstacle(old_parcel.origin, old_parcel.mask, False)
-        #             ObstacleMap().add_obstacle(*block_parcel.obstacle())
-        #             block_parcel.mark_as_obstacle(ObstacleMap())
-        #             block_parcel.building_type = old_parcel.building_type
-        #             self.__parcel_list[index] = block_parcel
-        #         else:
-        #             # add a park or plaza in the new cycle
-        #             self.add_parcel(block_parcel, BuildingType.ghost)
+        for road_cycle in map(cycle_preprocess, cycles):
+            city_block = CityBlock(road_cycle, self.maps)
+            max_block_surface = MAX_PARCELS_IN_BLOCK * (AVERAGE_PARCEL_SIZE ** 2)
+
+            if city_block.surface > max_block_surface:
+                continue  # block to big, must subdivide with roads before parcels
+
+            else:
+                old_parcels = list(filter(lambda p: p.center in city_block, self.__parcel_list))
+
+                if old_parcels:
+                    block_type = [p.building_type for p in old_parcels][-1]
+                    for parcel in old_parcels:
+                        self.remove_parcel(parcel)
+                else:
+                    block_type = self.__interest.get_optimal_type(city_block.center)
+
+                for new_parcel in city_block.parcels(block_type):
+                    self.add_parcel(new_parcel)
 
     def grow(self, time_limit: int, do_visu: bool):
         print("Seeding parcels")
@@ -93,44 +92,99 @@ class VillageSkeleton:
             cycles = self.maps.road_network.connect_to_network(building_position, margin=AVERAGE_PARCEL_SIZE/2)
             self.add_parcel(building_position, building_type)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
-            # self.__handle_new_road_cycles(cycles)
+            self.__handle_new_road_cycles(cycles)
             if time_limit and time() - t0 >= time_limit:
                 print("Time limit reached: early stopping parcel seeding")
                 break
 
 
-class CityBlock:
+class CityBlock(Bounds):
+    """
+    Large parcel surrounded by roads. Handles detection of this parcel (based on a road cycle) and optional subdivision
+    """
+
     def __init__(self, road_cycle, maps):
         self.__road_points = road_cycle
         self.__maps = maps
-        self.__origin = Point(min(_.x for _ in road_cycle), min(_.z for _ in road_cycle))
-        self.__limits = Point(max(_.x for _ in road_cycle), max(_.z for _ in road_cycle))
+        self.__origin, self.__mask = connected_component(mean(road_cycle).asPosition, self.connection)
+        super().__init__(self.__origin, Point(self.__mask.width, self.__mask.length))
 
-    def connection(self, src_point, dst_point):
-        return not self.__maps.road_network.is_road(dst_point)
+    @staticmethod
+    def connection(src_point: Point, dst_point: Point) -> bool:
+        net: RoadNetwork = RoadNetwork.INSTANCE
+        return net.get_distance(dst_point) > 0
 
-    def parcels(self):
-        seed = Point(int(mean(p.x for p in self.__road_points)), int(mean(p.z for p in self.__road_points)))
-        origin, mask = connected_component(seed, self.connection)
-        parcel_origin = Point(max(origin.x, self.minx), max(origin.z, self.minz))
-        parcel_limits = Point(min(origin.x + mask.shape[0], self.maxx), min(origin.z + mask.shape[1], self.maxz))
-        parcel_shapes = Point(1, 1) + parcel_limits - parcel_origin
-        parcel_mask = mask[(parcel_origin.x - origin.x): (parcel_origin.x - origin.x + parcel_shapes.x),
-                      (parcel_origin.z - origin.z): (parcel_origin.z - origin.z + parcel_shapes.z)]
-        return MaskedParcel(parcel_origin, BuildingType.ghost, self.__maps, parcel_mask)
+    def parcels(self, btype: BuildingType) -> List[Parcel]:
+        def subdivide(_pos: Position, _mask: posarray, _ndiv: int) -> List[Tuple[Position, ndarray]]:
+            if _ndiv == 1:
+                return [(_pos, _mask)]
+
+            n1, n2 = _ndiv // 2, _ndiv - _ndiv // 2
+            if bernouilli(): n1, n2 = n2, n1
+            optimal_score = n1 / _ndiv * n2 / _ndiv * mask.sum() ** 2
+            if mask.width > mask.length:
+                # cut along x -> 1st index
+                scores = [mask[cut:, :].sum() * mask[:cut, :].sum() for cut in range(mask.width)]
+                cut = argmin([abs(optimal_score - score) for score in scores])
+                mask1, mask2 = mask[cut:, :], mask[:cut, :]
+                orig1, orig2 = _pos, _pos + Point(cut, 0)
+            else:
+                # cut along z -> 2nd index
+                scores = [mask[:, cut:].sum() * mask[:, :cut].sum() for cut in range(mask.length)]
+                cut = argmin([abs(optimal_score - score) for score in scores])
+                mask1, mask2 = mask[:, cut:], mask[:, :cut]
+                orig1, orig2 = _pos, _pos + Point(0, cut)
+
+            return subdivide(orig1, mask1, n1) + subdivide(orig2, mask2, n2)
+
+        orig = self.__origin
+        mask = self.__mask
+        parcel_count = 1 + self.surface // (AVERAGE_PARCEL_SIZE ** 2)
+        return [MaskedParcel(pos, btype, self.__maps, mask) for (pos, mask) in subdivide(orig, mask, parcel_count)]
 
     @property
-    def minx(self):
-        return self.__origin.x
+    def surface(self):
+        return self.__mask.sum()
 
     @property
-    def maxx(self):
-        return self.__limits.x
+    def center(self):
+        return self.__origin + Point(self.width // 2, self.length // 2)
 
-    @property
-    def minz(self):
-        return self.__origin.z
+    def __contains__(self, item: Point):
+        return self.minx <= item.x < self.maxx and self.minz <= item.z < self.maxz and self.__mask[item - self.__origin]
 
-    @property
-    def maxz(self):
-        return self.__limits.z
+
+def cycle_preprocess(road_points: Set[Point]) -> Set[Point]:
+    # Build graph associated to the road paths
+    graph: Dict[Point, Set[Point]] = {node: set() for node in road_points}  # graph as adjacency sets
+    for node in road_points:
+        for dx, dz in filter(any, product(range(-1, 2), range(-1, 2))):
+            neighbour = node + Point(dx, dz)
+            if neighbour in road_points:
+                graph[node].add(neighbour)
+
+    # Remove nodes not belonging to cycles
+    def degree(_node: Point) -> int:
+        return len(graph[node])
+
+    extremities = {node for node in graph if degree(node) < 2}
+    while extremities:
+        node = extremities.pop()
+        for neighbour in graph[node]:
+            graph[neighbour].remove(node)
+            if degree(neighbour) < 2:
+                extremities.add(neighbour)
+
+    # Find the larger cycle
+    cycles = []
+    while road_points:
+        to_explore = {road_points.pop()}
+        cycle = set()
+        while to_explore:
+            node1 = to_explore.pop()
+            cycle.add(node1)
+            to_explore.update(graph[node1].difference(cycle))
+        cycles.append(cycle)
+
+    from utils.misc_objects_functions import argmax
+    return argmax(cycles, len)

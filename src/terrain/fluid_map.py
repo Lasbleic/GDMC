@@ -36,7 +36,7 @@ class FluidMap(Map):
         self.has_lava = self.has_river = self.has_ocean = False
         self.detect_sources(level)
 
-    def detect_sources(self, level, algorithm='spread', kernel='knn', param=256):
+    def detect_sources(self, level, algorithm='spread', kernel='knn', param=16):
         # type: (WorldSlice, str, str, int) -> None
         water_points = []
         t0 = time()
@@ -44,11 +44,11 @@ class FluidMap(Map):
             y: int = self.terrain.height_map[x, z]
             if getBlockRelativeAt(level, x, y, z).split(':')[-1] in water_blocks:
                 biome = BiomeMap.getBiome(self.terrain.biome[x, z])
-                if 'Ocean' in biome or 'Beach' in biome:
+                if 'ocean' in biome or 'beach' in biome:
                     label = 1
-                elif 'River' in biome:
+                elif 'river' in biome:
                     label = 2
-                elif 'Swamp' in biome:
+                elif 'swamp' in biome:
                     label = 3
                 else:
                     label = -1  # yet unlabeled
@@ -71,6 +71,8 @@ class FluidMap(Map):
                 except ValueError:
                     # no water or no labeled water point (ponds only)
                     lbls = [3 for _ in data]
+
+            lbls = [2 if _ == -1 else _ for _ in lbls]
 
             for (x, z), water_type in zip(data, lbls):
                 self.__water_map[x, z] = water_type

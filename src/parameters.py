@@ -1,4 +1,4 @@
-MAX_LAMBDA = 30
+MAX_LAMBDA = 15
 MAX_ROAD_WIDTH = 7
 MIN_ROAD_WIDTH = 3
 MAX_WATER_EXPLORATION = 100
@@ -14,6 +14,7 @@ BRIDGE_UNIT_COST = 4
 MAX_HEIGHT = 10  # 12 -> max 3 floors
 BUILDING_HEIGHT_SPREAD = 80  # at that distance from the center, buildings' height is a third of max height (1/e ~ .36)
 AVERAGE_PARCEL_SIZE = 12
+MAX_PARCELS_IN_BLOCK = 4
 MIN_PARCEL_SIZE = 1
 MIN_RATIO_SIDE = .5
 

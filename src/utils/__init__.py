@@ -9,7 +9,7 @@ from utils.pymclevel import *
 
 from utils.misc_objects_functions import sym_range, pos_bound, bernouilli, get_project_path, argmin, mean, Singleton
 from utils.geometry_utils import Point, Position, building_positions, euclidean, manhattan, Direction, \
-    cardinal_directions, all_directions, BuildArea, TransformBox, posarray
+    cardinal_directions, all_directions, BuildArea, TransformBox, posarray, Bounds
 from utils.block_utils import BlockAPI, setBlock, water_blocks, lava_blocks, fillBlocks, clear_tree_at, \
     connected_component, place_torch, ground_blocks, getBlockRelativeAt
 import utils.parameters

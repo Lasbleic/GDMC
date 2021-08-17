@@ -83,7 +83,7 @@ class RoadGenerator(Generator):
                 w1 = w0 + dw
                 unlit_array[max(0, x - w1):min(W, x + w1 + 1), max(0, z - w1):min(W, z + w1 + 1)] = dw
         unlit_array[ObstacleMap()[:] > 0] = 0  # lamps don't spawn on obstacles
-        del w0, w1, dw, x, z
+        # del w0, w1, dw, x, z
 
         x0, z0 = self.__origin.x, self.__origin.z
         while unlit_array.sum():

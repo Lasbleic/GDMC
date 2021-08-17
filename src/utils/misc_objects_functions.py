@@ -1,6 +1,6 @@
 from os.path import realpath, sep
 from random import random
-from typing import Tuple
+from typing import Tuple, Iterable
 
 from numba import njit
 
@@ -60,9 +60,10 @@ def argmax(values, key=None):
 
 
 def mean(iterable):
-    iter_sum = iter_count = 0
+    iter_count = 0
+    iter_sum = None
     for _ in iterable:
-        iter_sum += _
+        iter_sum = (iter_sum + _) if iter_count else _
         iter_count += 1
     return iter_sum / iter_count
 
