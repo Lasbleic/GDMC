@@ -11,7 +11,7 @@ from utils.misc_objects_functions import sym_range, pos_bound, bernouilli, get_p
 from utils.geometry_utils import Point, Position, building_positions, euclidean, manhattan, Direction, \
     cardinal_directions, all_directions, BuildArea, TransformBox, posarray, Bounds
 from utils.block_utils import BlockAPI, setBlock, water_blocks, lava_blocks, fillBlocks, clear_tree_at, \
-    connected_component, place_torch, ground_blocks, getBlockRelativeAt
+    connected_component, place_torch, ground_blocks, getBlockRelativeAt, dump
 import utils.parameters
 
 X_ARRAY: ndarray = array([[x for z in range(BuildArea().length)] for x in range(BuildArea().width)])

@@ -7,7 +7,7 @@ from numpy import percentile
 from numpy.random import choice as npChoice
 
 from generation.building_palette import HousePalette
-from interfaceUtils import sendBlocks, runCommand, getBlock
+from interfaceUtils import runCommand, getBlock
 from utils import *
 from utils.nbt_structures import StructureNBT
 

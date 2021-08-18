@@ -4,7 +4,7 @@ from typing import List, Set
 import numpy
 
 from terrain import TerrainMaps
-from utils import Position, connected_component, building_positions
+from utils import Position, connected_component, building_positions, getBlockRelativeAt, BlockAPI
 from building_seeding import Parcel, MaskedParcel, BuildingType
 
 
@@ -26,11 +26,11 @@ class StructureDetector:
         structure_points = {Position(x_list[i], z_list[i]) for i in range(len(x_list))}
         structure_points = set(filter(is_building, structure_points))
 
-        parcels = self.__connected_components(structure_points)
+        parcels = self.__connected_components(structure_points, BuildingType.structure)
         for p in parcels:
             heights = [struct_height[p.minx + dx, p.minz + dz] for dx, dz in product(range(p.width), range(p.length)) if
                        p.mask[dx, dz]]
-            if numpy.median(heights) == 1:
+            if numpy.median(heights) == 1 or p.width < 3 or p.length < 3:
                 parcels.remove(p)
 
         return parcels
@@ -42,9 +42,9 @@ class StructureDetector:
             return block.endswith("cave_air")
 
         structure_points = set(filter(is_cave, building_positions()))
-        return self.__connected_components(structure_points)
+        return self.__connected_components(structure_points, BuildingType.cave)
 
-    def __connected_components(self, points_to_explore: Set[Position]):
+    def __connected_components(self, points_to_explore: Set[Position], btype: BuildingType):
         components = []
 
         while points_to_explore:
@@ -55,6 +55,6 @@ class StructureDetector:
                     pos = Position(struct_origin.x + dx, struct_origin.z + dz)
                     if pos in points_to_explore:
                         points_to_explore.remove(pos)
-            components.append(MaskedParcel(struct_origin, BuildingType.cave, self.terrain, struct_mask))
+            components.append(MaskedParcel(struct_origin, btype, self.terrain, struct_mask))
 
         return components

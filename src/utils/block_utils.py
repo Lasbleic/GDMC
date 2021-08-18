@@ -7,7 +7,7 @@
 from itertools import product
 from typing import Iterable, Set, Callable, Tuple
 
-from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock
+from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock, runCommand
 from gdmc_http_client_python.worldLoader import WorldSlice
 from utils import Point, BoundingBox, ndarray, posarray
 
@@ -17,28 +17,31 @@ alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=1000):
     res = setBlockDefault(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
-    # if res:
-    #     for res in filter(lambda _: len(_) > 1, res.split('\n')):
-    #         print(res)
+
+
+def dump():
+    from utils import BuildArea
+    setBlock(BuildArea().origin, BlockAPI.blocks.Bedrock, 0)
+    runCommand("kill @e[type=minecraft:item]")
 
 
 def getBlockRelativeAt(world_slice: WorldSlice, x: int, y: int, z: int):
-        """
-        Get block with coords relative to the building area
-        Parameters
-        ----------
-        world_slice (WorldSlice) the level
-        x (int) X coord
-        y (int) Y coord
-        z (int) Z coord
+    """
+    Get block with coords relative to the building area
+    Parameters
+    ----------
+    world_slice (WorldSlice) the level
+    x (int) X coord
+    y (int) Y coord
+    z (int) Z coord
 
-        Returns
-        -------
-        Block str at (X, Y, Z)
-        """
-        x += world_slice.rect[0]
-        z += world_slice.rect[1]
-        return world_slice.getBlockAt((x, y, z))
+    Returns
+    -------
+    Block str at (X, Y, Z)
+    """
+    x += world_slice.rect[0]
+    z += world_slice.rect[1]
+    return world_slice.getBlockAt((x, y, z))
 
 
 class BlockAPI:

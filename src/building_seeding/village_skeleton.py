@@ -20,7 +20,6 @@ class VillageSkeleton:
         self.scenario = scenario
         self.size = (maps.width, maps.length)
         self.maps = maps
-        self.ghost = districts.town_centers[0]
         buildable_surface = maps.width * maps.length - maps.fluid_map.as_obstacle_array.sum()
         self.building_iterator = BuildingPool(districts.buildable_surface)
         self.__parcel_list = parcel_list
@@ -120,17 +119,17 @@ class CityBlock(Bounds):
                 return [(_pos, _mask)]
 
             n1, n2 = _ndiv // 2, _ndiv - _ndiv // 2
-            if bernouilli(): n1, n2 = n2, n1
-            optimal_score = n1 / _ndiv * n2 / _ndiv * mask.sum() ** 2
+            if n1 != n2 and bernouilli(): n1, n2 = n2, n1
+            optimal_score = n1 / _ndiv
             if mask.width > mask.length:
                 # cut along x -> 1st index
-                scores = [mask[cut:, :].sum() * mask[:cut, :].sum() for cut in range(mask.width)]
+                scores = [mask[cut:, :].sum() / mask.sum() for cut in range(mask.width)]
                 cut = argmin([abs(optimal_score - score) for score in scores])
                 mask1, mask2 = mask[cut:, :], mask[:cut, :]
                 orig1, orig2 = _pos, _pos + Point(cut, 0)
             else:
                 # cut along z -> 2nd index
-                scores = [mask[:, cut:].sum() * mask[:, :cut].sum() for cut in range(mask.length)]
+                scores = [mask[:, cut:].sum() / mask.sum() for cut in range(mask.length)]
                 cut = argmin([abs(optimal_score - score) for score in scores])
                 mask1, mask2 = mask[:, cut:], mask[:, :cut]
                 orig1, orig2 = _pos, _pos + Point(0, cut)
@@ -144,7 +143,7 @@ class CityBlock(Bounds):
 
     @property
     def surface(self):
-        return self.__mask.sum()
+        return int(self.__mask.sum())
 
     @property
     def center(self):
@@ -177,8 +176,9 @@ def cycle_preprocess(road_points: Set[Point]) -> Set[Point]:
 
     # Find the larger cycle
     cycles = []
-    while road_points:
-        to_explore = {road_points.pop()}
+    road_points_copy = road_points.copy()
+    while road_points_copy:
+        to_explore = {road_points_copy.pop()}
         cycle = set()
         while to_explore:
             node1 = to_explore.pop()

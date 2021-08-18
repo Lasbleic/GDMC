@@ -47,9 +47,9 @@ def main(**options):
 
     # Optional erasing of the generated settlement
     if do_debug:
-        # do_undo = input("Undo ? [y]/n").lower()
-        # if do_undo in {"", "y"}:
-        terrain.undo()
+        do_undo = input("Undo ? [y]/n").lower()
+        if do_undo in {"", "y"}:
+            terrain.undo()
 
 
 if __name__ == '__main__':
@@ -59,6 +59,6 @@ if __name__ == '__main__':
         from pstats import Stats, SortKey
         import cProfile
 
-        stats: Stats = cProfile.run(f"main({time_opt}=600, {debug_opt}=True)", sort=SortKey.CUMULATIVE)
+        stats: Stats = cProfile.run(f"main({time_opt}=1800, {debug_opt}=False)", sort=SortKey.CUMULATIVE)
     else:
         main(debug_opt=False, time_opt=900, visu_opt=False)

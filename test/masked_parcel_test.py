@@ -1,44 +1,43 @@
-# Name to display in MCEdit filter menu
+"""
+Test of the masked parcels and city block parcelling
+"""
 
-from time import time
-
-from pymclevel import BoundingBox, MCLevel
-from terrain.maps import Maps
-
-from building_seeding import VillageSkeleton
-from building_seeding.village_skeleton import CityBlock
+from building_seeding import VillageSkeleton, BuildingType
+from building_seeding.village_skeleton import CityBlock, cycle_preprocess
 from settlement import Settlement
-from utils import TransformBox, Point2D
+from terrain import TerrainMaps, ObstacleMap
+from utils import Point, dump
 
-displayName = "Masked Parcels test"
-# Dictionary representing different options
-inputs = ()
-
-
-def perform(level, box, options):
-    # type: (MCLevel, BoundingBox, dict) -> None
-    t0 = time()
+if __name__ == '__main__':
+    terrain = TerrainMaps.request()
+    ObstacleMap.from_terrain(terrain)
     print("Hello Settlers!")
-    box = TransformBox(box)
-    maps = Maps(level, box)
-    settlement = Settlement(maps)
-    settlement.init_town_center()   # define town settlement as point close to roads and geometric center of the box
-    W, L = box.width, box.length
+    W, L = terrain.width, terrain.length
 
     # create road cycle
-    p1, p2, p3, p4 = Point2D(int(.1*W), int(.2*L)), Point2D(int(.8*W), int(.1*L)), Point2D(int(.8*W), int(.9*L)), Point2D(int(.3*W), int(.9*L))
-    maps.road_network.create_road(p1, p2)
-    maps.road_network.connect_to_network(p3)
-    maps.road_network.connect_to_network(p4)
-    maps.road_network.create_road(p1, p4)
+    p1, p2, p3, p4 = Point(int(.1 * W), int(.2 * L)), Point(int(.8 * W), int(.1 * L)), Point(int(.8 * W),
+                                                                                             int(.9 * L)), Point(
+        int(.3 * W), int(.9 * L))
+    net = terrain.road_network
+    p12 = net.create_road(p1, p2)
+    p23 = net.create_road(p2, p3)
+    p34 = net.create_road(p3, p4)
+    p41 = net.create_road(p1, p4)
+    assert len(p12) * len(p23) * len(p34) * len(p41)
+    del p12, p23, p34, p41
 
-    skeleton = VillageSkeleton('Flat_scenario', maps, settlement.town_center, settlement._parcels)
+    settlement = Settlement(terrain)
+    skeleton = VillageSkeleton('Flat_scenario', terrain, settlement.districts, settlement._parcels)
 
-    city_block = CityBlock(maps.road_network.road_blocks, maps)
-    block_parcel = city_block.parcels()
-    skeleton.add_parcel(block_parcel, BuildingTypes.ghost)
-    # block_parcel.mark_as_obstacle(ObstacleMap())
+    road_cycle = cycle_preprocess(net.road_blocks)
+    city_block = CityBlock(road_cycle, terrain)
+    for parcel in city_block.parcels(BuildingType.crop):
+        skeleton.add_parcel(parcel)
+    settlement.define_parcels()  # define parcels around seeds
+    settlement.generate(terrain, True)  # build buildings on parcels
+    dump()
 
-    settlement._parcels.pop(0)
-    settlement.define_parcels()     # define parcels around seeds
-    settlement.generate(level, True)      # build buildings on parcels
+    # Optional erasing of the generated settlement
+    do_undo = input("Undo ? [y]/n").lower()
+    if do_undo in {"", "y"}:
+        terrain.undo()

@@ -3,7 +3,7 @@ from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
 from terrain.tree_map import TreesMap
-from utils import BuildArea, BoundingBox, Position
+from utils import BuildArea, BoundingBox, Position, dump
 from utils.geometry_utils import building_positions
 from worldLoader import WorldSlice
 
@@ -91,5 +91,4 @@ class TerrainMaps:
                 coords = pos.abs_x, y, pos.abs_z
                 if old_level.getBlockAt(coords) != new_level.getBlockAt(coords):
                     setBlock(Point(pos.abs_x, pos.abs_z, y), old_level.getBlockAt(coords))
-        from interfaceUtils import sendBlocks
-        sendBlocks()
+        dump()

@@ -8,7 +8,6 @@ from numpy.random import geometric
 from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
 from generation.building_palette import get_biome_palette
 from generation.generators import place_sign
-from interfaceUtils import sendBlocks
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
 from terrain import TerrainMaps, ObstacleMap
 from terrain.road_network import RoadNetwork
@@ -100,7 +99,7 @@ class Settlement:
         print("Extending parcels")
         # self._parcels = self._parcels[1:]
         from terrain import ObstacleMap
-        ObstacleMap().add_network_to_obstacle_map()
+        ObstacleMap().add_obstacle(Point(0, 0), self._road_network.obstacle)
         ObstacleMap().add_obstacle(Point(0, 0), self._maps.fluid_map.as_obstacle_array)
         for parcel in self._parcels:
             ObstacleMap().hide_obstacle(*parcel.obstacle(forget=True), False)
@@ -162,7 +161,10 @@ class Settlement:
 
     def generate(self, terrain: TerrainMaps, print_stack=False):
         self._road_network.generate(terrain, self.districts)
-        self.__generate_road_signs()
+        try:
+            self.__generate_road_signs()
+        except Exception:
+            print("Road signs were not generated")
 
         for parcel in self._parcels:  # type: Parcel
             def in_bounds():
@@ -189,7 +191,7 @@ class Settlement:
                 except Exception:
                     print("FAIL")
 
-        sendBlocks()
+        dump()
 
     @property
     def town_center(self):
@@ -262,13 +264,13 @@ class Settlement:
                 if self._maps.in_limits(p + Point(dx, dz), False) and road_map[p.x + dx, p.z + dz]:
                     return p + Point(dx, dz)
 
-        def unset_road(p: Point):
+        def unset_road(p: Position):
             if p in network.road_blocks:
                 network.road_blocks.remove(p)
             else:
                 network.special_road_blocks.remove(p)
             road_map[p.x, p.z] = 0
-            network.network[p.x, p.z] =0
+            network.network[p.x, p.z] = 0
 
         for extremity in filter(lambda node: degree(node) == 1, network.nodes):
             truncated_length = 0
