@@ -387,12 +387,11 @@ class RoadNetwork(metaclass=Singleton):
 
 
 def road_build_cost(src_point, dest_point):
-    network = RoadNetwork.INSTANCE
-    unit_cost = 1
-    scale = manhattan(src_point, dest_point)
+    network: RoadNetwork = RoadNetwork.INSTANCE
+    cost = scale = manhattan(src_point, dest_point)
     # if we don't have access to terrain info
     if network.terrain is None or network.is_road(dest_point):
-        return unit_cost
+        return cost
 
     # if dest_point is an obstacle, return inf
     is_dest_obstacle = not ObstacleMap().is_accessible(dest_point)
@@ -409,16 +408,22 @@ def road_build_cost(src_point, dest_point):
     # discount to get roads closer to water
     src_water = network.terrain.fluid_map.water_distance(src_point)
     dest_water = network.terrain.fluid_map.water_distance(dest_point)
-    if 2.5 * MIN_DIST_TO_RIVER >= src_water > dest_water > MIN_DIST_TO_RIVER:
-        unit_cost += dest_water - src_water
+    if 2.5 * MIN_DIST_TO_RIVER >= dest_water > MIN_DIST_TO_RIVER:
+        cost += (dest_water - src_water)
 
     # additional cost for slopes
     direction: Point = (dest_point - src_point).unit
-    steepness: Point = network.terrain.height_map.steepness(src_point, norm=False)
+    hm = network.terrain.height_map
+    steepness: Point = hm.steepness(src_point, norm=False) + hm.steepness(dest_point, norm=False)
     elevation = abs(steepness.dot(direction))
-    unit_cost += (1 + elevation) ** 2 - 1  # cubic cost over slopes
+    cost += (1 + elevation) ** 2  # squared cost over slopes
 
-    return max(scale, unit_cost * scale)
+    # test: additional cost to have parallel streets
+    if network.is_accessible(src_point) and network.is_accessible(dest_point) \
+            and not network.path_map[dest_point][0] in network.nodes:
+        cost += (network.get_distance(dest_point) - network.get_distance(src_point)) ** 2
+
+    return max(scale, cost)
 
 
 def road_only_cost(src_point, dest_point):
