@@ -1,15 +1,16 @@
 import logging
+import traceback
 from math import exp
 from random import choice
 
 from numpy import percentile
 from numpy.random import geometric
 
-from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
+from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType
 from generation.building_palette import get_biome_palette
 from generation.generators import place_sign
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
-from terrain import TerrainMaps, ObstacleMap
+from terrain import TerrainMaps
 from terrain.road_network import RoadNetwork
 from utils import *
 from utils.algorithms import min_spanning_tree, tree_distance
@@ -102,11 +103,12 @@ class Settlement:
         ObstacleMap().add_obstacle(Point(0, 0), self._road_network.obstacle)
         ObstacleMap().add_obstacle(Point(0, 0), self._maps.fluid_map.as_obstacle_array)
         for parcel in self._parcels:
+            parcel.compute_entry_point()
             ObstacleMap().hide_obstacle(*parcel.obstacle(forget=True), False)
             ObstacleMap().add_obstacle(*parcel.obstacle())
         expendable_parcels: List[Parcel] = [p for p in self._parcels[:] if p.is_expendable()]
 
-        surface = sum(p.bounds.volume for p in expendable_parcels)
+        surface = sum(p.volume for p in expendable_parcels)
         while expendable_parcels:
             # extend expendables parcels while there still are some
 
@@ -129,7 +131,7 @@ class Settlement:
 
             expendable_parcels = list(filter(lambda _: _.is_expendable, expendable_parcels))
             tmp = surface
-            surface = sum(p.bounds.volume for p in expendable_parcels)
+            surface = sum(p.volume for p in expendable_parcels)
             if tmp >= surface:
                 break
 
@@ -161,6 +163,7 @@ class Settlement:
 
     def generate(self, terrain: TerrainMaps, print_stack=False):
         self._road_network.generate(terrain, self.districts)
+
         try:
             self.__generate_road_signs()
         except Exception:
@@ -168,29 +171,23 @@ class Settlement:
 
         for parcel in self._parcels:  # type: Parcel
             def in_bounds():
-                corner1 = parcel.origin + self._origin
+                corner1 = parcel.position + self._origin
                 corner2 = corner1 + Point(parcel.width, parcel.length) - Point(1, 1)
                 return corner1 in self._maps.area and corner2 in self._maps.area
 
             if not in_bounds():
                 continue
-            parcel_biome = parcel.biome(terrain)
-            palette = get_biome_palette(parcel_biome)
-            if isinstance(parcel, MaskedParcel):
-                obstacle_mask = ObstacleMap().box_obstacle(parcel.bounds)
-                parcel.add_mask(obstacle_mask)
-            if print_stack:
-                gen = parcel.generator
-                gen.choose_sub_generator(self._parcels)
-                gen.generate(terrain, parcel.height_map, palette)
-            else:
-                try:
-                    gen = parcel.generator
-                    gen.choose_sub_generator(self._parcels)
-                    gen.generate(terrain, parcel.height_map, palette)
-                except Exception:
+            try:
+                print("Generating", str(parcel))
+                _gen = parcel.generator
+                _gen.choose_sub_generator(self._parcels)
+                _palette = get_biome_palette(parcel.biome(terrain))
+                _gen.generate(terrain, parcel.height_map, _palette)
+            except Exception:
+                if print_stack:
+                    traceback.print_exc()
+                else:
                     print("FAIL")
-
         dump()
 
     @property
@@ -274,9 +271,7 @@ class Settlement:
 
         for extremity in filter(lambda node: degree(node) == 1, network.nodes):
             truncated_length = 0
-            if not extremity:
-                continue
-            while truncated_length < 8 and degree(extremity) == 1:
+            while truncated_length < 8 and bool(extremity) and degree(extremity) == 1:
                 unset_road(extremity)
                 extremity = get_neighbour(extremity)
                 truncated_length += 1

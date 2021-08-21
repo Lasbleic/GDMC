@@ -41,8 +41,8 @@ def main(**options):
     settlement.clean_road_network()
     settlement.define_parcels()  # define parcels around seeds
     # return
-    # settlement.terraform()
-    settlement.generate(terrain, options.get(debug_opt, False))      # build buildings on parcels
+    settlement.terraform()
+    settlement.generate(terrain, options.get(debug_opt, False))  # build buildings on parcels
     print('{} seconds of execution'.format(time() - t0))
 
     # Optional erasing of the generated settlement
@@ -53,7 +53,7 @@ def main(**options):
 
 
 if __name__ == '__main__':
-    do_profile = True
+    do_profile = False
     if do_profile:
         # code profiler
         from pstats import Stats, SortKey
@@ -61,4 +61,4 @@ if __name__ == '__main__':
 
         stats: Stats = cProfile.run(f"main({time_opt}=1800, {debug_opt}=False)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=False, time_opt=900, visu_opt=False)
+        main(debug_opt=True, time_opt=900, visu_opt=False)

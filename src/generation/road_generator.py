@@ -221,7 +221,7 @@ class Bridge(Generator):
         # type: (Point, Point) -> None
         assert isinstance(edge, Point) and isinstance(origin, Point)
         init_box = TransformBox((edge.x, 0, edge.z), (1, 1, 1))
-        Generator.__init__(self, init_box, edge)
+        Generator.__init__(self, init_box, entry_point=edge)
         self.__points = [edge]
         self.__origin = origin  # type: Point
 
@@ -291,7 +291,7 @@ class CarvedRoad(Generator):
         y_min, y_max = min(heights), max(heights)
         z_min, z_max = min([_.z for _ in points]), max([_.z for _ in points])
         init_box = TransformBox((x_min, y_min, z_min), (x_max + 1 - x_min, y_max + 1 - y_min, z_max + 1 - z_min))
-        Generator.__init__(self, init_box, points[0])
+        Generator.__init__(self, init_box, entry_point=points[0])
         self.__points = [_ for _ in points]  # type: List[Point]
         self.__heights = [_ for _ in heights]  # type: List[int]
         self.__origin = origin

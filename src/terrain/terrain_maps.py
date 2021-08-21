@@ -79,6 +79,7 @@ class TerrainMaps:
         Undo all modifications to the terrain for debug purposes
         """
         from utils import setBlock, Point
+        dump()
         current_terrain = TerrainMaps.request(self.area.json)
         old_level = self.level
         new_level = current_terrain.level

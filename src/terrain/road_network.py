@@ -15,8 +15,8 @@ MAX_FLOAT = 100000.0
 MAX_DISTANCE_CYCLE = 30
 MIN_DISTANCE_CYCLE = 15
 DIST_BETWEEN_NODES = 12
-MIN_CYCLE_GAIN = 2
-CYCLE_ALTERNATIVES = 4
+MIN_CYCLE_GAIN = 2.5
+CYCLE_ALTERNATIVES = 6
 maxint = 1 << 32
 
 
@@ -414,9 +414,11 @@ def road_build_cost(src_point, dest_point):
     # additional cost for slopes
     direction: Point = (dest_point - src_point).unit
     hm = network.terrain.height_map
-    steepness: Point = hm.steepness(src_point, norm=False) + hm.steepness(dest_point, norm=False)
+    steepness: Point = (hm.steepness(src_point, norm=False) + hm.steepness(dest_point, norm=False)) / 2
     elevation = abs(steepness.dot(direction))
-    cost += (1 + elevation) ** 2  # squared cost over slopes
+    if elevation / scale > 3:
+        return maxint
+    cost += (1 + elevation) ** 2 - 1  # quadratic cost over slopes
 
     # test: additional cost to have parallel streets
     if network.is_accessible(src_point) and network.is_accessible(dest_point) \
@@ -434,8 +436,8 @@ def road_only_cost(src_point, dest_point):
 def road_recording_cost(src_point, dest_point):
     network = RoadNetwork.INSTANCE
     if network.is_road(dest_point):
-        return 0
+        return 1
     if network.path_map[src_point] and dest_point in network.path_map[src_point]:
         # Use Dijkstra optimal path to road network if it exists
-        return 0
+        return 1
     return road_build_cost(src_point, dest_point)

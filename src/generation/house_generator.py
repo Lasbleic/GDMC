@@ -1,15 +1,10 @@
-# from numpy import argmin
-
 from generation.generators import *
-# from pymclevel import MCLevel, MCSchematic
 from interfaceUtils import getBlock
 from utils import bernouilli, Direction
 from worldLoader import WorldSlice
 
 
 class ProcHouseGenerator(Generator):
-    def __init__(self, box):
-        Generator.__init__(self, box)
 
     def generate(self, level, height_map=None, palette=None):
         try:
@@ -33,8 +28,11 @@ class ProcHouseGenerator(Generator):
 
     def _generate_main_building(self):
         w0, h0, l0 = self._box.width, self._box.height, self._box.length
+        if w0 < 5 or l0 < 5:
+            raise ValueError()
         # generate main building
-        w1, l1 = randint(max(5, w0//2), w0 - 2), randint(max(5, l0//2), l0 - 2)
+        w1 = randint(max(5, w0 // 2), w0) if w0 > 6 else w0
+        l1 = randint(max(5, l0 // 2), l0) if l0 >= 7 else l0
         self._layout_width = w1
         self._layout_length = l1
         main_box = TransformBox(self._box.origin + (0, 1, 0), (w1, h0, l1))
@@ -93,13 +91,34 @@ class ProcHouseGenerator(Generator):
         self.children[0].translate(dx, 0, dz)
 
     def _generate_door(self, level, palette):
-        door_x, door_z = self._entry_point.x, self._entry_point.z
+        door_x, door_z = self._entry_point.abs_x, self._entry_point.abs_z
         door_direction = self.entry_direction
         self.children[0].generate_door(door_direction, door_x, door_z, level, palette)
 
     def _generate_stairs(self, level, palette):
-        # todo
-        pass
+        dump()
+        main_room: _RoomSymbol = self.children[0]
+        door_wall: Direction = self.entry_direction
+        stair_wall: Direction or None = None
+        if main_room.length >= 7:
+            if door_wall in (Direction.West, Direction.East):
+                # door is along the long wall
+                stair_wall = -door_wall
+            else:
+                stair_wall = rdChoice((Direction.West, Direction.East))
+        elif main_room.width >= 7:
+            if door_wall in (Direction.North, Direction.South):
+                # door is along the long wall
+                stair_wall = -door_wall
+            else:
+                stair_wall = rdChoice((Direction.North, Direction.South))
+
+        while isinstance(main_room[Direction.Top], _RoomSymbol):
+            if stair_wall:
+                main_room.generate_stairs(stair_wall, palette)
+            else:
+                main_room.generate_ladder()
+            main_room = main_room[Direction.Top]
 
 
 class _RoomSymbol(CardinalGenerator):
@@ -123,7 +142,7 @@ class _RoomSymbol(CardinalGenerator):
 
         if bernouilli(prob):
             ceiling_box = upper_box.translate(dy=-1).split(dy=1)[0]
-            fillBlocks(ceiling_box, palette['floor'], BlockAPI.blocks.Air)
+            fillBlocks(ceiling_box.expand(-1, 0, -1), palette['floor'], BlockAPI.blocks.Air)
             upper_room = _RoomSymbol(upper_box)
         else:
             upper_room = _RoofSymbol(upper_box, roof_type=palette['roofType'])
@@ -212,6 +231,43 @@ class _RoomSymbol(CardinalGenerator):
         if xM >= x0 and zM >= z0:
             x, z = randint(x0, xM), randint(z0, zM)
             place_torch(x, y, z)
+
+    def generate_ladder(self):
+        b = self._box
+        border_pts = set(product(range(b.minx, b.maxx), range(b.minz, b.maxz)))
+        border_pts.difference_update(product(range(b.minx + 1, b.maxx - 1), range(b.minz + 1, b.maxz - 1)))
+
+        def valid_pos(x: int, y: int, z: int) -> bool:
+            if (x in (self._box.minx, self._box.maxx - 1) and z in (self._box.minz, self._box.maxz - 1)):
+                return False
+            block = getBlock(x, y, z)
+            return all(_ not in block for _ in ("door", "air", "glass"))
+
+        y = self._box.miny + 1
+        while border_pts:
+            x, z = border_pts.pop()
+            if valid_pos(x, y, z):
+                lad_dir = next(filter(lambda dir: (x, y, z) in self.get_wall_box(dir), cardinal_directions(False)))
+                lad_box = TransformBox((x, self._box.miny, z), (1, self._box.height, 1)).translate(-lad_dir)
+                lad_str = f"ladder[facing={(-lad_dir).name.lower()}]"
+                fillBlocks(lad_box, lad_str)
+                break
+
+    def generate_stairs(self, direction: Direction, palette):
+        wall_vec: Point = direction.value
+        stair_vec: Point = abs(direction.rotate().value)
+        stair_dir: Direction = Direction.of(dx=stair_vec.x, dz=stair_vec.z)
+        orig_pos = self.get_wall_box(direction).origin
+        orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - wall_vec + stair_vec
+        stair_vec = abs(stair_vec)
+
+        upper_material: str = BlockAPI.getStairs(palette['door'], facing=stair_dir.name.lower())
+        lower_material: str = BlockAPI.getStairs(palette['door'], facing=(-stair_dir).name.lower(), half='top')
+        for _ in range(4):
+            stair_pos: Point = orig_pos + Point(0, 0, _) + (stair_vec * _)
+            fillBlocks(BoundingBox((stair_pos.x, stair_pos.y - 1, stair_pos.z), (1, self._box.height - _, 1)), "air")
+            setBlock(stair_pos, upper_material)
+            setBlock(stair_pos + Direction.Bottom.value, lower_material)
 
 
 class _RoofSymbol(CardinalGenerator):
@@ -334,7 +390,8 @@ class _RoofSymbol(CardinalGenerator):
 class _WallSymbol(Generator):
     def generate(self, level, height_map=None, palette=None):
         assert (self.width == 1 or self.length == 1)
-        assert (self.width * self.length >= 1)
+        assert self.width > 0 and self.length > 0
+        # assert (self.width * self.length >= 1)
         if self.length == 1:
             self._generate_xwall(level, palette)
         else:
@@ -392,7 +449,7 @@ class _WallSymbol(Generator):
                 self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level: WorldSlice, palette: HousePalette):
-        sendBlocks()
+        dump()
         box = self._box
         entry = Point(door_x, door_z)
         if self.length > 1:

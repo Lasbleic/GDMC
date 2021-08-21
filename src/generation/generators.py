@@ -17,9 +17,9 @@ SURFACE_PER_ANIMAL = 16
 class Generator:
     _box = None  # type: TransformBox
 
-    def __init__(self, box: TransformBox, entry_point: Point = None, mask: ndarray = None):
+    def __init__(self, box: TransformBox, **kwargs):
         self._box = box
-        self._entry_point = entry_point if entry_point is not None else Point(0, 0)
+        self._entry_point: Position = kwargs.get("entry_point", Position(0, 0))
         self.children = []  # type: List[Generator]
         self._sub_generator_function = None
 
@@ -98,7 +98,7 @@ class Generator:
 
     @property
     def entry_direction(self):
-        door_x, door_z = self._entry_point.x, self._entry_point.z
+        door_x, door_z = self._entry_point.abs_x, self._entry_point.abs_z
         mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
         try:
             return Direction.of(dx=door_x - mean_x, dz=door_z - mean_z)
@@ -110,14 +110,12 @@ class Generator:
 
 
 class MaskedGenerator(Generator):
-    def __init__(self, box, entry_point=None, mask=None):
-        Generator.__init__(self, box, entry_point)
-        if mask is None:
-            mask = full((box.width, box.length), True)
-        self._mask = mask
+    def __init__(self, box, **kwargs):
+        Generator.__init__(self, box, **kwargs)
+        self._mask = kwargs.get("mask", full((box.width, box.length), True))
 
     def _terraform(self, level, height_map):
-        # type: (MCLevel, array) -> ndarray
+        # type: (TerrainMaps, array) -> ndarray
         mean_y = int(round(height_map.mean()))
         terraform_map = zeros(height_map.shape)
         for x, y, z in self.surface_pos(height_map):
@@ -481,7 +479,7 @@ class WindmillGenerator(Generator):
         box.translate(dy=31, inplace=True)
         windmill_nbt = StructureNBT('gdmc_windmill.nbt')
         windmill_nbt.build(*box.origin)
-        sendBlocks()
+        dump()
         # print(runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]'))
         runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]')
 

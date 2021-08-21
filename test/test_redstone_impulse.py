@@ -10,7 +10,7 @@ inputs = ()
 def perform(level, box, options):
     # type: (MCLevel, BoundingBox, dict) -> None
     block = Block['Redstone Repeater (Unpowered, Delay 4, East)']
-    x, y, z = box.origin + (0, 1, 0)
+    x, y, z = box.position + (0, 1, 0)
     tile_tick = TAG_Compound()
     tile_tick.add(TAG_Int(-1, 'p'))
     tile_tick.add(TAG_Int(10, 't'))

@@ -56,52 +56,52 @@ class BoundingBox(object):
 
     @property
     def origin(self):
-        "The smallest position in the box"
+        """The smallest position in the box"""
         return self._origin
 
     @property
     def size(self):
-        "The size of the box"
+        """The size of the box"""
         return self._size
 
     @property
     def width(self):
-        "The dimension along the X axis"
+        """The dimension along the X axis"""
         return self._size.x
 
     @property
     def height(self):
-        "The dimension along the Y axis"
+        """The dimension along the Y axis"""
         return self._size.y
 
     @property
     def length(self):
-        "The dimension along the Z axis"
+        """The dimension along the Z axis"""
         return self._size.z
 
     @property
     def minx(self):
-        return self.origin.x
+        return self._origin.x
 
     @property
     def miny(self):
-        return self.origin.y
+        return self._origin.y
 
     @property
     def minz(self):
-        return self.origin.z
+        return self._origin.z
 
     @property
     def maxx(self):
-        return self.origin.x + self.size.x
+        return self._origin.x + self._size.x
 
     @property
     def maxy(self):
-        return self.origin.y + self.size.y
+        return self._origin.y + self._size.y
 
     @property
     def maxz(self):
-        return self.origin.z + self.size.z
+        return self._origin.z + self._size.z
 
     @property
     def maximum(self):
@@ -111,7 +111,7 @@ class BoundingBox(object):
     @property
     def volume(self):
         "The volume of the box in blocks"
-        return self.size.x * self.size.y * self.size.z
+        return self._size.x * self._size.y * self._size.z
 
     @property
     def positions(self):
@@ -190,7 +190,7 @@ class BoundingBox(object):
         return True
 
     def __cmp__(self, b):
-        return cmp((self.origin, self.size), (b.origin, b.size))
+        return cmp((self.origin, self.size), (b.position, b.size))
 
     # --- Chunk positions ---
 

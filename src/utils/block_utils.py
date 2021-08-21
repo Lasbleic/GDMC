@@ -9,12 +9,14 @@ from typing import Iterable, Set, Callable, Tuple
 
 from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock, runCommand
 from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import Point, BoundingBox, ndarray, posarray
+from utils import Point, BoundingBox, ndarray, posarray, BuildArea
 
 alterated_pos = set()
 
 
 def setBlock(point: Point, blockstate: str, buffer_size=1000):
+    if point not in BuildArea():
+        return
     res = setBlockDefault(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
 
