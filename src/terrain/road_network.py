@@ -247,8 +247,8 @@ class RoadNetwork(metaclass=Singleton):
         Parameters
         ----------
         root_points null distance points to start the exploration
-        max_distance todo
-        force_update todo
+        max_distance max distance from road where to compute dijkstra paths
+        force_update ?
 
         Returns
         -------

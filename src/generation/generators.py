@@ -282,7 +282,7 @@ class CropGenerator(MaskedGenerator):
             setBlock(Point(x, z, y), gate_block)
             for dir in (door_dir.rotate(), -door_dir.rotate()):  # type: Direction
                 if getBlock(dir.x, dir.y, dir.z).endswith(fence_block):
-                    place_torch(dir.y + 1, dir.z)
+                    place_torch(dir.x, dir.y + 1, dir.z)
 
         # place animals
         animal_count = sum(self._mask.flat) // SURFACE_PER_ANIMAL
@@ -347,7 +347,6 @@ class CropGenerator(MaskedGenerator):
         place_water_source(self.mean.x, y, self.mean.z)
 
     def __terraform(self, height_map):
-        # type: (MCLevel, ndarray) -> ndarray
         road_dir_x, road_dir_z = self.entry_direction.x, self.entry_direction.z
         if road_dir_x == 1:
             road_side_height = height_map[-1, :]

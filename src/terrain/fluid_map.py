@@ -120,42 +120,6 @@ class FluidMap(Map):
         self.__coastline = [Point(_x, _z) for _x, _z in product(range(self.area.width), range(self.area.length))
                             if is_init_neigh(self.ocean_distance, _x, _z)]
 
-        def __pseudo_dijkstra(distance_map):
-            # type: (np.ndarray) -> None
-            max_distance = distance_map.max()
-
-            def cost(src_point, dst_point):
-                x_cost = abs(src_point.x - dst_point.x)
-                z_cost = abs(src_point.z - dst_point.z)
-                src_y = int(self.terrain.height_map[src_point])
-                dst_y = int(self.terrain.height_map[dst_point])
-                y_cost = 2 * max(dst_y - src_y, 0)  # null cost for water to go downhill
-                return x_cost + y_cost + z_cost
-
-            def update_distance(updated_point, neighbour):
-                new_distance = distance_map[updated_point.x][updated_point.z] + cost(updated_point, neighbour)
-                previous_distance = distance_map[neighbour.x][neighbour.z]
-                if previous_distance >= max_distance > new_distance:
-                    # assert neighbour not in neighbours
-                    neighbours.append(neighbour)
-                distance_map[neighbour.x, neighbour.z] = min(previous_distance, new_distance)
-
-            def update_distances(updated_point):
-                x0, z0 = updated_point.x, updated_point.z
-                for xn, zn in product(range(x0 - 1, x0 + 2), range(z0 - 1, z0 + 2)):
-                    if (xn != x0 or zn != z0) and 0 <= xn < W and 0 <= zn < L and distance_map[xn, zn] > 0:
-                        update_distance(updated_point, Point(xn, zn))
-
-            # Function core
-            W, L = distance_map.shape
-            neighbours = [Point(x1, z1) for x1, z1 in product(range(W), range(L))
-                          if is_init_neigh(distance_map, x1, z1)]
-
-            while len(neighbours) > 0:
-                clst_neighbor = neighbours[0]
-                update_distances(clst_neighbor)
-                del neighbours[0]
-
         fast_dijkstra(self.river_distance, self.terrain.height_map[:])
         fast_dijkstra(self.ocean_distance, self.terrain.height_map[:])
         fast_dijkstra(self.lava_distance, self.terrain.height_map[:])

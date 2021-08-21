@@ -16,7 +16,7 @@ BUILDING_HEIGHT_SPREAD = 80  # at that distance from the center, buildings' heig
 AVERAGE_PARCEL_SIZE = 12
 MAX_PARCELS_IN_BLOCK = 4
 MIN_PARCEL_SIZE = 1
-MIN_RATIO_SIDE = .5
+MIN_RATIO_SIDE = .7
 
 # distances
 MIN_DIST_TO_LAVA = 10

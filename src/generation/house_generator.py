@@ -294,7 +294,6 @@ class _RoofSymbol(CardinalGenerator):
             box = self.flat_box
             fillBlocks(box.split(dy=1)[0], palette['roofBlock'])
         elif self._roof_type == 'gable':
-            pass
             if self._direction in [Direction.West, Direction.East]:
                 self.__gen_gable_x(level, palette)
             elif self._direction in [Direction.North, Direction.South]:

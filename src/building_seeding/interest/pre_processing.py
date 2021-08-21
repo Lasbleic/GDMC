@@ -13,7 +13,6 @@ from os.path import isdir, join, exists, abspath, dirname
 from shutil import rmtree
 from time import strftime, localtime
 
-import numpy as np
 from building_seeding.interest.interest import InterestMap
 
 # Sizes accepted by the visualization tool
@@ -154,7 +153,7 @@ class MapStock:
                 while True:
 
                     print("{} already exists, do you want to clean it? [y/N]".format(self.directory))
-                    user_choice = raw_input().lower()
+                    user_choice = input().lower()
                     if user_choice in VALID_CHOICES:
                         clean_dir = VALID_CHOICES[user_choice]
                         break
@@ -227,18 +226,18 @@ class MapStock:
 
 
 if __name__ == '__main__':
-
     # from matplotlib import pyplot as plt, colors
     from terrain.road_network import *
-    from utils import Point2D
+    from utils import Point
     from building_seeding.building_pool import BuildingType, BuildingType
     from building_seeding.interest.accessibility import accessibility
+
     # Accessibility example
 
     N = (7, 17)
 
-    # p1, p2, p3 = Point2D(0, 38), Point2D(27, 17), Point2D(49, 13)
-    p1, p2, p3 = Point2D(0, 2), Point2D(4, 13), Point2D(6, 4)
+    # p1, p2, p3 = Point(0, 38), Point(27, 17), Point(49, 13)
+    p1, p2, p3 = Point(0, 2), Point(4, 13), Point(6, 4)
     # Minecraft Map thanks to a RoadNetwork
 
     road_net = RoadNetwork(N[0], N[1])

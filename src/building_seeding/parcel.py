@@ -3,9 +3,8 @@ from random import randint
 import terrain
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.building_pool import BuildingType
-from generation.generators import Generator, MaskedGenerator
+from generation.generators import Generator
 from parameters import *
-# from pymclevel.biome_types import biome_types
 from terrain import ObstacleMap, TerrainMaps
 from utils import *
 
@@ -81,7 +80,8 @@ class Parcel(TransformBox):
             # flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
             flat_extend = True
             valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
-            valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
+            expanded_ratio = min(expanded.width / expanded.length, expanded.length / expanded.width)
+            valid_ratio = expanded.surface <= 9 or MIN_RATIO_SIDE <= expanded_ratio
             return no_obstacle and valid_sizes and valid_ratio and flat_extend
 
     def obstacle(self, margin=0, forget=False):
@@ -209,7 +209,8 @@ class MaskedParcel(Parcel):
 
             out_limits = ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length
             valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
-            valid_ratio = MIN_RATIO_SIDE <= expanded.length / expanded.width <= 1 / MIN_RATIO_SIDE
+            expanded_ratio = min(expanded.width / expanded.length, expanded.length / expanded.width)
+            valid_ratio = expanded.surface <= 9 or MIN_RATIO_SIDE <= expanded_ratio
             if out_limits or (not valid_sizes) or (not valid_ratio):
                 return False
 
@@ -236,7 +237,6 @@ class MaskedParcel(Parcel):
 
     @property
     def generator(self) -> Generator:
-        from terrain import RoadNetwork
         return self.building_type.generator(self.box, entry_point=self.entry_point)
 
     def add_mask(self, new_mask):

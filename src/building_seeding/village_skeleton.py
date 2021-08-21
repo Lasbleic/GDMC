@@ -42,7 +42,7 @@ class VillageSkeleton:
         ObstacleMap().add_obstacle(*new_parcel.obstacle(AVERAGE_PARCEL_SIZE // 3))
 
     def remove_parcel(self, parcel: Parcel):
-        # todo: notify interest of parcel deletion
+        # todo: notify interest of parcel deletion (side effect)
         self.__parcel_list.remove(parcel)
         ObstacleMap().hide_obstacle(*parcel.obstacle(), True)
 

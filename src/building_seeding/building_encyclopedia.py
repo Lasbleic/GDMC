@@ -47,9 +47,9 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Accessibility": {
-            "house": (8, 11, 30),
-            "crop": (8, 20, 40),
-            "windmill": (8, 12, 18)
+            "house": (6, 11, 30),
+            "crop": (6, 20, 40),
+            "windmill": (6, 12, 18)
         },
 
         # represents the distance to the city centre, 0 = center, 1 = map border
