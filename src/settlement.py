@@ -98,7 +98,6 @@ class Settlement:
         Parcel extension from initialized parcels. Parcels are expended in place
         """
         print("Extending parcels")
-        # self._parcels = self._parcels[1:]
         from terrain import ObstacleMap
         ObstacleMap().add_obstacle(Point(0, 0), self._road_network.obstacle)
         ObstacleMap().add_obstacle(Point(0, 0), self._maps.fluid_map.as_obstacle_array)
@@ -106,34 +105,22 @@ class Settlement:
             parcel.compute_entry_point()
             ObstacleMap().hide_obstacle(*parcel.obstacle(forget=True), False)
             ObstacleMap().add_obstacle(*parcel.obstacle())
-        expendable_parcels: List[Parcel] = [p for p in self._parcels[:] if p.is_expendable()]
+        expendable_parcels: List[Parcel] = self._parcels[:]
 
-        surface = sum(p.volume for p in expendable_parcels)
         while expendable_parcels:
             # extend expendables parcels while there still are some
-
-            for parcel in expendable_parcels:
-                if parcel.entry_point == parcel.center:
-                    self._parcels.remove(parcel)
-                    expendable_parcels.remove(parcel)
-                    continue
-                # direction computation
-                road_dir_x = parcel.entry_x - parcel.mean_x
-                road_dir_z = parcel.entry_z - parcel.mean_z
-                road_dir = Direction.of(road_dir_x, 0, road_dir_z)
+            parcel = expendable_parcels.pop()
+            if parcel.entry_point != parcel.center:
+                road_dir = Direction.of(*(parcel.entry_point - parcel.center).coords)
                 lateral_dir = road_dir.rotate() if bernouilli() else -road_dir.rotate()
 
                 priority_directions = [road_dir, lateral_dir, -lateral_dir, -road_dir]
-                for direction in priority_directions:
-                    if parcel.is_expendable(direction):
-                        parcel.expand(direction)
-                        break
-
-            expendable_parcels = list(filter(lambda _: _.is_expendable, expendable_parcels))
-            tmp = surface
-            surface = sum(p.volume for p in expendable_parcels)
-            if tmp >= surface:
-                break
+                try:
+                    direction = next(filter(lambda d: parcel.is_expendable(d), priority_directions))
+                    parcel.expand(direction)
+                    expendable_parcels.append(parcel)
+                except StopIteration:
+                    logging.info(f"Cannot extend {str(parcel)} any more")
 
         # set parcels heights
         def define_parcels_heights(__parcel):

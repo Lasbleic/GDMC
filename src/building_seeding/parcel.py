@@ -60,29 +60,25 @@ class Parcel(TransformBox):
         # mark parcel points on obstacle terrain
         ObstacleMap().add_obstacle(*self.obstacle())
 
-    def is_expendable(self, direction=None):
-        # type: (Direction or None) -> bool
+    def is_expendable(self, direction: Direction) -> bool:
         if self._map is None:
             return False
-        if direction is None:
-            return any(self.is_expendable(direction) for direction in cardinal_directions(False))
-        else:
-            # try:
-            expanded = super().expand(direction)  # expanded parcel
-            obstacle = ObstacleMap()  # type: terrain.ObstacleMap  # obstacle terrain
-            ext = expanded - self  # extended part of the expanded parcel
+        # try:
+        expanded = super().expand(direction)  # expanded parcel
+        obstacle = ObstacleMap()  # type: terrain.ObstacleMap  # obstacle terrain
+        ext = expanded - self  # extended part of the expanded parcel
 
-            if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
-                return False
+        if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
+            return False
 
-            no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].sum() == 0
-            # h = self._map.height_map.box_height(expanded, True)
-            # flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
-            flat_extend = True
-            valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
-            expanded_ratio = min(expanded.width / expanded.length, expanded.length / expanded.width)
-            valid_ratio = expanded.surface <= 9 or MIN_RATIO_SIDE <= expanded_ratio
-            return no_obstacle and valid_sizes and valid_ratio and flat_extend
+        no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].sum() == 0
+        # h = self._map.height_map.box_height(expanded, True)
+        # flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
+        flat_extend = True
+        valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
+        expanded_ratio = min(expanded.width / expanded.length, expanded.length / expanded.width)
+        valid_ratio = (expanded.width <= 3 and expanded.length <= 3) or MIN_RATIO_SIDE <= expanded_ratio
+        return no_obstacle and valid_sizes and valid_ratio and flat_extend
 
     def obstacle(self, margin=0, forget=False):
         if self.__obstacle:
@@ -193,28 +189,20 @@ class MaskedParcel(Parcel):
         source = point - direction.value  # type: Point
         return obstacle.is_accessible(source) and obstacle.is_accessible(direction)
 
-    def is_expendable(self, direction=None):
-        # type: (Direction or None) -> bool
-        if Parcel.is_expendable(self, direction):
+    def is_expendable(self, direction: Direction) -> bool:
+        if super().is_expendable(direction):
             return True
-        elif direction is None:
-            return any(self.is_expendable(_) for _ in cardinal_directions(False))
         else:
-            """
-            Will basically try to extend the parcel's mask
-            """
             obstacle = ObstacleMap()  # type: terrain.ObstacleMap  # obstacle terrain
             expanded = TransformBox.expand(self, direction)  # expanded parcel
             ext = expanded - self  # extended part of the expanded parcel
 
             out_limits = ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length
-            valid_sizes = expanded.surface <= self.max_surfaces[self.building_type.name]
-            expanded_ratio = min(expanded.width / expanded.length, expanded.length / expanded.width)
-            valid_ratio = expanded.surface <= 9 or MIN_RATIO_SIDE <= expanded_ratio
-            if out_limits or (not valid_sizes) or (not valid_ratio):
+            if out_limits:
                 return False
-
-            assert ext.height == 1
+            if not expanded.surface <= self.max_surfaces[self.building_type.name]: return False
+            expanded_ratio = min(expanded.width / expanded.length, expanded.length / expanded.width)
+            if not (expanded.width <= 3 and expanded.length <= 3) or MIN_RATIO_SIDE <= expanded_ratio: return False
 
             obstacle.hide_obstacle(*self.obstacle())
             validity = [self.__valid_extended_point(x, z, direction) for x, y, z in ext.positions]

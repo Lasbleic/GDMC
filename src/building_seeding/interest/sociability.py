@@ -13,7 +13,7 @@ from numba import njit
 from building_seeding import Parcel
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.interest.math_function import attraction_repulsion
-from utils import Point, euclidean, X_ARRAY, Z_ARRAY
+from utils import Point, X_ARRAY, Z_ARRAY, absolute_distance
 
 
 def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parcel]):
@@ -21,12 +21,12 @@ def local_sociability(x, z, building_type, scenario, settlement_seeds: List[Parc
         return 0
 
     _sociability = 0
-    social_score = -1
+    social_score: float
 
     for settlement_seed in settlement_seeds:
 
         neighbor_type, neighbor_position = settlement_seed.building_type, settlement_seed.center
-        distance_to_building = euclidean(Point(x, z), neighbor_position)
+        distance_to_building = absolute_distance(Point(x, z), neighbor_position)
         lambda_min, lambda_0, lambda_max = BUILDING_ENCYCLOPEDIA[scenario]["Sociability"][
             building_type.name + "-" + neighbor_type.name]
 
@@ -60,5 +60,6 @@ def sociability(building_type, scenario, settlement_seeds, size):
 def sociability_one_seed(l0, l1, l2, x, z, size):
     X = np.full(size, x)
     Z = np.full(size, z)
-    D = np.sqrt((X - X_ARRAY) ** 2 + (Z - Z_ARRAY) ** 2)
+    D = np.maximum(np.abs(X - X_ARRAY), np.abs(Z - Z_ARRAY))
+    # D = np.sqrt((X - X_ARRAY) ** 2 + (Z - Z_ARRAY) ** 2)
     return attraction_repulsion(D, l0, l1, l2)

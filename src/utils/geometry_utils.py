@@ -137,6 +137,10 @@ def manhattan(p1: Point, p2: Point) -> float:
     return sum(abs(p2 - p1).coords)
 
 
+def absolute_distance(p1: Point, p2: Point) -> float:
+    return max(abs(p2 - p1).coords)
+
+
 class Direction(Enum):
     """
     Custom direction class
@@ -246,9 +250,13 @@ def all_directions(as_points: bool = True) -> Iterable[Direction or Point]:
 
 class BuildArea(metaclass=Singleton):
     def __init__(self, build_area_json=None):
-        if build_area_json is None:
-            build_area_json = requestBuildArea()
         XFROM, XTO, ZFROM, ZTO = 'xFrom', 'xTo', 'zFrom', 'zTo'
+        if build_area_json is None:
+            try:
+                build_area_json = requestBuildArea()
+            except IOError:
+                print("Connection Error -> using empty BuildArea")
+                build_area_json = {XFROM: 0, XTO: 1, ZFROM: 0, ZTO: 1}
 
         for (key1, key2, tag) in {(XFROM, XTO, 'X'), (ZFROM, ZTO, 'Z')}:
             if build_area_json[key1] == build_area_json[key2]:

@@ -126,7 +126,7 @@ BUILDING_ENCYCLOPEDIA = {
         # },
 
         "MaxSurface": {
-            "crop": 300,
+            "crop": 240,
             "ghost": 1,
             "house": 150,
             "stone_tower": 64,
