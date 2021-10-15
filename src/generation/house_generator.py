@@ -1,13 +1,18 @@
 from generation.generators import *
+from generation.structure import Structure
 from interfaceUtils import getBlock
 from utils import bernouilli, Direction
 from worldLoader import WorldSlice
+
+global current_struct  # type: Structure
 
 
 class ProcHouseGenerator(Generator):
 
     def generate(self, level, height_map=None, palette=None):
         try:
+            global current_struct
+            current_struct = Structure(self._box.origin, (self._box.width, self._box.height+16, self._box.length))
             self._generate_main_building()
         except ValueError:
             print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))
@@ -56,6 +61,7 @@ class ProcHouseGenerator(Generator):
                     annex_box = TransformBox(self.children[0].origin + (0, 0, delta), (-width, height, length))
                     self.children[0].translate(dx=-width)
                 direction = Direction.of(dx=width)
+                annex_box.expand(-direction, inplace=True)
                 self.children[0][direction] = _RoomSymbol(annex_box, has_base=True)
                 self._layout_width += abs(width) - 1
 
@@ -78,6 +84,7 @@ class ProcHouseGenerator(Generator):
                     annex_box = TransformBox(self.children[0].origin + (delta, 0, 0), (width, height, -length))
                     self.children[0].translate(dz=-length)
                 direction = Direction.of(dz=length)
+                annex_box.expand(-direction, inplace=True)
                 self.children[0][direction] = _RoomSymbol(annex_box, has_base=True)
                 self._layout_length += abs(length) - 1
 
@@ -100,22 +107,24 @@ class ProcHouseGenerator(Generator):
         main_room: _RoomSymbol = self.children[0]
         door_wall: Direction = self.entry_direction
         stair_wall: Direction or None = None
-        if main_room.length >= 7:
-            if door_wall in (Direction.West, Direction.East):
-                # door is along the long wall
-                stair_wall = -door_wall
-            else:
-                stair_wall = rdChoice((Direction.West, Direction.East))
-        elif main_room.width >= 7:
-            if door_wall in (Direction.North, Direction.South):
-                # door is along the long wall
-                stair_wall = -door_wall
-            else:
-                stair_wall = rdChoice((Direction.North, Direction.South))
 
+        # check room size for long walls
+        possible_stair_dir = set()
+        if main_room.length >= 7: possible_stair_dir.update((Direction.West, Direction.East))
+        if main_room.width >= 7: possible_stair_dir.update((Direction.North, Direction.South))
+
+        # remove unsuitable walls
+        possible_stair_dir.difference_update({door_wall})
+        possible_stair_dir.difference_update(main_room._neighbors.keys())
+
+        if possible_stair_dir:
+            stair_wall = rdChoice(list(possible_stair_dir))  # if there remains suitable ones, pick one
+
+        revved = False
         while isinstance(main_room[Direction.Top], _RoomSymbol):
             if stair_wall:
-                main_room.generate_stairs(stair_wall, palette)
+                main_room.generate_stairs(stair_wall, palette, reversed=revved)
+                revved = not revved
             else:
                 main_room.generate_ladder()
             main_room = main_room[Direction.Top]
@@ -132,7 +141,7 @@ class _RoomSymbol(CardinalGenerator):
         if self._has_base:
             h = 1 if height_map is None else max(1, self.origin.y - height_map.min())
             self.children.append(_BaseSymbol(TransformBox(self.origin - (0, h, 0), (self.width, h, self.length))))
-        fillBlocks(self._get_box(), BlockAPI.blocks.Air)
+        current_struct.fill(self._get_box(), BlockAPI.blocks.Air, 5)
         self._generate_pillars(level, palette)
         self._create_walls(level, palette)
         self.__place_torch(level)
@@ -142,7 +151,7 @@ class _RoomSymbol(CardinalGenerator):
 
         if bernouilli(prob):
             ceiling_box = upper_box.translate(dy=-1).split(dy=1)[0]
-            fillBlocks(ceiling_box.expand(-1, 0, -1), palette['floor'], BlockAPI.blocks.Air)
+            current_struct.fill(ceiling_box.expand(-1, 0, -1), palette['floor'], 11)
             upper_room = _RoomSymbol(upper_box)
         else:
             upper_room = _RoofSymbol(upper_box, roof_type=palette['roofType'])
@@ -166,24 +175,26 @@ class _RoomSymbol(CardinalGenerator):
                         TransformBox(b.origin + (0, 0, b.length - 1), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, 0), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, b.length - 1), (1, b.height, 1))]:
-            fillBlocks(col_box, palette.get_structure_block('Upright'))
+            current_struct.fill(col_box, palette.get_structure_block('Upright'), 8)
 
     def _create_walls(self, level, palette):
         for direction in cardinal_directions(False):
             wall_box = self.get_wall_box(direction)
             if self[direction] is not None:
                 if isinstance(self[direction], _RoofSymbol):
-                    fillBlocks(wall_box, palette['wall'])
+                    current_struct.fill(wall_box, palette['wall'], 8)
                     continue
                 elif wall_box.volume < self[direction].get_wall_box(-direction).volume:
-                    wall_box = wall_box.expand(direction).split(dy=3)[0]
+                    # there is an extension room in that direction - creates an opening
+                    wall_box, arch_box = wall_box.split(dy=3)
                     wider_box = wall_box.enlarge(direction)
-                    fillBlocks(wider_box, palette['wall'])
-                    fillBlocks(wall_box, BlockAPI.blocks.Air)
+                    current_struct.fill(wider_box, palette.get_structure_block('y'), 8)
+                    current_struct.fill(wall_box, BlockAPI.blocks.Air, 10)
+                    current_struct.fill(arch_box, palette['floor'], 7)
                     continue
 
             # some annexes are only one block wide or long, could generate negative dimensions
-            if abs(wall_box.width) * abs(wall_box.length) >= 1:
+            if wall_box.width * wall_box.length >= 1:
                 self.children.insert(0, _WallSymbol(wall_box))
 
     def get_wall_box(self, direction):
@@ -250,24 +261,29 @@ class _RoomSymbol(CardinalGenerator):
                 lad_dir = next(filter(lambda dir: (x, y, z) in self.get_wall_box(dir), cardinal_directions(False)))
                 lad_box = TransformBox((x, self._box.miny, z), (1, self._box.height, 1)).translate(-lad_dir)
                 lad_str = f"ladder[facing={(-lad_dir).name.lower()}]"
-                fillBlocks(lad_box, lad_str)
+                current_struct.fill(lad_box, lad_str, 12)
                 break
 
-    def generate_stairs(self, direction: Direction, palette):
-        wall_vec: Point = direction.value
-        stair_vec: Point = abs(direction.rotate().value)
+    def generate_stairs(self, direction: Direction, palette, reversed=False):
+        wall_vec: Point = direction.value  # direction of the wall along which the stairs are gen'd
+        stair_vec: Point = abs(direction.rotate().value)  # upwards direction of the stairs
         stair_dir: Direction = Direction.of(dx=stair_vec.x, dz=stair_vec.z)
         orig_pos = self.get_wall_box(direction).origin
-        orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - wall_vec + stair_vec
         stair_vec = abs(stair_vec)
+        if reversed:
+            stair_dir = -stair_dir
+            orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - (wall_vec * 2) + (stair_vec * 4)
+            stair_vec = -stair_vec
+        else:
+            orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - wall_vec + stair_vec
 
         upper_material: str = BlockAPI.getStairs(palette['door'], facing=stair_dir.name.lower())
         lower_material: str = BlockAPI.getStairs(palette['door'], facing=(-stair_dir).name.lower(), half='top')
         for _ in range(4):
             stair_pos: Point = orig_pos + Point(0, 0, _) + (stair_vec * _)
-            fillBlocks(BoundingBox((stair_pos.x, stair_pos.y - 1, stair_pos.z), (1, self._box.height - _, 1)), "air")
-            setBlock(stair_pos, upper_material)
-            setBlock(stair_pos + Direction.Bottom.value, lower_material)
+            current_struct.set(stair_pos, upper_material, 13)
+            current_struct.set(stair_pos + Direction.Bottom.value, lower_material, 13)
+            current_struct.fill(BoundingBox((stair_pos.x, stair_pos.y - 1, stair_pos.z), (1, self._box.height - _, 1)), "air", 12)
 
 
 class _RoofSymbol(CardinalGenerator):
@@ -292,7 +308,7 @@ class _RoofSymbol(CardinalGenerator):
     def generate(self, level, height_map=None, palette=None):
         if self._roof_type == 'flat':
             box = self.flat_box
-            fillBlocks(box.split(dy=1)[0], palette['roofBlock'])
+            current_struct.fill(box.split(dy=1)[0], palette['roofBlock'], 2)
         elif self._roof_type == 'gable':
             if self._direction in [Direction.West, Direction.East]:
                 self.__gen_gable_x(level, palette)
@@ -327,24 +343,25 @@ class _RoofSymbol(CardinalGenerator):
                                      (box.width - 2, 1, box.length - 2*(index+1)))
             north_box = TransformBox((box.minx, box.miny + index, box.maxz - index - 1), (box.width, 1, 1))
             south_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-            fillBlocks(north_box, palette.get_roof_block('bottom', 'north'), BlockAPI.blocks.Air)
-            fillBlocks(south_box, palette.get_roof_block('bottom', 'south'), BlockAPI.blocks.Air)
+            current_struct.fill(north_box, palette.get_roof_block('bottom', 'north'), 2)
+            current_struct.fill(south_box, palette.get_roof_block('bottom', 'south'), 2)
             if index != 0:
-                fillBlocks(attic_box, "bone_block[axis=y]")
-                attic_box.expand(-1, 0, 0, inplace=True)
-                fillBlocks(attic_box, BlockAPI.blocks.Air)
-                fillBlocks(north_box.translate(dy=-1), palette.get_roof_block('top', 'south'), BlockAPI.blocks.Air)
-                fillBlocks(south_box.translate(dy=-1), palette.get_roof_block('top', 'north'), BlockAPI.blocks.Air)
+                current_struct.fill(north_box.translate(dy=-1), palette.get_roof_block('top', 'south'), 2)
+                current_struct.fill(south_box.translate(dy=-1), palette.get_roof_block('top', 'north'), 2)
+                wall1, tmp = attic_box.split(dx=1)
+                _, wall2 = tmp.split(dx=-1)
+                current_struct.fill(wall1, "bone_block[axis=y]", 6)
+                current_struct.fill(wall2, "bone_block[axis=y]", 6)
             else:
-                fillBlocks(attic_box, palette.get_structure_block('z'))
-                attic_box.expand(-1, 0, 0, inplace=True)
-                fillBlocks(attic_box, palette['floor'])
+                current_struct.fill(attic_box, palette.get_structure_block('z'), 8)
+                attic_box.expand(-1, 0, -1, inplace=True)
+                current_struct.fill(attic_box, 'air', 9)
         # build roof ridge
         if box.length % 2 == 1:
             index = box.length // 2
             ridge_box = TransformBox((box.minx, box.miny + index, box.minz + index), (box.width, 1, 1))
-            fillBlocks(ridge_box, palette.get_roof_block('bottom'), BlockAPI.blocks.Air)
-            fillBlocks(ridge_box.translate(dy=-1), palette.get_structure_block('x'), BlockAPI.blocks.Air)
+            current_struct.fill(ridge_box, palette.get_roof_block('bottom'), 2)
+            current_struct.fill(ridge_box.translate(dy=-1), palette.get_structure_block('x'), 4)
 
     def __gen_gable_z(self, level, palette):
         box = self.gable_box
@@ -353,24 +370,24 @@ class _RoofSymbol(CardinalGenerator):
                                      (box.width - 2*(index+1), 1, box.length - 2))
             west_box = TransformBox((box.maxx - index - 1, box.miny + index, box.minz), (1, 1, box.length))
             east_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
-            fillBlocks(west_box, palette.get_roof_block('bottom', 'west'), BlockAPI.blocks.Air)
-            fillBlocks(east_box, palette.get_roof_block('bottom', 'east'), BlockAPI.blocks.Air)
+            current_struct.fill(west_box, palette.get_roof_block('bottom', 'west'), 2)
+            current_struct.fill(east_box, palette.get_roof_block('bottom', 'east'), 2)
             if index != 0:
-                fillBlocks(attic_box, "bone_block[axis=y]")
+                current_struct.fill(attic_box, "bone_block[axis=y]", 8)
                 attic_box.expand(0, 0, -1, inplace=True)
-                fillBlocks(attic_box, BlockAPI.blocks.Air)
-                fillBlocks(west_box.translate(dy=-1), palette.get_roof_block('top', 'east'), BlockAPI.blocks.Air)
-                fillBlocks(east_box.translate(dy=-1), palette.get_roof_block('top', 'west'), BlockAPI.blocks.Air)
+                current_struct.fill(attic_box, BlockAPI.blocks.Air, 10)
+                current_struct.fill(west_box.translate(dy=-1), palette.get_roof_block('top', 'east'), 2)
+                current_struct.fill(east_box.translate(dy=-1), palette.get_roof_block('top', 'west'), 2)
             else:
-                fillBlocks(attic_box, palette.get_structure_block('x'))
-                attic_box.expand(0, 0, -1, inplace=True)
-                fillBlocks(attic_box, palette['floor'])
+                current_struct.fill(attic_box, palette.get_structure_block('x'), 8)
+                attic_box.expand(-1, 0, -1, inplace=True)
+                current_struct.fill(attic_box, 'air', 9)
         # build roof ridge
         if box.width % 2 == 1:
             index = box.width // 2
             ridge_box = TransformBox((box.minx + index, box.miny + index, box.minz), (1, 1, box.length))
-            fillBlocks(ridge_box, palette.get_roof_block('bottom'), BlockAPI.blocks.Air)
-            fillBlocks(ridge_box.translate(dy=-1), palette.get_structure_block('z'), BlockAPI.blocks.Air)
+            current_struct.fill(ridge_box, palette.get_roof_block('bottom'), 2)
+            current_struct.fill(ridge_box.translate(dy=-1), palette.get_structure_block('z'), 4)
 
     def __gen_gable_cross(self, level, palette):
         for direction in cardinal_directions():
@@ -401,11 +418,11 @@ class _WallSymbol(Generator):
         if self.width % 2 == 0:
             # even wall: split in two
             if self.width == 2:
-                fillBlocks(self._box, palette['wall'])
+                current_struct.fill(self._box, palette['wall'], 6)
                 if bernouilli(0.5):
-                    fillBlocks(self._box.expand(0, -1, 0), palette['window'])
+                    current_struct.fill(self._box.expand(0, -1, 0), palette['window'], 7)
             elif self.width == 4:
-                fillBlocks(self._box, palette['wall'])
+                current_struct.fill(self._box, palette['wall'], 6)
                 box_win = TransformBox(self._box.origin + (1, 0, 0), (2, self.height, 1))
                 self.children.append(_WallSymbol(box_win))
             else:
@@ -414,23 +431,23 @@ class _WallSymbol(Generator):
         else:
             # uneven wall: derive in column | window | wall
             if self.width == 1:
-                fillBlocks(self._box, palette['wall'])
+                current_struct.fill(self._box, palette['wall'], 6)
             else:
                 box_col, box_wal = self._box.split(dx=2)
                 box_win = TransformBox((self._box.origin + (1, 1, 0)), (1, self.height - 2, 1))
-                fillBlocks(box_col, palette['wall'])
-                fillBlocks(box_win, palette['window'])
+                current_struct.fill(box_col, palette['wall'], 6)
+                current_struct.fill(box_win, palette['window'], 7)
                 self.children.append(_WallSymbol(box_wal))
 
     def _generate_zwall(self, level, palette):
         if self.length % 2 == 0:
             # even wall: split in two
             if self.length == 2:
-                fillBlocks(self._box, palette['wall'])
+                current_struct.fill(self._box, palette['wall'], 6)
                 if bernouilli(0.5):
-                    fillBlocks(self._box.expand(0, -1, 0), palette['window'])
+                    current_struct.fill(self._box.expand(0, -1, 0), palette['window'], 7)
             elif self.length == 4:
-                fillBlocks(self._box, palette['wall'])
+                current_struct.fill(self._box, palette['wall'], 6)
                 box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
                 self.children.append(_WallSymbol(box_win))
             else:
@@ -439,12 +456,12 @@ class _WallSymbol(Generator):
         else:
             # uneven wall: derive in column | window | wall
             if self.length == 1:
-                fillBlocks(self._box, palette['wall'])
+                current_struct.fill(self._box, palette['wall'], 6)
             else:
                 box_col, box_wal = self._box.split(dz=2)
                 box_win = TransformBox((self._box.origin + (0, 1, 1)), (1, self.height - 2, 1))
-                fillBlocks(box_col, palette['wall'])
-                fillBlocks(box_win, palette['window'])
+                current_struct.fill(box_col, palette['wall'], 6)
+                current_struct.fill(box_win, palette['window'], 7)
                 self.children.append(_WallSymbol(box_wal))
 
     def generate_door(self, door_dir, door_x, door_z, level: WorldSlice, palette: HousePalette):
@@ -453,11 +470,11 @@ class _WallSymbol(Generator):
         entry = Point(door_x, door_z)
         if self.length > 1:
             is_win = [int(getBlock(box.minx, box.miny+1, box.minz+_).endswith(palette['window'])) for _ in range(box.length)]
-            if sum(is_win) == 0: is_win = [1 for _ in range(len(is_win))]
+            if sum(is_win) == 0: is_win = [0] + [1 for _ in range(len(is_win)-2)] + [0]
             door_val = [euclidean(entry, Point(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
             # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
             door_z = argmin([float(_) for _ in door_val])
-            door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height, 1))
+            door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height-1, 1))
             if door_z > 0 and is_win[door_z - 1]:
                 door_box.expand(Direction.of(dz=-1), inplace=True)
             elif door_z < box.length - 1 and is_win[door_z + 1]:
@@ -465,7 +482,7 @@ class _WallSymbol(Generator):
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         else:
             is_win = [int(getBlock(box.minx+_, box.miny+1, box.minz).endswith(palette['window'])) for _ in range(box.width)]
-            if sum(is_win) == 0: is_win = [1 for _ in range(len(is_win))]
+            if sum(is_win) == 0: is_win = [0] + [1 for _ in range(len(is_win)-2)] + [0]
             door_val = [euclidean(entry, Point(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000. for _ in range(box.width)]
             door_x = argmin(door_val)
             door_box = TransformBox(box.origin + (door_x, 0, 0), (1, box.height, 1))
@@ -478,4 +495,4 @@ class _WallSymbol(Generator):
 
 class _BaseSymbol(Generator):
     def generate(self, level, height_map=None, palette=None):
-        fillBlocks(self._box, palette['base'])
+        current_struct.fill(self._box, palette['base'], 15)

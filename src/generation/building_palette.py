@@ -41,43 +41,43 @@ class HousePalette(dict):
 
 stony_palette = {"cobblestone": 0.7, "gravel": 0.2, "stone": 0.1}
 
-oak_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.OakWood, b.OakPlanks,
+oak_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.OakLog, b.OakPlanks,
                             b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'oak')
 
 oak_palette2 = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakLog, b.Cobblestone,
                                   b.WhiteStainedGlassPane, 'gable', 'oak', 'oak')
 
-oak_palette3 = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakWood, b.StoneBricks,
+oak_palette3 = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakLog, b.StoneBricks,
                                   b.WhiteStainedGlassPane, 'gable', 'oak', 'oak')
 
-oak_spruce_palette = HousePalette(b.Stone, b.SprucePlanks, b.StrippedSpruceWood, b.OakPlanks,
+oak_spruce_palette = HousePalette(b.Stone, b.SprucePlanks, b.StrippedSpruceLog, b.OakPlanks,
                                   b.WhiteStainedGlassPane, 'gable', 'spruce', 'oak')
 
-oak_birch_palette = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakWood, b.BirchPlanks,
+oak_birch_palette = HousePalette(b.Stone, b.SprucePlanks, b.StrippedOakLog, b.BirchPlanks,
                                   b.WhiteStainedGlassPane, 'gable', 'oak', 'oak')
 
-birch_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.BirchWood, b.BirchPlanks,
+birch_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.BirchLog, b.BirchPlanks,
                                     b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'birch')
 
-dark_oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.DarkOakWood, b.DarkOakPlanks,
+dark_oak_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.DarkOakLog, b.DarkOakPlanks,
                                        b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'dark_oak')
 
-spruce_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
+spruce_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.SpruceLog, b.SprucePlanks,
                                b.LightGrayStainedGlassPane, 'gable', b.StoneBrick, 'spruce')
 
-spruce_palette4 = HousePalette(b.Stone, b.OakPlanks, b.SpruceWood, b.MossyCobblestone,
+spruce_palette4 = HousePalette(b.Stone, b.OakPlanks, b.SpruceLog, b.MossyCobblestone,
                                      b.LightGrayStainedGlassPane, 'gable', 'spruce', 'spruce')
 
-spruce_palette2 = HousePalette(b.MossyCobblestone, b.OakPlanks, b.SpruceWood, b.SprucePlanks,
+spruce_palette2 = HousePalette(b.MossyCobblestone, b.OakPlanks, b.SpruceLog, b.SprucePlanks,
                                b.LightGrayStainedGlassPane, 'gable', b.Cobblestone, 'spruce')
 
-spruce_palette3 = HousePalette(b.MossyCobblestone, b.OakPlanks, b.StrippedSpruceWood, b.SprucePlanks,
+spruce_palette3 = HousePalette(b.MossyCobblestone, b.OakPlanks, b.StrippedSpruceLog, b.SprucePlanks,
                                b.LightGrayStainedGlassPane, 'gable', b.Cobblestone, 'spruce')
 
-acacia_house_palette1 = HousePalette(b.Cobblestone, b.BirchPlanks, b.AcaciaWood, b.AcaciaPlanks,
+acacia_house_palette1 = HousePalette(b.Cobblestone, b.BirchPlanks, b.AcaciaLog, b.AcaciaPlanks,
                                      b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'acacia')
 
-jungle_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.JungleWood, b.JunglePlanks,
+jungle_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.JungleLog, b.JunglePlanks,
                                      b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'jungle')
 
 sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothSandstone, b.Sandstone,
@@ -86,7 +86,7 @@ sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothSandst
 red_sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothRedSandstone, b.RedSandstone,
                                        b.BirchFence, 'flat', b.ChiseledRedSandstone, 'oak')
 
-terracotta_palette1 = HousePalette(b.RedSandstone, b.SprucePlanks, b.OakWood, b.Clay,
+terracotta_palette1 = HousePalette(b.RedSandstone, b.SprucePlanks, b.OakLog, b.Terracotta,
                                    b.SpruceFence, 'flat', b.Terracotta, 'oak')
 
 oak_palettes = (oak_palette1, oak_palette2, oak_palette3)

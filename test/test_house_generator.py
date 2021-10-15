@@ -1,40 +1,33 @@
+from random import choice, randint
+from time import sleep
+
 from generation import ProcHouseGenerator
-from generation.building_palette import *
-from terrain.maps import Maps
-from pymclevel import BoundingBox, MCLevel
-from utils import TransformBox
+from generation.building_palette import biome_palettes, HousePalette
+
+from terrain import TerrainMaps
+from utils import TransformBox, dump
 
 displayName = "House generator test filter"
 
-inputs = (("palette", ("Oak", "Birch", "Dark Oak", "Spruce", "Acacia", "Jungle", "Sand", "Red Sand", "Terracotta")),
-          ("Creator: Charlie", "label")
-          )
+if __name__ == '__main__':
+    terrain = TerrainMaps.request()
+    x, z = terrain.area.x, terrain.area.z
+    w, l = terrain.area.width, terrain.area.length
+    y = terrain.height_map[0, 0]
+    box = TransformBox((x, y, z), (w, randint(4, 16), l))
 
-
-def perform(level, box, options):
-    # type: (MCLevel, BoundingBox, dict) -> None
-    box = TransformBox(box)
-    maps = Maps(level, box)
-    gen = ProcHouseGenerator(box)
-    palette_str = options["palette"]
-    if palette_str == "Oak":
-        palette = oak_palette1
-    elif palette_str == "Birch":
-        palette = birch_house_palette1
-    elif palette_str == "Dark Oak":
-        palette = dark_oak_house_palette1
-    elif palette_str == "Spruce":
-        palette = spruce_palette1
-    elif palette_str == "Acacia":
-        palette = acacia_house_palette1
-    elif palette_str == "Jungle":
-        palette = jungle_house_palette1
-    elif palette_str == "Sand":
-        palette = sand_house_palette1
-    elif palette_str == "Red Sand":
-        palette = red_sand_house_palette1
-    elif palette_str == "Terracotta":
-        palette = terracotta_palette1
-    else:
-        raise ValueError("Unhandled option: {}".format(palette_str))
-    gen.generate(level, maps.height_map, palette)
+    all_palettes = []
+    for palettes in biome_palettes.values():
+        if isinstance(palettes, HousePalette):
+            all_palettes.append(palettes)
+        else:
+            all_palettes.extend(palettes)
+    palette = choice(all_palettes)
+    ProcHouseGenerator(box).generate(terrain, terrain.height_map.box_height(box, False), choice(all_palettes))
+    dump()
+    while not input():
+        terrain.undo()
+        palette = choice(all_palettes)
+        ProcHouseGenerator(box).generate(terrain, terrain.height_map.box_height(box, False), palette)
+        dump()
+    terrain.undo()

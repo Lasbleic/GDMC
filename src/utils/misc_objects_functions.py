@@ -185,6 +185,36 @@ def raytrace(xyz1, xyz2):
     return output
 
 
+class SortedList:
+    """
+    Custom sorted list based on an arbitrary criteria applied to the elements of the list
+    """
+    def __init__(self, data, criteria=None):
+        self._list = sorted(data, key=criteria) if criteria is not None else sorted(data)
+        self._key = criteria
+        self._value_list = [criteria(_) for _ in data]
+
+    def __iadd__(self, other):
+        value = self._key(other)
+        index = 0
+        n = len(self._list)
+        while index < n and value >= self._value_list[index]:
+            index += 1
+        self._list.insert(index, other)
+        self._value_list.insert(index, value)
+        return self
+
+    def __getitem__(self, item):
+        return self._list[item]
+
+    def __bool__(self):
+        return bool(self._list)
+
+    def pop(self):
+        self._value_list.pop()
+        return self._list.pop()
+
+
 class Singleton(type):
     _instances = {}
 
@@ -198,3 +228,9 @@ if __name__ == '__main__':
     l = [-1, 3, -5, 9, 6]
     print(l, argmin(l), argmax(l))
     print(argmax(l, lambda v: v ** 2))
+
+    sl = SortedList(l, lambda v: v ** 2)
+    assert sl[3] == 6
+    sl += 5.5
+    assert sl[3] == 5.5
+    print(sl[:])

@@ -271,7 +271,7 @@ class BuildArea(metaclass=Singleton):
 
     def __contains__(self, item):
         assert isinstance(item, Point)
-        return (self.x <= item.x <= self.__xto) and (self.z <= item.z < self.__zto)
+        return (self.x <= item.x <= self.__xto) and (self.z <= item.z <= self.__zto)
 
     @property
     def x(self):
@@ -327,12 +327,18 @@ class TransformBox(BoundingBox):
     def split(self, dx=None, dy=None, dz=None):
         assert (dx is not None) ^ (dy is not None) ^ (dz is not None)
         if dx is not None:
+            if dx < 0:
+                dx += self.width
             b0 = TransformBox(self.origin, (dx, self.height, self.length))
             b1 = TransformBox((self.origin + (dx, 0, 0)), (self.size - (dx, 0, 0)))
         elif dy is not None:
+            if dy < 0:
+                dy += self.height
             b0 = TransformBox(self.origin, (self.width, dy, self.length))
             b1 = TransformBox((self.origin + (0, dy, 0)), (self.size - (0, dy, 0)))
         else:
+            if dz < 0:
+                dz += self.length
             b0 = TransformBox(self.origin, (self.width, self.height, dz))
             b1 = TransformBox((self.origin + (0, 0, dz)), (self.size - (0, 0, dz)))
         return [b0, b1]

@@ -105,10 +105,10 @@ class Settlement:
             parcel.compute_entry_point()
             ObstacleMap().hide_obstacle(*parcel.obstacle(forget=True), False)
             ObstacleMap().add_obstacle(*parcel.obstacle())
-        expendable_parcels: List[Parcel] = self._parcels[:]
+        expendable_parcels = SortedList(self._parcels, lambda _: _.surface)
 
         while expendable_parcels:
-            # extend expendables parcels while there still are some
+            # extend expendables parcels from smaller to larger while there still are some
             parcel = expendable_parcels.pop()
             if parcel.entry_point != parcel.center:
                 road_dir = Direction.of(*(parcel.entry_point - parcel.center).coords)
@@ -118,7 +118,7 @@ class Settlement:
                 try:
                     direction = next(filter(lambda d: parcel.is_expendable(d), priority_directions))
                     parcel.expand(direction)
-                    expendable_parcels.append(parcel)
+                    expendable_parcels += parcel
                 except StopIteration:
                     logging.info(f"Cannot extend {str(parcel)} any more")
 

@@ -415,7 +415,7 @@ class CardinalGenerator(Generator):
                 self.children.insert(0, neighbour)
             neighbour._neighbors[-direction] = self
             if direction == Direction.Top:
-                for direction2 in cardinal_directions():
+                for direction2 in cardinal_directions(False):
                     if self[direction2] is not None and self[direction2][Direction.Top] is not None:
                         neighbour[direction2] = self[direction2][Direction.Top]
         else:
