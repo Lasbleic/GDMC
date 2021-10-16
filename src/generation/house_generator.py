@@ -8,11 +8,15 @@ global current_struct  # type: Structure
 
 
 class ProcHouseGenerator(Generator):
+    MIN_SIZE = 5
+    AVG_SIZE = 7
+    MAX_SIZE = 11
+    MIN_RATIO = 2/3
 
     def generate(self, level, height_map=None, palette=None):
         try:
             global current_struct
-            current_struct = Structure(self._box.origin, (self._box.width, self._box.height+16, self._box.length))
+            current_struct = Structure(self._box.origin, (self._box.width, self._box.height+10, self._box.length))
             self._generate_main_building()
         except ValueError:
             print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))
@@ -32,12 +36,18 @@ class ProcHouseGenerator(Generator):
             gen._clear_trees(level)
 
     def _generate_main_building(self):
+        MIN_S, MAX_S, MIN_R, MAX_R = self.MIN_SIZE, self.MAX_SIZE, self.MIN_RATIO, 1. / self.MIN_RATIO
+        AVG_S = self.AVG_SIZE
         w0, h0, l0 = self._box.width, self._box.height, self._box.length
-        if w0 < 5 or l0 < 5:
+
+        # First, apply size constraints to the house
+        if w0 < self.MIN_SIZE or l0 < self.MIN_SIZE:
             raise ValueError()
-        # generate main building
-        w1 = randint(max(5, w0 // 2), w0) if w0 > 6 else w0
-        l1 = randint(max(5, l0 // 2), l0) if l0 >= 7 else l0
+        w1, l1 = 0, 0
+        while not (MIN_S <= w1 <= MAX_S and MIN_S <= l1 <= MAX_S and MIN_R <= (w1 / l1) <= MAX_R):
+            # generate main building
+            w1 = randint(AVG_S, w0) if w0 > AVG_S else w0
+            l1 = randint(AVG_S, l0) if l0 > AVG_S else l0
         self._layout_width = w1
         self._layout_length = l1
         main_box = TransformBox(self._box.origin + (0, 1, 0), (w1, h0, l1))
@@ -110,8 +120,8 @@ class ProcHouseGenerator(Generator):
 
         # check room size for long walls
         possible_stair_dir = set()
-        if main_room.length >= 7: possible_stair_dir.update((Direction.West, Direction.East))
-        if main_room.width >= 7: possible_stair_dir.update((Direction.North, Direction.South))
+        if main_room.length >= 7 and main_room.width > 5: possible_stair_dir.update((Direction.West, Direction.East))
+        if main_room.width >= 7 and main_room.length > 5: possible_stair_dir.update((Direction.North, Direction.South))
 
         # remove unsuitable walls
         possible_stair_dir.difference_update({door_wall})
@@ -121,13 +131,13 @@ class ProcHouseGenerator(Generator):
             stair_wall = rdChoice(list(possible_stair_dir))  # if there remains suitable ones, pick one
 
         revved = False
-        while isinstance(main_room[Direction.Top], _RoomSymbol):
-            if stair_wall:
+        if stair_wall:
+            while isinstance(main_room[Direction.Top], _RoomSymbol):
                 main_room.generate_stairs(stair_wall, palette, reversed=revved)
                 revved = not revved
-            else:
-                main_room.generate_ladder()
-            main_room = main_room[Direction.Top]
+                main_room = main_room[Direction.Top]
+        else:
+            main_room.generate_ladder()
 
 
 class _RoomSymbol(CardinalGenerator):
@@ -175,7 +185,7 @@ class _RoomSymbol(CardinalGenerator):
                         TransformBox(b.origin + (0, 0, b.length - 1), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, 0), (1, b.height, 1)),
                         TransformBox(b.origin + (b.width - 1, 0, b.length - 1), (1, b.height, 1))]:
-            current_struct.fill(col_box, palette.get_structure_block('Upright'), 8)
+            current_struct.fill(col_box, palette.get_structure_block('y'), 8)
 
     def _create_walls(self, level, palette):
         for direction in cardinal_directions(False):
@@ -282,8 +292,9 @@ class _RoomSymbol(CardinalGenerator):
         for _ in range(4):
             stair_pos: Point = orig_pos + Point(0, 0, _) + (stair_vec * _)
             current_struct.set(stair_pos, upper_material, 13)
-            current_struct.set(stair_pos + Direction.Bottom.value, lower_material, 13)
-            current_struct.fill(BoundingBox((stair_pos.x, stair_pos.y - 1, stair_pos.z), (1, self._box.height - _, 1)), "air", 12)
+            if _:
+                current_struct.set(stair_pos + Direction.Bottom.value, lower_material, 13)
+            current_struct.fill(BoundingBox((stair_pos.x, stair_pos.y, stair_pos.z), (1, 4 - _, 1)), "air", 12)
 
 
 class _RoofSymbol(CardinalGenerator):
@@ -373,11 +384,12 @@ class _RoofSymbol(CardinalGenerator):
             current_struct.fill(west_box, palette.get_roof_block('bottom', 'west'), 2)
             current_struct.fill(east_box, palette.get_roof_block('bottom', 'east'), 2)
             if index != 0:
-                current_struct.fill(attic_box, "bone_block[axis=y]", 8)
-                attic_box.expand(0, 0, -1, inplace=True)
-                current_struct.fill(attic_box, BlockAPI.blocks.Air, 10)
                 current_struct.fill(west_box.translate(dy=-1), palette.get_roof_block('top', 'east'), 2)
                 current_struct.fill(east_box.translate(dy=-1), palette.get_roof_block('top', 'west'), 2)
+                wall1, tmp = attic_box.split(dz=1)
+                _, wall2 = tmp.split(dz=-1)
+                current_struct.fill(wall1, "bone_block[axis=y]", 6)
+                current_struct.fill(wall2, "bone_block[axis=y]", 6)
             else:
                 current_struct.fill(attic_box, palette.get_structure_block('x'), 8)
                 attic_box.expand(-1, 0, -1, inplace=True)
@@ -418,7 +430,6 @@ class _WallSymbol(Generator):
         if self.width % 2 == 0:
             # even wall: split in two
             if self.width == 2:
-                current_struct.fill(self._box, palette['wall'], 6)
                 if bernouilli(0.5):
                     current_struct.fill(self._box.expand(0, -1, 0), palette['window'], 7)
             elif self.width == 4:
@@ -443,7 +454,6 @@ class _WallSymbol(Generator):
         if self.length % 2 == 0:
             # even wall: split in two
             if self.length == 2:
-                current_struct.fill(self._box, palette['wall'], 6)
                 if bernouilli(0.5):
                     current_struct.fill(self._box.expand(0, -1, 0), palette['window'], 7)
             elif self.length == 4:

@@ -432,7 +432,8 @@ class DoorGenerator(Generator):
 
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
-            setBlock(Point(x, z, y), self._resource(x, y, z, palette))
+            state = self._resource(x, y, z, palette)
+            setBlock(Point(x, z, y), state)
         fillBlocks(self._box.translate(self._direction).split(dy=2)[0], alpha.Air, ground_blocks)
 
     def _resource(self, x, y, z, palette):

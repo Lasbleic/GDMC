@@ -27,16 +27,13 @@ class HousePalette(dict):
             roof_block = BlockAPI.getStairs(self['roofBlock'], half=facing, facing=direction)
         return roof_block
 
-    def get_structure_block(self, direction):
+    def get_structure_block(self, axis):
+        block = self['structure']
+        from utils.block_utils import BlockStateDict
+        blockstates = BlockStateDict()
+        if 'axis' in blockstates[block]:
+            return f"{block}[axis={axis}]"
         return self['structure']
-        # try:
-        #     return '{} ({})'.format(self['structure'], direction)
-        # except KeyError:
-        #     try:
-        #         wood_type = self['structure'][:-5]
-        #         return '{} ({}, {})'.format(self['structure'], direction, wood_type)
-        #     except KeyError:
-        #         return self['structure']
 
 
 stony_palette = {"cobblestone": 0.7, "gravel": 0.2, "stone": 0.1}

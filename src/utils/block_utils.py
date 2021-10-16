@@ -9,7 +9,7 @@ from typing import Iterable, Set, Callable, Tuple
 
 from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock, runCommand
 from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import Point, BoundingBox, ndarray, posarray, BuildArea
+from utils import Point, BoundingBox, ndarray, posarray, BuildArea, Singleton
 
 alterated_pos = set()
 
@@ -875,3 +875,33 @@ def symmetric_copy(origin: Point, size: Point, destination: Point, x_sym=False, 
             block = block.replace("north", "tmp").replace("south", "north").replace("tmp", "south")
 
         setBlock(Point(destination_x, destination_z, destination_y), block)
+
+
+class BlockStateDict(dict, metaclass=Singleton):
+    def __init__(self, assets_path='resources/blockstates_1.16.5'):
+        super().__init__()
+        import os
+        for blockstate_file in filter(lambda _: _.endswith(".json"), os.listdir(assets_path)):
+            block = blockstate_file.replace(".json", "")
+            self[block] = self.process_blockstate_file(os.path.join(assets_path, blockstate_file))
+
+    @staticmethod
+    def process_blockstate_file(path: str) -> dict:
+        from json import load
+        json_data = load(open(path))
+        data = {}
+        if 'variants' in json_data:
+            for var in json_data['variants']:
+                if var:
+                    for key, value in map(lambda _: _.split('='), var.split(',')):
+                        if key not in data:
+                            data[key] = set()
+                        data[key].add(value)
+        return data
+
+
+if __name__ == '__main__':
+    print(BlockStateDict.process_blockstate_file("resources/blockstates_1.16.5/acacia_door.json"))
+    b = BlockStateDict()
+    print(b.keys())
+    print(b['acacia_door'])
