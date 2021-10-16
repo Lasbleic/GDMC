@@ -49,18 +49,19 @@ class Settlement:
 
     def build_districts(self, **kwargs):
         self.districts.build(self._maps, **kwargs)
+        district_centers = self.districts.district_centers
 
         # init road net
         if self.districts.n_districts >= 2:
-            main_roads = min_spanning_tree(self.districts.district_centers)
+            main_roads = min_spanning_tree(district_centers)
             for p1, p2 in main_roads:
                 self._road_network.create_road(p1, p2)
         else:
-            self._road_network.create_road(self.districts.district_centers[0], self.districts.district_centers[0])
+            self._road_network.create_road(district_centers[0], district_centers[0])
         self.init_road_network()
 
         # mark town centers
-        for town_center in self.districts.town_centers:
+        for town_center in map(lambda t: t.center, self.districts.towns.values()):
             self._parcels.append(Parcel(town_center, BuildingType.ghost, self._maps))
 
     def init_road_network(self):
@@ -151,10 +152,10 @@ class Settlement:
     def generate(self, terrain: TerrainMaps, print_stack=False):
         self._road_network.generate(terrain, self.districts)
 
-        try:
-            self.__generate_road_signs()
-        except Exception:
-            print("Road signs were not generated")
+        # try:
+        self.__generate_road_signs()
+        # except Exception:
+        #     print("Road signs were not generated")
 
         for parcel in self._parcels:  # type: Parcel
             def in_bounds():
@@ -168,7 +169,10 @@ class Settlement:
                 print("Generating", str(parcel))
                 _gen = parcel.generator
                 _gen.choose_sub_generator(self._parcels)
-                _palette = get_biome_palette(parcel.biome(terrain))
+                from building_seeding.settlement import Town
+                parcel_district: Town = argmin(self.districts.towns.values(), lambda s: euclidean(parcel.center, s.center))
+                # _palette = get_biome_palette(parcel.biome(terrain))
+                _palette = parcel_district.palette
                 _gen.generate(terrain, parcel.height_map, _palette)
             except Exception:
                 if print_stack:
@@ -264,18 +268,24 @@ class Settlement:
                 truncated_length += 1
 
     def __generate_road_signs(self):
+        from building_seeding.settlement import Town
+        town_centers: Dict[Position, Town] = {_.center: _ for _ in self.districts.towns.values()}
         roads = min_spanning_tree(self.districts.district_centers)
         distance_map = tree_distance(roads)
         for point in self.districts.district_centers:
-            towns = sorted(filter(lambda u: point != u, self.districts.town_centers), key=lambda town: distance_map[point, town])
+            towns: List[Town] = sorted(filter(lambda u: point != u.center, town_centers.values()), key=lambda town: distance_map[point, town.center])
             towns = towns[:3] if len(towns) > 3 else towns
             y = self._maps.height_map[point] + 1
             setBlock(Point(point.x + self._origin.x, point.z + self._origin.z, y - 1), BlockAPI.blocks.PolishedDiorite)
             for dy, town in enumerate(towns):
-                dir = town - point
+                dir = town.center - point
                 dir = Point(-dir.z, dir.x)
                 pos = point + self._origin + Direction.Top.value * (y + dy)
-                if point in self.districts.town_centers and town == towns[-1]:
-                    place_sign(pos, BlockAPI.blocks.OakSign, dir, Text1=self.districts.town_names[point], Text2="--------", Text3=f"{self.districts.town_names[town]}", Text4=f"<--- {int(distance_map[point, town])}m")
+
+                nom_voisine = town.name
+                dist = int(distance_map[point, town.center])
+                if point in town_centers and town == towns[-1]:
+                    nom_ville = town_centers[point].name
+                    place_sign(pos, BlockAPI.blocks.OakSign, dir, Text1=nom_ville, Text2="--------", Text3=f"{nom_voisine}", Text4=f"<--- {dist}m")
                 else:
-                    place_sign(pos, BlockAPI.blocks.OakSign, dir, Text2=f"{self.districts.town_names[town]}", Text3=f"<--- {int(distance_map[point, town])}m")
+                    place_sign(pos, BlockAPI.blocks.OakSign, dir, Text2=f"{nom_voisine}", Text3=f"<--- {dist}m")

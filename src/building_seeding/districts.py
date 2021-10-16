@@ -9,10 +9,11 @@ from sklearn.metrics import silhouette_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
+from building_seeding.settlement import DistrictCluster, Town
 from terrain import TerrainMaps, ObstacleMap
 from terrain.map import Map
 from utils import Point, product, full, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position
-from utils.misc_objects_functions import argmax, argmin, _in_limits
+from utils.misc_objects_functions import argmax, argmin, _in_limits, Singleton
 
 
 class Districts(Map):
@@ -28,18 +29,15 @@ class Districts(Map):
     """
     def __init__(self, area: BuildArea):
         super().__init__(np.ones((area.width, area.length)))
-        self.__cluster_map = full((self.width, self.length), 0)
+        self.keep_rate: float  # fraction of positions used in the clustering
         self.__scaler = StandardScaler()
         self.__coord_scale = 1
-        self.district_centers: List[Position]  # All district centers (ie means of kmeans)
-        self.town_centers: List[Position]  # Subset of district centers, which are meant to be built on
         self.district_map: Map
-        self.cluster_size = {}
-        self.cluster_suitability = {}
-        self.town_indexes = set()  # indexes of built districts
         self.seeders: Dict[int, DistrictSeeder] = {}
         self.name_gen = CityNameGenerator()
-        self.town_names = {}
+        self.town_indexes = []  # indexes of built districts
+        self.towns = {}
+        self.districtClusters: Dict[int, DistrictCluster] = {}
 
     def build(self, maps: TerrainMaps, **kwargs):
         visualize = kwargs.get("visualize", False)
@@ -85,50 +83,51 @@ class Districts(Map):
             return models[index]
 
         model = select_best_model()
-
         labels = set(model.labels_)
+        self.districtClusters: Dict[int, DistrictCluster] = {label: DistrictCluster(label) for label in labels}
+
+        # cluster means
+        means = self.__scaler.inverse_transform(model.cluster_centers_ / self.__coord_scale)
+        means = [Position(_[0], _[1]) for _ in means]
+
+        dc: DistrictCluster
         for label in labels:
-            cluster = Xu[model.labels_ == label]
-            score = cluster[:, 2].mean()
-            self.cluster_suitability[label] = score
-            self.cluster_size[label] = cluster.shape[0]
+            dc = self.districtClusters[label]
+            cluster_matrix = Xu[model.labels_ == label]
 
-        centers = self.__scaler.inverse_transform(model.cluster_centers_ / self.__coord_scale)
-        seeds = [Position(_[0], _[1]) for _ in centers]
-        samples = [Position(Xu[i, 0], Xu[i, 1]) for i in range(Xu.shape[0])]
-        self.district_centers = [argmin(samples, key=lambda sample: euclidean(seed, sample)) for seed in seeds]
+            dc.score = cluster_matrix[:, 2].mean()
+            dc.reps = {Position(*cluster_matrix[_, :2]) for _ in range(cluster_matrix.shape[0])}
+            dc.size = int(len(dc.reps) / self.keep_rate)
+            dc.center = argmin(dc.reps, lambda pos: euclidean(pos, means[label]))
+        del dc
 
-        def select_town_clusters():
-            surface_to_build = X.shape[0] * .7
-            surface_built = 0
-            best_suitability = max(self.cluster_suitability.values())
-            for index, _ in sorted(self.cluster_suitability.items(), key=lambda _: _[1], reverse=True):
-                self.town_indexes.add(index)
-                self.town_names[self.district_centers[index]] = self.name_gen.generate()
-                self.seeders[index] = DistrictSeeder(
-                    self.district_centers[index],
-                    Xu[:, 0][model.labels_ == label].std(),
-                    Xu[:, 1][model.labels_ == label].std()
-                )
-                surface_built += self.cluster_size[index]
-                if surface_built >= surface_to_build or self.cluster_suitability[index] < best_suitability / 2:
-                    break
-            return list(sorted(self.town_indexes, key=(lambda i: self.cluster_suitability[i]), reverse=True))
+        surface_to_build = X.shape[0] * .7
+        surface_built = 0
+        best_suitability = max({_.score for _ in self.districtClusters.values()})
+        for dc2 in sorted(self.districtClusters.values(), key=lambda _: _.score, reverse=True):
+            label = dc2.id
+            self.town_indexes.append(label)
+            self.towns[label] = Town.fromCluster(dc2, maps)
+            self.seeders[label] = DistrictSeeder(
+                dc2.center,
+                Xu[:, 0][model.labels_ == label].std(),
+                Xu[:, 1][model.labels_ == label].std()
+            )
+            surface_built += dc2.size
+            if surface_built >= surface_to_build or dc2.score < best_suitability / 2:
+                break
 
-        town_indexes = select_town_clusters()
-        self.town_centers = [self.district_centers[index] for index in town_indexes]
-
-        self.__build_cluster_map(model, Xu, town_indexes)
+        self.__build_cluster_map(model, Xu)
 
     def __build_data(self, maps: TerrainMaps, coord_scale=1.15):
         """
         Builds a dataset to perform cluster analysis in order to find suitable positions to build villages
         """
         n_samples = min(2e5, self.width * self.length)  # target number of samples
-        keep_rate = n_samples / (self.width * self.length)  # resulting portion of positions taken into account
+        self.keep_rate = n_samples / (self.width * self.length)  # resulting portion of positions taken into account
         raw_samples = [[x, z, Districts.suitability(x, z, maps)]
                        for x, z in product(range(maps.width), range(maps.length))
-                       if bernouilli(keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)]  # list (x, z, score)
+                       if bernouilli(self.keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)]  # list (x, z, score)
         threshold_score = np.median([_[-1] for _ in raw_samples])  # median score of the samples
         raw_samples = list(
             filter(lambda sample: sample[-1] >= threshold_score, raw_samples))  # keep samples with a decent score
@@ -169,7 +168,8 @@ class Districts(Map):
         b = soft_balance(terrain.biome.temperature(pos), 0.3, 0.8, 1.2)
         return (a + b) / 2
 
-    def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray, town_indexes: List[int]):
+    def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray):
+        town_indexes = self.town_indexes
         town_score = {label: 1 / (index + 1) for (index, label) in enumerate(town_indexes)}
         label_score = np.array([town_score[label] if (label in town_score) else 0 for label in range(max(clusters.labels_) + 1)], dtype=np.float32)
         propagation = KNeighborsClassifier(n_neighbors=3, n_jobs=-1)
@@ -193,7 +193,7 @@ class Districts(Map):
 
         density_matrix = None
         for town_index in self.town_indexes:
-            center = self.district_centers[town_index]
+            center = self.towns[town_index].center
             dist = self.seeders[town_index]
             sig_x = dist.stdev_x
             sig_z = dist.stdev_z
@@ -208,18 +208,22 @@ class Districts(Map):
 
     @property
     def n_districts(self):
-        return len(self.district_centers)
+        return len(self.districtClusters)
 
     @property
     def buildable_surface(self):
-        return sum(self.cluster_size[i] for i in self.town_indexes)
+        return sum(self.districtClusters[i].size for i in self.town_indexes)
+
+    @property
+    def district_centers(self):
+        return [_.center for _ in self.districtClusters.values()]
 
     def seed(self):
         """
         Returns a random position suitable for building
         """
         town_centers = list(self.town_indexes)
-        town_cluster_probs = [self.cluster_size[i] for i in town_centers]
+        town_cluster_probs = [self.districtClusters[i].size for i in town_centers]
         town_cluster_probs = np.array(town_cluster_probs) / sum(town_cluster_probs)
         while True:
             seed_cluster = np.random.choice(town_centers, p=town_cluster_probs)
@@ -247,80 +251,26 @@ class DistrictSeeder:
         return Point(int(round(x)), int(round(z)))
 
 
-class CityNameGenerator:
+class CityNameGenerator(metaclass=Singleton):
     """
     Simple name generator based on French cities
     Sample names are split around consonants and vowels and linked in a markov chain.
     This same Markov Chain is explored to generate new names
     """
-    INPUT = ["Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Montpellier",
-             "Strasbourg", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", "Saint-etienne",
-             "Toulon", "Grenoble", "Dijon", "Angers", "Nimes", "Villeurbanne", "Saint-Denis",
-             "Le Mans", "Aix-en-Provence", "Clermont-Ferrand", "Brest", "Tours", "Limoges",
-             "Amiens", "Annecy", "Perpignan", "Boulogne-Billancourt", "Metz", "Besançon",
-             "Orleans", "Saint-Denis", "Argenteuil", "Mulhouse", "Rouen", "Montreuil", "Caen",
-             "Saint-Paul", "Nancy", "Noumea", "Tourcoing", "Roubaix", "Nanterre",
-             "Vitry-sur-Seine", "Avignon", "Creteil", "Dunkerque", "Poitiers",
-             "Asnieres-sur-Seine", "Versailles", "Colombes", "Saint-Pierre", "Aubervilliers",
-             "Aulnay-sous-Bois", "Courbevoie", "Fort-de-France", "Cherbourg-en-Cotentin",
-             "Rueil-Malmaison", "Pau", "Champigny-sur-Marne", "Le Tampon", "Beziers", "Calais",
-             "La Rochelle", "Saint-Maur-des-Fosses", "Antibes", "Cannes", "Mamoudzou", "Colmar",
-             "Merignac", "Saint-Nazaire", "Drancy", "Issy-les-Moulineaux", "Ajaccio",
-             "Noisy-le-Grand", "Bourges", "La Seyne-sur-Mer", "Venissieux", "Levallois-Perret",
-             "Quimper", "Cergy", "Valence", "Villeneuve-d'Ascq", "Antony", "Pessac", "Troyes",
-             "Neuilly-sur-Seine", "Clichy", "Montauban", "Chambery", "Ivry-sur-Seine", "Niort",
-             "Cayenne", "Lorient", "Sarcelles", "Villejuif", "Hyeres", "Saint-Andre",
-             "Saint-Quentin", "Les Abymes", "Le Blanc-Mesnil", "Pantin", "Maisons-Alfort",
-             "Beauvais", "epinay-sur-Seine", "evry", "Chelles", "Cholet", "Meaux",
-             "Fontenay-sous-Bois", "La Roche-sur-Yon", "Saint-Louis", "Narbonne", "Bondy",
-             "Vannes", "Frejus", "Arles", "Clamart", "Sartrouville", "Bobigny", "Grasse", "Sevran",
-             "Corbeil-Essonnes", "Laval", "Belfort", "Albi", "Vincennes", "evreux", "Martigues",
-             "Cagnes-sur-Mer", "Bayonne", "Montrouge", "Suresnes", "Saint-Ouen", "Massy",
-             "Charleville-Mezieres", "Brive-la-Gaillarde", "Vaulx-en-Velin", "Carcassonne",
-             "Saint-Herblain", "Saint-Malo", "Blois", "Aubagne", "Chalon-sur-Saone", "Meudon",
-             "Chalons-en-Champagne", "Puteaux", "Saint-Brieuc", "Saint-Priest",
-             "Salon-de-Provence", "Mantes-la-Jolie", "Rosny-sous-Bois", "Gennevilliers",
-             "Livry-Gargan", "Alfortville", "Bastia", "Valenciennes", "Choisy-le-Roi",
-             "Chateauroux", "Sete", "Saint-Laurent-du-Maroni", "Noisy-le-Sec", "Istres",
-             "Garges-les-Gonesse", "Boulogne-sur-Mer", "Caluire-et-Cuire", "Talence",
-             "Angoulême", "La Courneuve", "Le Cannet", "Castres", "Wattrelos", "Bourg-en-Bresse",
-             "Gap", "Arras", "Bron", "Thionville", "Tarbes", "Draguignan", "Compiegne",
-             "Le Lamentin", "Douai", "Saint-Germain-en-Laye", "Melun", "Reze", "Gagny", "Stains",
-             "Ales", "Bagneux", "Marcq-en-Baroeul", "Chartres", "Colomiers", "Anglet",
-             "Saint-Martin-d'Heres", "Montelimar", "Pontault-Combault", "Saint-Benoit",
-             "Saint-Joseph", "Joue-les-Tours", "Chatillon", "Poissy", "Montluçon",
-             "Villefranche-sur-Saone", "Villepinte", "Savigny-sur-Orge", "Bagnolet",
-             "Sainte-Genevieve-des-Bois", "echirolles", "La Ciotat", "Creil", "Le Port",
-             "Annemasse", "Saint-Martin ", "Conflans-Sainte-Honorine", "Thonon-les-Bains",
-             "Saint-Chamond", "Roanne", "Neuilly-sur-Marne", "Auxerre", "Tremblay-en-France",
-             "Saint-Raphaël", "Franconville", "Haguenau", "Nevers", "Vitrolles", "Agen",
-             "Le Perreux-sur-Marne", "Marignane", "Saint-Leu", "Romans-sur-Isere",
-             "Six-Fours-les-Plages", "Chatenay-Malabry", "Macon", "Montigny-le-Bretonneux",
-             "Palaiseau", "Cambrai", "Sainte-Marie", "Meyzieu", "Athis-Mons", "La Possession",
-             "Villeneuve-Saint-Georges", "Matoury", "Trappes", "Koungou", "Les Mureaux",
-             "Houilles", "epinal", "Plaisir", "Dumbea", "Chatellerault", "Schiltigheim",
-             "Villenave-d'Ornon", "Nogent-sur-Marne", "Lievin", "Baie-Mahault", "Chatou",
-             "Goussainville", "Dreux", "Viry-Chatillon", "L'Haÿ-les-Roses", "Vigneux-sur-Seine",
-             "Charenton-le-Pont", "Mont-de-Marsan", "Saint-Medard-en-Jalles", "Pontoise",
-             "Cachan", "Lens", "Rillieux-la-Pape", "Savigny-le-Temple", "Maubeuge",
-             "Clichy-sous-Bois", "Dieppe", "Vandoeuvre-les-Nancy", "Malakoff", "Perigueux",
-             "Aix-les-Bains", "Vienne", "Sotteville-les-Rouen", "Saint-Laurent-du-Var",
-             "Saint-etienne-du-Rouvray", "Soissons", "Saumur", "Vierzon", "Alençon", "Vallauris",
-             "Aurillac", "Le Grand-Quevilly", "Montbeliard", "Saint-Dizier", "Vichy", "Biarritz",
-             "Orly", "Bruay-la-Buissiere", "Le Creusot"]
+    INPUT = ["Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Montpellier", "Strasbourg", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", "Saint-Etienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nimes", "Villeurbanne", "Saint-Denis", "Le Mans", "Aix-en-Provence", "Clermont-Ferrand", "Brest", "Tours", "Limoges", "Amiens", "Annecy", "Perpignan", "Boulogne-Billancourt", "Metz", "Besançon", "Orleans", "Saint-Denis", "Argenteuil", "Mulhouse", "Rouen", "Montreuil", "Caen", "Saint-Paul", "Nancy", "Noumea", "Tourcoing", "Roubaix", "Nanterre", "Vitry-sur-Seine", "Avignon", "Creteil", "Dunkerque", "Poitiers", "Asnieres-sur-Seine", "Versailles", "Colombes", "Saint-Pierre", "Aubervilliers", "Aulnay-sous-Bois", "Courbevoie", "Fort-de-France", "Cherbourg-en-Cotentin", "Rueil-Malmaison", "Pau", "Champigny-sur-Marne", "Le Tampon", "Beziers", "Calais", "La Rochelle", "Saint-Maur-des-Fosses", "Antibes", "Cannes", "Mamoudzou", "Colmar", "Merignac", "Saint-Nazaire", "Drancy", "Issy-les-Moulineaux", "Ajaccio", "Noisy-le-Grand", "Bourges", "La Seyne-sur-Mer", "Venissieux", "Levallois-Perret", "Quimper", "Cergy", "Valence", "Villeneuve-d'Ascq", "Antony", "Pessac", "Troyes", "Neuilly-sur-Seine", "Clichy", "Montauban", "Chambery", "Ivry-sur-Seine", "Niort", "Cayenne", "Lorient", "Sarcelles", "Villejuif", "Hyeres", "Saint-Andre", "Saint-Quentin", "Les Abymes", "Le Blanc-Mesnil", "Pantin", "Maisons-Alfort", "Beauvais", "epinay-sur-Seine", "evry", "Chelles", "Cholet", "Meaux", "Fontenay-sous-Bois", "La Roche-sur-Yon", "Saint-Louis", "Narbonne", "Bondy", "Vannes", "Frejus", "Arles", "Clamart", "Sartrouville", "Bobigny", "Grasse", "Sevran", "Corbeil-Essonnes", "Laval", "Belfort", "Albi", "Vincennes", "evreux", "Martigues", "Cagnes-sur-Mer", "Bayonne", "Montrouge", "Suresnes", "Saint-Ouen", "Massy", "Charleville-Mezieres", "Brive-la-Gaillarde", "Vaulx-en-Velin", "Carcassonne", "Saint-Herblain", "Saint-Malo", "Blois", "Aubagne", "Chalon-sur-Saone", "Meudon", "Chalons-en-Champagne", "Puteaux", "Saint-Brieuc", "Saint-Priest", "Salon-de-Provence", "Mantes-la-Jolie", "Rosny-sous-Bois", "Gennevilliers", "Livry-Gargan", "Alfortville", "Bastia", "Valenciennes", "Choisy-le-Roi", "Chateauroux", "Sete", "Saint-Laurent-du-Maroni", "Noisy-le-Sec", "Istres", "Garges-les-Gonesse", "Boulogne-sur-Mer", "Caluire-et-Cuire", "Talence", "Angouleme", "La Courneuve", "Le Cannet", "Castres", "Wattrelos", "Bourg-en-Bresse", "Gap", "Arras", "Bron", "Thionville", "Tarbes", "Draguignan", "Compiegne", "Le Lamentin", "Douai", "Saint-Germain-en-Laye", "Melun", "Reze", "Gagny", "Stains", "Ales", "Bagneux", "Marcq-en-Baroeul", "Chartres", "Colomiers", "Anglet", "Saint-Martin-d'Heres", "Montelimar", "Pontault-Combault", "Saint-Benoit", "Saint-Joseph", "Joue-les-Tours", "Chatillon", "Poissy", "Montluçon", "Villefranche-sur-Saone", "Villepinte", "Savigny-sur-Orge", "Bagnolet", "Sainte-Genevieve-des-Bois", "echirolles", "La Ciotat", "Creil", "Le Port", "Annemasse", "Saint-Martin ", "Conflans-Sainte-Honorine", "Thonon-les-Bains", "Saint-Chamond", "Roanne", "Neuilly-sur-Marne", "Auxerre", "Tremblay-en-France", "Saint-Raphaël", "Franconville", "Haguenau", "Nevers", "Vitrolles", "Agen", "Le Perreux-sur-Marne", "Marignane", "Saint-Leu", "Romans-sur-Isere", "Six-Fours-les-Plages", "Chatenay-Malabry", "Macon", "Montigny-le-Bretonneux", "Palaiseau", "Cambrai", "Sainte-Marie", "Meyzieu", "Athis-Mons", "La Possession", "Villeneuve-Saint-Georges", "Matoury", "Trappes", "Koungou", "Les Mureaux", "Houilles", "epinal", "Plaisir", "Dumbea", "Chatellerault", "Schiltigheim", "Villenave-d'Ornon", "Nogent-sur-Marne", "Lievin", "Baie-Mahault", "Chatou", "Goussainville", "Dreux", "Viry-Chatillon", "L'Hay-les-Roses", "Vigneux-sur-Seine", "Charenton-le-Pont", "Mont-de-Marsan", "Saint-Medard-en-Jalles", "Pontoise", "Cachan", "Lens", "Rillieux-la-Pape", "Savigny-le-Temple", "Maubeuge", "Clichy-sous-Bois", "Dieppe", "Vandoeuvre-les-Nancy", "Malakoff", "Perigueux", "Aix-les-Bains", "Vienne", "Sotteville-les-Rouen", "Saint-Laurent-du-Var", "Saint-etienne-du-Rouvray", "Soissons", "Saumur", "Vierzon", "Alençon", "Vallauris", "Aurillac", "Le Grand-Quevilly", "Montbeliard", "Saint-Dizier", "Vichy", "Biarritz", "Orly", "Bruay-la-Buissiere", "Le Creusot"]
 
     def __init__(self):
         self.beg_symbol = set()
         self.end_symbol = set()
         self.transition = {}
         self.__name_trash = set()
-        
+
         for name in self.INPUT:
             self.register_name(name)
 
     vowels = 'aeiouy'
     punctuation = " -'"
-    
+
     def parse_city_name(self, true_name: str):
         substrings = []
         current_sub = true_name.lower()[0]
@@ -340,7 +290,7 @@ class CityNameGenerator:
         substrings.append(current_sub)
 
         return substrings
-    
+
     def register_name(self, city_name):
         substrings = self.parse_city_name(city_name)
         self.beg_symbol.add(substrings[0] + substrings[1])
@@ -357,7 +307,7 @@ class CityNameGenerator:
             if sym not in self.transition:
                 self.transition[sym] = []
             self.transition[sym].append(bol)
-            
+
     def split_symbol(self, substring):
         if substring[0] in self.punctuation:
             return substring[0], substring[1:]
@@ -369,11 +319,11 @@ class CityNameGenerator:
 
         def doing_vowels():
             return substring[i] in self.vowels
-        
+
         for i in range(len(substring)):
             if is_vowel() ^ doing_vowels():
                 return substring[:i], substring[i:]
-            
+
         return substring, substring
 
     def sample(self):

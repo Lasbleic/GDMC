@@ -86,7 +86,7 @@ class BiomeMap(Map):
             return self[Point(item[0], item[1])]
         biomePoint: Point = (item + self.__offset) // 4
         # return Map.__getitem__(self, biomePoint)
-        return super(BiomeMap, self).__getitem__(biomePoint)
+        return int(super(BiomeMap, self).__getitem__(biomePoint))
 
     _biome_types = {
         ("ocean", 0), ("taiga", 5), ("plains", 1), ("mountains", 3), ("desert", 2), ("forest", 4), ("swamp", 6),
