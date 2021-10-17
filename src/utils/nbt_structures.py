@@ -30,7 +30,7 @@ class StructureNBT:
     """
 
     def __init__(self, filename=None):
-        self.__nbt = nbt = NBTFile(sep.join([get_project_path(), 'structures', filename]))
+        self.__nbt = nbt = NBTFile(sep.join([get_project_path(), '../resources/structures', filename]))
 
         size_tag = self.__nbt.get(SIZE)
         x, y, z = (tag.value for tag in size_tag)
