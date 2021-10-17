@@ -91,8 +91,6 @@ class Settlement:
     def build_skeleton(self, time_limit: int, do_visu: bool = False):
         village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.districts, self._parcels)
         village_skeleton.grow(time_limit, do_visu)
-        # for parcel in filter(lambda p: p.building_type.name == 'ghost', self._parcels):
-        #     self._parcels.remove(parcel)
 
     def define_parcels(self):
         """
@@ -119,7 +117,7 @@ class Settlement:
                 try:
                     direction = next(filter(lambda d: parcel.is_expendable(d), priority_directions))
                     parcel.expand(direction)
-                    expendable_parcels += parcel
+                    expendable_parcels.add(parcel)
                 except StopIteration:
                     logging.info(f"Cannot extend {str(parcel)} any more")
 

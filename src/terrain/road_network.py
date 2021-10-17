@@ -262,17 +262,11 @@ class RoadNetwork(metaclass=Singleton):
             for root_point in root_points:
                 _distance_map[root_point] = 0
                 _cost_map[root_point] = 0
-            _neighbours = set(root_points)
+            _neighbours = SortedList(root_points, lambda p: _cost_map[p])
             _predecessor_map = posarray.of(empty((self.width, self.length), dtype=object))
             return _cost_map, _distance_map, _neighbours, _predecessor_map
 
-        def closest_neighbor():
-            return argmin(neighbors, lambda n: cost_map[n])
-            # _closest_neighbors = []
-            # min_cost = min(cost_map[n] for n in neighbors)
-            # return choice(list(filter(lambda n: cost_map[n] == min_cost, neighbors)))
-
-        def update_distance(updated_point, neighbor, _neighbors):
+        def update_distance(updated_point, neighbor, _neighbors: SortedList):
             edge_cost = road_build_cost(updated_point, neighbor)
             edge_dist = euclidean(updated_point, neighbor)
             if edge_cost == maxint:
@@ -317,9 +311,8 @@ class RoadNetwork(metaclass=Singleton):
                 self.path_map[point] = path_to_dest(point)
 
         cost_map, distance_map, neighbors, predecessor_map = init()
-        while len(neighbors) > 0:
-            clst_neighbor = closest_neighbor()
-            neighbors.remove(clst_neighbor)
+        while neighbors:
+            clst_neighbor = neighbors.pop()
             update_maps_info_at(clst_neighbor)
             update_distances(clst_neighbor)
 
