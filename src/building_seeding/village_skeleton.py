@@ -91,7 +91,8 @@ class VillageSkeleton:
             cycles = self.maps.road_network.connect_to_network(building_position, margin=AVERAGE_PARCEL_SIZE/2)
             self.add_parcel(building_position, building_type)
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
-            self.__handle_new_road_cycles(cycles)
+            if cycles:
+                self.__handle_new_road_cycles(cycles)
             if time_limit and time() - t0 >= time_limit:
                 print("Time limit reached: early stopping parcel seeding")
                 break
@@ -105,7 +106,8 @@ class CityBlock(Bounds):
     def __init__(self, road_cycle, maps):
         self.__road_points = road_cycle
         self.__maps = maps
-        self.__origin, self.__mask = connected_component(mean(road_cycle).asPosition, self.connection)
+        max_block_surface = MAX_PARCELS_IN_BLOCK * (AVERAGE_PARCEL_SIZE ** 2)
+        self.__origin, self.__mask = connected_component(mean(road_cycle).asPosition, self.connection, early_stopping_condition=(lambda block: len(block) > max_block_surface))
         super().__init__(self.__origin, Point(self.__mask.width, self.__mask.length))
 
     @staticmethod

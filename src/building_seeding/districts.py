@@ -123,10 +123,11 @@ class Districts(Map):
         """
         Builds a dataset to perform cluster analysis in order to find suitable positions to build villages
         """
-        n_samples = min(2e5, self.width * self.length)  # target number of samples
-        self.keep_rate = n_samples / (self.width * self.length)  # resulting portion of positions taken into account
+        width, length = maps.width, maps.length
+        n_samples = min(1e4, width * length)  # target number of samples
+        self.keep_rate = n_samples / (width * length)  # resulting portion of positions taken into account
         raw_samples = [[x, z, Districts.suitability(x, z, maps)]
-                       for x, z in product(range(maps.width), range(maps.length))
+                       for x, z in product(range(width), range(length))
                        if bernouilli(self.keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)]  # list (x, z, score)
         threshold_score = np.median([_[-1] for _ in raw_samples])  # median score of the samples
         raw_samples = list(
@@ -166,7 +167,7 @@ class Districts(Map):
             return -1
         a = np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
         b = soft_balance(terrain.biome.temperature(pos), 0.3, 0.8, 1.2)
-        return (a + b) / 2
+        return (3*a + b) / 4
 
     def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray):
         town_indexes = self.town_indexes

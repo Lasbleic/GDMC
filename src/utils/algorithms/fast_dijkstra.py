@@ -1,8 +1,7 @@
 from numba import njit
 from math import sqrt
-from typing import Tuple, List
+from typing import Tuple, List, Collection, Set
 import numpy as np
-
 
 @njit
 def is_init_neigh(distance_map: np.ndarray, _x: int, _z: int):

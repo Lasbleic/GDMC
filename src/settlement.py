@@ -108,7 +108,7 @@ class Settlement:
 
         while expendable_parcels:
             # extend expendables parcels from smaller to larger while there still are some
-            parcel = expendable_parcels.pop()
+            parcel = expendable_parcels.pop(0)
             if parcel.entry_point != parcel.center:
                 road_dir = Direction.of(*(parcel.entry_point - parcel.center).coords)
                 lateral_dir = road_dir.rotate() if bernouilli() else -road_dir.rotate()

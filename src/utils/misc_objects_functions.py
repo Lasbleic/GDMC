@@ -18,6 +18,8 @@ def get_project_path():
 
 
 def argmin(values, key=None):
+    if type(values) != list:
+        values = list(values)
     if key is None:
         return index_argmin(values)
 
@@ -30,7 +32,7 @@ def argmin(values, key=None):
             v1, k1 = rec_argmin(sub_values[L:])
             return (v0, k0) if k0 <= k1 else (v1, k1)
 
-    return rec_argmin(list(values))[0]
+    return rec_argmin(values)[0]
 
 
 @njit()

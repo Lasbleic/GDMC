@@ -1,7 +1,7 @@
 from numba.typed import List as nbList
 from numpy.random import randint
 
-from utils.algorithms.fast_astar import abs_distance, numba, _in_limits, maxint, \
+from utils.algorithms.fast_astar import abs_distance, numba, _in_limits, MAX_INT, \
     _path_to_dest, _heuristic as euclidean, njit, np, jit
 from utils.misc_objects_functions import index_argmin
 GAMMA = 4
@@ -42,7 +42,7 @@ def hierarchical_astar(source, target, dimensions, cost_function):
         clst_neighbour = source
         heuristic_idx = {}
 
-        while neighbours and (min(distance_map[n] for n in neighbours) < maxint) and abs_distance(clst_neighbour, target) >= step:
+        while neighbours and (min(distance_map[n] for n in neighbours) < MAX_INT) and abs_distance(clst_neighbour, target) >= step:
 
             # pick new exploration point -> point closer to target
             clst_neighbour = _closest_neighbor(astar_env, rough_path, cumsum)
@@ -92,13 +92,13 @@ def _closest_neighbor(env, path, path_heuristic):
     heuristic_map = env[3]
     closest_neighbors = nbList()
     closest_neighbors.append((1 << 16, 1 << 16))
-    min_heuristic = maxint
+    min_heuristic = MAX_INT
     for neighbor in neighbors:
         x, z = neighbor
-        if heuristic_map[neighbor] >= maxint:
+        if heuristic_map[neighbor] >= MAX_INT:
             heuristic_map[neighbor] = _heuristic(neighbor, path, path_heuristic)
         current_heuristic = distance_map[x, z] + heuristic_map[neighbor]
-        if min_heuristic == maxint or current_heuristic < min_heuristic:
+        if min_heuristic == MAX_INT or current_heuristic < min_heuristic:
             closest_neighbors = nbList()
             closest_neighbors.append(neighbor)
             min_heuristic = current_heuristic
@@ -134,11 +134,11 @@ def _exploration_neighbourhood(x, z, width, length, step):
 @njit
 def _init(point, dims):
     x, z = point
-    _distance_map = np.full(dims, maxint)
+    _distance_map = np.full(dims, MAX_INT)
     _distance_map[x, z] = 0
     _neighbours = [point]
     _predecessor_map = np.full((*dims, 2), max(dims))
-    _heuristic_map = np.full(dims, maxint)
+    _heuristic_map = np.full(dims, MAX_INT)
     return _distance_map, _neighbours, _predecessor_map, _heuristic_map
 
 
@@ -146,12 +146,12 @@ def _init(point, dims):
 def _update_distance(env, updated_point, neighbor):
     distance_map, neighbors, predecessor_map, h_map, cost = env
     edge_cost = cost(updated_point, neighbor)
-    if edge_cost == maxint:
+    if edge_cost == MAX_INT:
         return
 
     new_distance = distance_map[updated_point] + edge_cost
     previous_distance = distance_map[neighbor]
-    if previous_distance >= maxint:
+    if previous_distance >= MAX_INT:
         neighbors.append(neighbor)
     if previous_distance > new_distance:
         distance_map[neighbor] = new_distance

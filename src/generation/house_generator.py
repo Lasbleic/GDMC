@@ -20,9 +20,6 @@ class ProcHouseGenerator(Generator):
             self._generate_main_building()
         except ValueError:
             print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))
-            for x, z in product(range(self.width), range(self.length)):
-                pos = Point(x + self.origin.x, z + self.origin.z, height_map[x, z] + 1)
-                setBlock(pos, BlockAPI.blocks.GoldBlock)
             return
         self._generate_annex()
         self._center_building()
@@ -136,7 +133,7 @@ class ProcHouseGenerator(Generator):
                 main_room.generate_stairs(stair_wall, palette, reversed=revved)
                 revved = not revved
                 main_room = main_room[Direction.Top]
-        else:
+        elif isinstance(main_room[Direction.Top], _RoomSymbol):
             main_room.generate_ladder()
 
 
@@ -432,6 +429,7 @@ class _WallSymbol(Generator):
             if self.width == 2:
                 if bernouilli(0.5):
                     current_struct.fill(self._box.expand(0, -1, 0), palette['window'], 7)
+                current_struct.fill(self._box, palette['wall'], 6)
             elif self.width == 4:
                 current_struct.fill(self._box, palette['wall'], 6)
                 box_win = TransformBox(self._box.origin + (1, 0, 0), (2, self.height, 1))
@@ -456,6 +454,7 @@ class _WallSymbol(Generator):
             if self.length == 2:
                 if bernouilli(0.5):
                     current_struct.fill(self._box.expand(0, -1, 0), palette['window'], 7)
+                current_struct.fill(self._box, palette['wall'], 6)
             elif self.length == 4:
                 current_struct.fill(self._box, palette['wall'], 6)
                 box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))

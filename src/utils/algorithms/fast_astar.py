@@ -3,9 +3,8 @@ import numpy as np
 from numba import njit, jit
 from numpy.random import choice
 
+from parameters import MAX_INT
 from utils.misc_objects_functions import _in_limits
-
-maxint = (1 << 31) + .1
 
 
 def a_star(root_point, ending_point, dimensions, cost_function):
@@ -25,7 +24,7 @@ def a_star(root_point, ending_point, dimensions, cost_function):
     clst_neighbor = root_point
     n_steps = 0
     max_step = max(1000, 10 * _heuristic(root_point, ending_point))
-    while neighbours and (min(distance_map[n] for n in neighbours) < maxint) and (clst_neighbor != ending_point):
+    while neighbours and (min(distance_map[n] for n in neighbours) < MAX_INT) and (clst_neighbor != ending_point):
         n_steps += 1
         clst_neighbor = _closest_neighbor(astar_env, ending_point)
         neighbours.remove(clst_neighbor)
@@ -44,11 +43,11 @@ def a_star(root_point, ending_point, dimensions, cost_function):
 @njit
 def _init(point, dims):
     x, z = point
-    _distance_map = np.full(dims, maxint)
+    _distance_map = np.full(dims, MAX_INT)
     _distance_map[x, z] = 0
     _neighbours = {point}
     _predecessor_map = np.full((*dims, 2), max(dims))
-    _heuristic_map = np.full(dims, maxint)
+    _heuristic_map = np.full(dims, MAX_INT)
     return _distance_map, _neighbours, _predecessor_map, _heuristic_map
 
 
@@ -58,10 +57,10 @@ def _closest_neighbor(env, destination):
     distance_map, neighbours = env[:2]
     heuristic_map = env[3]
     closest_neighbors = [(0, 0)]
-    min_heuristic = maxint
+    min_heuristic = MAX_INT
     for neighbour in neighbours:
         x, z = neighbour
-        if heuristic_map[neighbour] == maxint:
+        if heuristic_map[neighbour] == MAX_INT:
             heuristic_map[neighbour] = _heuristic(neighbour, destination)
         current_heuristic = distance_map[x, z] + heuristic_map[neighbour]
         if current_heuristic < min_heuristic:
@@ -83,12 +82,12 @@ def _heuristic(point, destination):
 def _update_distance(env, updated_point, neighbor):
     distance_map, neighbors, predecessor_map, h_map, cost = env
     edge_cost = cost(updated_point, neighbor)
-    if edge_cost == maxint:
+    if edge_cost == MAX_INT:
         return
 
     new_distance = distance_map[updated_point] + edge_cost
     previous_distance = distance_map[neighbor]
-    if previous_distance >= maxint:
+    if previous_distance >= MAX_INT:
         neighbors.add(neighbor)
     if previous_distance > new_distance:
         distance_map[neighbor] = new_distance

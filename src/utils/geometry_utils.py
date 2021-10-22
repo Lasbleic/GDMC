@@ -1,69 +1,43 @@
 from enum import Enum
 from typing import Iterable
 
+from numpy import array, asarray
+
 from interfaceUtils import requestBuildArea
 from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
 from utils import ndarray
 
 
-class Point:
+class Point(ndarray):
     """
     Minecraft main coordinates are x, z, while y represents altitude (from 0 to 255)
     I choose to set y as an optional coordinate so that you can work with 2D points by just ignoring the 3rd coord
     """
 
-    def __init__(self, x: float, z: float, y: float = 0):
-        # self._x = x if x % 1 else int(x)
-        # self._z = z if z % 1 else int(z)
-        # self._y = y if y % 1 else int(y)
-        self._x = x
-        self._z = z
-        self._y = y
+    def __new__(cls, x, z, y=0):
+        return asarray(array((x, y, z))).view(cls)
+
+    def __array_finalize__(self, obj):
+        if obj is None: return
 
     def __str__(self):
-        res = "(x:{}".format(self._x)
-        res += "; y:{}".format(self._y) if self._y else ""
-        res += "; z:{})".format(self._z)
+        res = "(x:{}".format(self.x)
+        res += "; y:{}".format(self.y) if self.y else ""
+        res += "; z:{})".format(self.z)
         return res
 
     def __eq__(self, other):
-        if not isinstance(other, Point):
-            return False
-        return all(_ == 0 for _ in (self - other).coords)
+        return all(super(Point, self).__eq__(other))
 
-    def __add__(self, other):
-        assert isinstance(other, Point)
-        return Point(self._x + other._x, self._z + other._z, self._y + other._y)
+    def __ne__(self, other):
+        return not self == other
 
-    def __neg__(self):
-        return Point(-self._x, -self._z, -self._y)
-
-    def __sub__(self, other):
-        assert isinstance(other, Point)
-        return self + (-other)
-
-    def __mul__(self, other):
-        if isinstance(other, Point):
-            return Point(self.x * other.x, self.z * other.z, self.y * other.y)
-        return Point(self._x * other, self._z * other, self._y * other)
-
-    def __abs__(self):
-        return Point(abs(self.x), abs(self.z), abs(self.y))
-
-    def __truediv__(self, other):
-        return Point(self.x / other, self.z / other)
-
-    def __floordiv__(self, other):
-        return Point(self.x // other, self.z // other)
+    def __bool__(self):
+        return True
 
     def __hash__(self):
         return hash(self.coords)
-
-    def dot(self, other):
-        assert isinstance(other, Point)
-        mult = self * other
-        return sum(mult.coords)
 
     @property
     def coords(self):
@@ -71,15 +45,15 @@ class Point:
 
     @property
     def x(self):
-        return self._x
+        return self[0]
 
     @property
     def y(self):
-        return self._y
+        return self[1]
 
     @property
     def z(self):
-        return self._z
+        return self[2]
 
     @property
     def norm(self):
@@ -100,8 +74,9 @@ class Position(Point):
     Point with integer coordinates, represents a position in the Minecraft world. Holds x, y, z coordinates relative to the building area, that can be converted to MC coords with the xa and za properties
     """
 
-    def __init__(self, x: float, z: float, y: float = 0.):
-        super().__init__(int(round(x)), int(round(z)), int(round(y)))
+    def __new__(cls, x, z, y=0):
+        ix, iy, iz = int(round(x)), int(round(y)), int(round(z))
+        return Point.__new__(cls, ix, iz, iy)
 
     @property
     def abs_x(self):
