@@ -11,13 +11,6 @@ from parameters import *
 from utils import Point, euclidean
 from .obstacle_map import ObstacleMap
 
-MAX_FLOAT = 100000.0
-MAX_DISTANCE_CYCLE = 30
-MIN_DISTANCE_CYCLE = 15
-DIST_BETWEEN_NODES = 12
-MIN_CYCLE_GAIN = 2.5
-CYCLE_ALTERNATIVES = 6
-
 
 class RoadNetwork(metaclass=Singleton):
     """
@@ -181,7 +174,7 @@ class RoadNetwork(metaclass=Singleton):
 
         # either the path is precomputed or computed with a*
         path: List[Point]
-        if self.is_accessible(target):
+        if self.is_accessible(target) and all(ObstacleMap().is_accessible(_) for _ in self.path_map[target]):
             path = self.path_map[target]
             print(f"[RoadNetwork] Found existing road towards {str(target)}")
         else:
@@ -226,17 +219,6 @@ class RoadNetwork(metaclass=Singleton):
         self.__generator.generate(level, hm[:], districts)
 
     def __update_distance_map(self, road: List[Point], force_update=False):
-        # # positions that have become inaccessible: road path exists but we can't reach the position anymore
-        # invalid = {p for p in building_positions() if
-        #            type(self.path_map[p]) is list and not ObstacleMap().is_accessible(p)}
-        # # entry points of these positions. paths starting in these positions must be recomputed
-        # invalid_entry_points = {self.path_map[p][0] for p in invalid}
-        # # positions having one of theses entry points
-        # invalid_extended = {p for p in building_positions() if type(self.path_map[p]) is list and self.path_map[p][
-        #     0] in invalid_entry_points and not self.is_road(p)}
-        # for p in invalid_extended:
-        #     self.__invalidate(p)
-        # road.extend(invalid_entry_points)
         self.dijkstra(road, self.lambda_max, force_update)
 
     # return the path from the point satisfying the ending_condition to the root_point, excluded

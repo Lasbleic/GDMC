@@ -36,7 +36,7 @@ def main(**options):
     ObstacleMap.from_terrain(terrain)  # initialize obstacle map from the terrain
 
     settlement = Settlement(terrain)
-    settlement.build_districts(visualize=do_visu, n_clusters=1)
+    settlement.build_districts(visualize=do_visu)
     t2 = time()
     settlement.build_skeleton(time_lim, do_visu)  # define buildings list and seed them
     print(" computing village skeleton", time() - t2)
@@ -63,4 +63,4 @@ if __name__ == '__main__':
 
         stats: Stats = cProfile.run(f"main({time_opt}=1800, {debug_opt}=False)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=True, time_opt=900, visu_opt=False)
+        main(debug_opt=False, time_opt=1800, visu_opt=False)

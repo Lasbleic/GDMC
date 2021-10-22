@@ -55,7 +55,7 @@ class PathFinder(metaclass=Singleton):
         explored: Set[Position] = set()
         for source_pos in source:
             tree.addEdge(source_pos, source_pos, 0)
-        neighbours: SortedList = SortedList(source, lambda pos: tree[tree.getParent(pos), pos])
+        neighbours: SortedList = SortedList(source, lambda pos: -tree[tree.getParent(pos), pos])
 
         while neighbours:
             node = neighbours.pop()
