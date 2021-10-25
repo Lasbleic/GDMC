@@ -18,7 +18,7 @@ BUILDING_ENCYCLOPEDIA = {
             "crop-windmill": (11, 15, 100),
             "crop-ghost": (5, 30, 100),
             "windmill-windmill": (20, 30, 100),
-            "windmill-house": (25, 45, 100),
+            "windmill-house": (25, 35, 50),
             "windmill-crop": (10, 15, 100),
             "windmill-ghost": (5, 40, 100),
             "ghost-house": (5, 10, 100),
@@ -52,12 +52,12 @@ BUILDING_ENCYCLOPEDIA = {
             "windmill": (6, 12, 18)
         },
 
-        # represents the distance to the city centre, 0 = center, 1 = map border
+        # represents the distance to the city center, 0 = center, 1 = map border
         # computed as a balance function
         "Density": {
             "house": (-1, 0, 3),
-            "crop": (1, 2, 4),
-            "windmill": (1.5, 3, 4),
+            "crop": (.5, 1.5, 4),
+            "windmill": (1, 2, 4),
             "wood_tower": (0, 0.35, 1.2),
             "stone_tower": (-1, 0.2, 1),
         },

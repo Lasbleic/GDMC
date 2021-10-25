@@ -167,7 +167,8 @@ class Districts(Map):
             return -1
         a = np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
         b = soft_balance(terrain.biome.temperature(pos), 0.3, 0.8, 1.2)
-        return (3*a + b) / 4
+        # return (3*a + b) / 4
+        return a
 
     def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray):
         town_indexes = self.town_indexes

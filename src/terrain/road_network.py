@@ -134,6 +134,7 @@ class RoadNetwork(metaclass=Singleton):
         for point in path:
             self.__set_road_block(point.asPosition)
         self.__update_distance_map(path, force_update)
+        self.__pathFinder.registerRoad(path)
 
     def is_accessible(self, point: Point) -> bool:
         path = self.path_map[point]
@@ -179,7 +180,7 @@ class RoadNetwork(metaclass=Singleton):
             print(f"[RoadNetwork] Found existing road towards {str(target)}")
         else:
             _t0 = time()
-            path = self.__pathFinder.getPath(self.__get_closest_node(target), target)
+            path = self.__pathFinder.getPathTowards(target)
             print(f"[RoadNetwork] Computed road path towards {str(target)} in {(time() - _t0):0.2f}s")
 
         # if a* fails, return
@@ -296,8 +297,8 @@ class RoadNetwork(metaclass=Singleton):
             update_maps_info_at(clst_neighbor)
             update_distances(clst_neighbor)
 
-    def a_star(self, root_point, ending_point, cost_function, timer=False, recursive=True):
-        # type: (Point, Point, Callable[[Point, Point], int], bool, bool) -> List[Point]
+    def a_star(self, root_point, ending_point, cost_function, timer=False):
+        # type: (Point, Point, Callable[[Point, Point], int], bool) -> List[Point]
         """
         Parameters
         ----------
@@ -314,13 +315,9 @@ class RoadNetwork(metaclass=Singleton):
             return [root_point]
         t0 = time()
         try:
-            if recursive:
-                from utils.algorithms.path_finder import PathFinder
-                path = PathFinder(6).getPath(root_point, ending_point)
-            else:
-                tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length),
-                                    lambda u, v: cost_function(Position(u[0], u[1]), Position(v[0], v[1])))
-                path = [Point(u, v) for u, v in tuple_path]
+            tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length),
+                                lambda u, v: cost_function(Position(u[0], u[1]), Position(v[0], v[1])))
+            path = [Point(u, v) for u, v in tuple_path]
         except SystemError or KeyError or ValueError:
             return []
         if timer:
@@ -340,11 +337,11 @@ class RoadNetwork(metaclass=Singleton):
         if not (MIN_DISTANCE_CYCLE <= straight_dist <= MAX_DISTANCE_CYCLE):
             return [], []
 
-        existing_path = self.a_star(node1, node2, road_only_cost, recursive=False)
+        existing_path = self.a_star(node1, node2, road_only_cost)
         current_dist = len(existing_path)
         if current_dist / straight_dist < MIN_CYCLE_GAIN:
             return existing_path, []
-        straight_path = self.a_star(node1, node2, road_build_cost, recursive=False)
+        straight_path = self.a_star(node1, node2, road_build_cost)
         straight_dist = len(straight_path)
         if straight_dist and current_dist / straight_dist >= MIN_CYCLE_GAIN:
             return existing_path, straight_path

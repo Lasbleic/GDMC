@@ -3,7 +3,7 @@ from typing import Iterable
 
 from numpy import array, asarray
 
-from interfaceUtils import requestBuildArea
+from interface import requestBuildArea
 from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
 from utils import ndarray
@@ -226,6 +226,7 @@ def all_directions(as_points: bool = True) -> Iterable[Direction or Point]:
 class BuildArea(metaclass=Singleton):
     def __init__(self, build_area_json=None):
         XFROM, XTO, ZFROM, ZTO = 'xFrom', 'xTo', 'zFrom', 'zTo'
+        XFROM, XTO, ZFROM, ZTO = 0, 3, 2, 5
         if build_area_json is None:
             try:
                 build_area_json = requestBuildArea()

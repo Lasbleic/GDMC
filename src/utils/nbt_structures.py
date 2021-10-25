@@ -2,7 +2,7 @@ from os import sep
 
 from nbt.nbt import TAG_Compound, NBTFile, TAG_String
 
-from interfaceUtils import runCommand
+from interface import runCommand
 from utils import Point, setBlock, BlockAPI, get_project_path
 
 b = BlockAPI.blocks

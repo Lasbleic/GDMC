@@ -7,7 +7,8 @@
 from itertools import product
 from typing import Iterable, Set, Callable, Tuple
 
-from gdmc_http_client_python.interfaceUtils import placeBlockBatched as setBlockDefault, getBlock, runCommand
+from gdmc_http_client_python.interface import globalinterface, runCommand
+globalinterface.setBuffering(True)
 from gdmc_http_client_python.worldLoader import WorldSlice
 from utils import Point, BoundingBox, ndarray, posarray, BuildArea, Singleton
 
@@ -17,7 +18,7 @@ alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=1000):
     if point not in BuildArea():
         return
-    res = setBlockDefault(point.x, point.y, point.z, blockstate, buffer_size)
+    res = globalinterface.setBlockBuffered(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
 
 
@@ -834,7 +835,7 @@ def clear_tree_at(terrain, point: Point) -> None:
 
 
 def place_torch(x, y, z):
-    if getBlock(x, y, z).endswith(":air"):
+    if globalinterface.getBlock(x, y, z).endswith(":air"):
         torch = BlockAPI.getTorch()
         setBlock(Point(x, z, y), torch)
 
@@ -851,7 +852,7 @@ def fillBlocks(box: BoundingBox, block: str, blocksToReplace: str or Iterable[st
         blocksToReplace = {blocksToReplace}
     for x, y, z, in box.positions:
         p = Point(x, z, y)
-        if not blocksToReplace or getBlock(x, y, z)[10:] in blocksToReplace:
+        if not blocksToReplace or globalinterface.getBlock(x, y, z)[10:] in blocksToReplace:
             setBlock(p, block)
 
 
@@ -866,7 +867,7 @@ def symmetric_copy(origin: Point, size: Point, destination: Point, x_sym=False, 
         destination_y = destination.y + ((size.y - dy) if y_sym else dy)
         destination_z = destination.z + ((size.z - dz) if z_sym else dz)
 
-        block = getBlock(*(origin + dp).coords, True)
+        block = globalinterface.getBlock(*(origin + dp).coords, True)
         if x_sym:
             block = block.replace("west", "tmp").replace("east", "west").replace("tmp", "east")
         if y_sym:
