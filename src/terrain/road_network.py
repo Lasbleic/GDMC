@@ -151,7 +151,7 @@ class RoadNetwork(metaclass=Singleton):
             _t0 = time()
             path = self.__pathFinder.getPath(root_point, ending_point)
             self.nodes.update({root_point.asPosition, ending_point.asPosition})
-            print(f"in {(time() - _t0):0.2f}s")
+            print(f" in {(time() - _t0):0.2f}s")
         self.__set_road(path)
         return path
 

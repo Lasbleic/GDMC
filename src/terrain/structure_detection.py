@@ -38,7 +38,7 @@ class StructureDetector:
     def __detect_mines(self) -> List[Parcel]:
         def is_cave(p: Position):
             y = self.terrain.height_map.lower_height(p)
-            block = self.terrain.level.getBlockAt((p.abs_x, y + 1, p.abs_z))
+            block = self.terrain.level.getBlockAt(p.abs_x, y + 1, p.abs_z)
             return block.endswith("cave_air")
 
         structure_points = set(filter(is_cave, building_positions()))

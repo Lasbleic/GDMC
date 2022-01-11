@@ -66,13 +66,13 @@ class TerrainMaps:
     def request(build_area_json=None):
         from time import time
         print("Requesting build area...", end='')
-        build_area = BuildArea(build_area_json)
-        print(f"OK: {str(build_area)}")
+        area = BuildArea(build_area_json)
+        print(f"OK: {str(area)}")
         print("Requesting level...")
         t0 = time()
-        level = WorldSlice((build_area.x, build_area.z, build_area.width, build_area.length))
+        level = WorldSlice(area.x, area.z, area.x + area.width - 1, area.z + area.length - 1)
         print(f"completed in {(time() - t0)}s")
-        return TerrainMaps(level, build_area)
+        return TerrainMaps(level, area)
 
     def undo(self):
         """
@@ -90,6 +90,6 @@ class TerrainMaps:
                         current_terrain.height_map.upper_height(pos.x, pos.z))
             for y in range(min_y - 2, max_y + 2):
                 coords = pos.abs_x, y, pos.abs_z
-                if old_level.getBlockAt(coords) != new_level.getBlockAt(coords):
-                    setBlock(Point(pos.abs_x, pos.abs_z, y), old_level.getBlockAt(coords))
+                if old_level.getBlockAt(*coords) != new_level.getBlockAt(*coords):
+                    setBlock(Point(pos.abs_x, pos.abs_z, y), old_level.getBlockAt(*coords))
         dump()

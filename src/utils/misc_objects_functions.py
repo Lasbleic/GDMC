@@ -97,7 +97,6 @@ def sym_range(v, dv, vmax=None):
     return range(int(v0), int(v1))
 
 
-
 @njit
 def _in_limits(xyz0: Tuple[int, int, int], width, length):
     x0, y0, z0 = xyz0
@@ -187,7 +186,11 @@ def raytrace(xyz1, xyz2):
     output.append(np)
     return output
 
+
 class Singleton(type):
+    """
+    Singleton metaclass
+    """
     _instances = {}
 
     def __call__(cls, *args, **kwargs):

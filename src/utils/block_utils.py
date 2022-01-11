@@ -44,7 +44,7 @@ def getBlockRelativeAt(world_slice: WorldSlice, x: int, y: int, z: int):
     """
     x += world_slice.rect[0]
     z += world_slice.rect[1]
-    return world_slice.getBlockAt((x, y, z))
+    return world_slice.getBlockAt(x, y, z)
 
 
 class BlockAPI:

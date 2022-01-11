@@ -75,7 +75,9 @@ class StructureNBT:
                     properties[property.name] = property.value
                 if blockName in deprecated_name:
                     blockName = deprecated_name[blockName]
-        return f"minecraft:{blockName}[{', '.join(f'{key}={value}' for (key, value) in properties.items())}]"
+        from utils.block_utils import BlockStateDict
+        # assert all(key in BlockStateDict()[blockName] for key in properties.keys())
+        return f"minecraft:{blockName}[{', '.join(f'{key}={value}' for (key, value) in properties.items() if key in BlockStateDict()[blockName])}]"
 
     @staticmethod
     def parse_data(param):

@@ -86,6 +86,7 @@ class Settlement:
                 else:
                     logging.debug('\tDismissed point {} at {}m < {}m'.format(*log_args))
                     min_distance_to_roads *= 0.9
+            print(f"[Settlement] Creating road towards border point at {out_connections[-1]}")
             self._road_network.connect_to_network(out_connections[-1])
 
     def build_skeleton(self, time_limit: int, do_visu: bool = False):
@@ -223,11 +224,11 @@ class Settlement:
             ya = base_height[x, z]
             new_y = smooth_height[x, z]
             self._maps.height_map.update([Point(x, z)], [new_y])
-            surface_block = self._maps.level.getBlockAt((xa, ya, za))
+            surface_block = self._maps.level.getBlockAt(xa, ya, za)
             setBlock(Point(xa, za, new_y), surface_block)
 
             if ya + 4 > new_y > ya:
-                below_block = self._maps.level.getBlockAt((xa, ya - 1, za))
+                below_block = self._maps.level.getBlockAt(xa, ya - 1, za)
                 box = TransformBox((xa, ya, za), (1, new_y - ya, 1))
                 fillBlocks(box, below_block)
 

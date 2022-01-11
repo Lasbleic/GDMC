@@ -1,6 +1,6 @@
 from generation.generators import *
 from generation.structure import Structure
-from interfaceUtils import getBlock
+from interface import getBlock
 from utils import bernouilli, Direction
 from worldLoader import WorldSlice
 

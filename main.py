@@ -63,4 +63,4 @@ if __name__ == '__main__':
 
         stats: Stats = cProfile.run(f"main({time_opt}=1800, {debug_opt}=False)", sort=SortKey.CUMULATIVE)
     else:
-        main(debug_opt=False, time_opt=1800, visu_opt=False)
+        main(debug_opt=True, time_opt=1800, visu_opt=False)

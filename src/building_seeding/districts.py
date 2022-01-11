@@ -101,7 +101,7 @@ class Districts(Map):
             dc.center = argmin(dc.reps, lambda pos: euclidean(pos, means[label]))
         del dc
 
-        surface_to_build = X.shape[0] * .7
+        surface_to_build = (X.shape[0] * .7) / self.keep_rate
         surface_built = 0
         best_suitability = max({_.score for _ in self.districtClusters.values()})
         for dc2 in sorted(self.districtClusters.values(), key=lambda _: _.score, reverse=True):
