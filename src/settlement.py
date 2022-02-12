@@ -93,7 +93,7 @@ class Settlement:
         village_skeleton = VillageSkeleton('Flat_scenario', self._maps, self.districts, self._parcels)
         village_skeleton.grow(time_limit, do_visu)
 
-    def define_parcels(self):
+    def define_parcels(self, **kwargs):
         """
         Parcel extension from initialized parcels. Parcels are expended in place
         """
@@ -148,8 +148,8 @@ class Settlement:
             define_parcels_heights(p)
             # translate all parcels to absolute coordinates
 
-    def generate(self, terrain: TerrainMaps, print_stack=False):
-        self._road_network.generate(terrain, self.districts)
+    def generate(self):
+        self._road_network.generate(self._maps, self.districts)
 
         # try:
         self.__generate_road_signs()
@@ -172,12 +172,9 @@ class Settlement:
                 parcel_district: Town = argmin(self.districts.towns.values(), lambda s: euclidean(parcel.center, s.center))
                 # _palette = get_biome_palette(parcel.biome(terrain))
                 _palette = parcel_district.palette
-                _gen.generate(terrain, parcel.height_map, _palette)
+                _gen.generate(self._maps, parcel.height_map, _palette)
             except Exception:
-                if print_stack:
-                    traceback.print_exc()
-                else:
-                    print("FAIL")
+                traceback.print_exc()
         dump()
 
     @property

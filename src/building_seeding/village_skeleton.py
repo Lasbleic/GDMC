@@ -5,7 +5,7 @@ Village skeleton growth
 from typing import Tuple
 
 from building_seeding.building_pool import BuildingPool, BuildingType
-from building_seeding.districts import Districts
+from building_seeding.district.districts import Districts
 from building_seeding.interest import InterestSeeder
 from building_seeding.interest.pre_processing import VisuHandler
 from building_seeding.parcel import Parcel, MaskedParcel

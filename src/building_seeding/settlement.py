@@ -49,7 +49,7 @@ class Town:
 
     @staticmethod
     def genName() -> str:
-        from building_seeding.districts import CityNameGenerator
+        from building_seeding.district.districts import CityNameGenerator
         return CityNameGenerator().generate()
 
     @staticmethod

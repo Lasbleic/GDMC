@@ -75,7 +75,7 @@ class Districts(Map):
                     break
 
             if visualize:
-                plt.plot(range(2, max_clusters + 1), scores)
+                plt.plot(possible_k, scores)
                 plt.title("Silhouette score as a function of n_clusters")
                 plt.show()
 

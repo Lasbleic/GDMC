@@ -16,7 +16,7 @@ class ProcHouseGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         try:
             global current_struct
-            current_struct = Structure(self._box.origin, (self._box.width, self._box.height+10, self._box.length))
+            current_struct = Structure(self._box.origin - (1, 1, 1), (self._box.width + 2, self._box.height+10, self._box.length + 2))
             self._generate_main_building()
         except ValueError:
             print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))

@@ -1,6 +1,7 @@
 from math import floor
 from random import choice as rdChoice
 from random import randint, random
+from typing import Tuple
 
 import numpy as np
 from numpy import percentile
@@ -300,7 +301,6 @@ class CropGenerator(MaskedGenerator):
                 animal_count -= .1
 
     def _gen_crop_v1(self, height=None, palette=None):
-        x0, y0, z0 = self.origin
         min_height = int(percentile(height.flatten(), 20))
         max_height = int(percentile(height.flatten(), 80))
         self._mask &= (height >= min_height) & (height <= max_height)
@@ -309,29 +309,17 @@ class CropGenerator(MaskedGenerator):
         crop_type, max_age = rdChoice([(b.Carrots, 7), (b.Beetroots, 3), (b.Potatoes, 7), (b.Wheat, 7)])
         crop_age = randint(max_age // 4, 1 + max_age * 3 // 4)
 
-        # Irrigate the field by sampling dry positions until there is none
-        water_sources = set()
-        irrigated: ndarray = self._mask[:].astype(int)
-        spread = 4
-        while irrigated.sum():
-            dry = np.where(irrigated == 1)
-            new_water_index = np.random.randint(len(dry[0]))
-            x, z = dry[0][new_water_index], dry[1][new_water_index]
-            water_sources.add((x + x0, z + z0))
-            place_water_source(x + x0, height[x, z], z + z0, water_sources)
-            mask = (height == height[x, z])[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)]
-            irrigated[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)][mask] = 0
-
         # Place crops
         for x, y, z in self.surface_pos(height):
-            if (x, z) not in water_sources:
-                # farmland
-                setBlock(Point(x, z, y), f"farmland[moisture=7]")
-                # crop
-                crop_age = crop_age + random() - .5
-                int_crop_age = pos_bound(int(round(crop_age)), max_age)
-                crop_block = f"{crop_type}[age={int_crop_age}]"
-                setBlock(Point(x, z, y+1), crop_block)
+            # farmland
+            setBlock(Point(x, z, y), f"farmland[moisture=7]")
+            # crop
+            crop_age = crop_age + random() - .5
+            int_crop_age = pos_bound(int(round(crop_age)), max_age)
+            crop_block = f"{crop_type}[age={int_crop_age}]"
+            setBlock(Point(x, z, y+1), crop_block)
+
+        self._irrigate_field(height, 4)
 
     def _gen_harvested_crop(self, height_map, palette=None):
         # TODO: fix water sources
@@ -345,6 +333,43 @@ class CropGenerator(MaskedGenerator):
                 b = alpha.Farmland
             setBlock(Point(x, z, y), b)
         place_water_source(self.mean.x, y, self.mean.z)
+
+    def _irrigate_field(self, height_map, spread):
+        """
+        Irrigate the field by sampling dry positions until there is none
+        :param height_map: matrix of heights of the field
+        :param spread: max distance from water for crops to grow
+        """
+        x0, y0, z0 = self.origin
+        water_sources = set()
+        irrigated: ndarray = self._mask[:].astype(int)
+        irrigated[:] = 0
+        irrigated[1:-1, 1:-1] = 1  # make border points as irrigated so water won't spawn on them
+        irrigated = np.minimum(irrigated, self._mask[:].astype(int))
+        spread = 4
+
+        def sample_dry_pos() -> Position:
+            dry_pos = np.where(irrigated == 1)
+            index = np.random.randint(len(dry_pos[0]))
+            x, z = dry_pos[0][index], dry_pos[1][index]
+            y = height_map[x, z]
+            return x, y, z
+
+        while irrigated.sum():
+            x, y, z = sample_dry_pos()
+            ax, az = x + x0, z + z0
+            water_sources.add((ax, az))
+
+            p = Point(ax, az, y)
+            for dir in cardinal_directions(False):  # type: Direction
+                dpos: Point = p + dir.value
+                if dpos.y < y:  # Prevents overflowing to adjacent positions
+                    state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
+                    setBlock(dpos, state)
+            setBlock(p, alpha.Water)
+
+            mask = (height_map == height_map[x, z])[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)]
+            irrigated[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)][mask] = 0
 
     def __terraform(self, height_map):
         road_dir_x, road_dir_z = self.entry_direction.x, self.entry_direction.z
