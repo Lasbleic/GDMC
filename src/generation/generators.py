@@ -1,14 +1,13 @@
 from math import floor
 from random import choice as rdChoice
 from random import randint, random
-from typing import Tuple
 
 import numpy as np
+from gdpc import direct_interface
 from numpy import percentile
 from numpy.random import choice as npChoice
 
 from generation.building_palette import HousePalette
-from interface import runCommand, getBlock
 from utils import *
 from utils.nbt_structures import StructureNBT
 
@@ -245,16 +244,26 @@ class CropGenerator(MaskedGenerator):
             #     setBlock(pos, BlockAPI.blocks.DiamondBlock)
             return
         self._clear_trees(level)
-        self._sub_generator_function(height_map, palette)
+        if self._sub_generator_function == self._gen_animal_farm:
+            self._gen_animal_farm(height_map, palette, entities=level.entities)
+        else:
+            self._sub_generator_function(height_map, palette)
 
-    def _gen_animal_farm(self, height_map, palette, animal=None):
+    def _gen_animal_farm(self, height_map, palette, animal=None, entities=None):
         # type: (TerrainMaps, array, HousePalette, str) -> None
         # todo: add torches to surround the gate
         # todo: clean terrain within fences
+        from terrain.entity_manager import EntityManager
+        entities: EntityManager
         self.refine_mask()
         self.__terraform(height_map)
         if not animal:
-            animal = self._pick_animal()
+            if entities:
+                from terrain.entity_manager import get_most_populated_animal
+                animal = get_most_populated_animal(entities)
+            else:
+                animal = self._pick_animal()
+        print(f"Animal farm of type {animal}")
         fence_box = TransformBox(self.origin, (self.width, 1, self.length)).expand(-1, 0, -1)
         fence_block = BlockAPI.getFence(palette['door'])
         gate_pos, gate_dist, gate_block = None, 0, None
@@ -282,7 +291,7 @@ class CropGenerator(MaskedGenerator):
             y = height_map[x - self.origin.x, z - self.origin.z] + 1
             setBlock(Point(x, z, y), gate_block)
             for dir in (door_dir.rotate(), -door_dir.rotate()):  # type: Direction
-                if getBlock(dir.x, dir.y, dir.z).endswith(fence_block):
+                if direct_interface.getBlock(dir.x, dir.y, dir.z).endswith(fence_block):
                     place_torch(dir.x, dir.y + 1, dir.z)
 
         # place animals
@@ -292,10 +301,13 @@ class CropGenerator(MaskedGenerator):
             z = randint(fence_box.minz, fence_box.maxz - 1)
             y = height_map[x - self.origin.x, z - self.origin.z] + 1
             if self.is_masked(x, z, True) and not self.is_lateral(x, z):
-                command = f"summon {animal} {x} {y} {z}"
+                if entities:
+                    entity = entities.get_entity(animal, position=Position(x, z, absolute_coords=True))
+                else:
+                    entity = Entity(animal)
                 if bernouilli(.3):
-                    command += "{" + f"Age:{randint(-25000, -5000)}" + "}"
-                runCommand(command)
+                    entity["Age"] = randint(-25000, -5000)
+                entity.move_to((x, y, z))
                 animal_count -= 1
             else:
                 animal_count -= .1
@@ -319,6 +331,7 @@ class CropGenerator(MaskedGenerator):
             crop_block = f"{crop_type}[age={int_crop_age}]"
             setBlock(Point(x, z, y+1), crop_block)
 
+        dump()
         self._irrigate_field(height, 4)
 
     def _gen_harvested_crop(self, height_map, palette=None):
@@ -346,7 +359,6 @@ class CropGenerator(MaskedGenerator):
         irrigated[:] = 0
         irrigated[1:-1, 1:-1] = 1  # make border points as irrigated so water won't spawn on them
         irrigated = np.minimum(irrigated, self._mask[:].astype(int))
-        spread = 4
 
         def sample_dry_pos() -> Position:
             dry_pos = np.where(irrigated == 1)
@@ -356,20 +368,21 @@ class CropGenerator(MaskedGenerator):
             return x, y, z
 
         while irrigated.sum():
-            x, y, z = sample_dry_pos()
-            ax, az = x + x0, z + z0
+            rx, y_water, rz = sample_dry_pos()
+            ax, az = rx + x0, rz + z0
             water_sources.add((ax, az))
 
-            p = Point(ax, az, y)
+            p = Point(ax, az, y_water)
             for dir in cardinal_directions(False):  # type: Direction
-                dpos: Point = p + dir.value
-                if dpos.y < y:  # Prevents overflowing to adjacent positions
+                neighbour: Point = p + dir.value
+                y_crop = height_map[neighbour.x - x0, neighbour.z - z0]
+                if y_crop < y_water:  # Prevents overflowing to adjacent positions
                     state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
-                    setBlock(dpos, state)
+                    setBlock(neighbour, state)
             setBlock(p, alpha.Water)
 
-            mask = (height_map == height_map[x, z])[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)]
-            irrigated[max(0, x-spread):(x+spread+1), max(0, z-spread):(z+spread+1)][mask] = 0
+            mask = (height_map == y_water)[max(0, rx-spread):(rx+spread+1), max(0, rz-spread):(rz+spread+1)]
+            irrigated[max(0, rx-spread):(rx+spread+1), max(0, rz-spread):(rz+spread+1)][mask] = 0
 
     def __terraform(self, height_map):
         road_dir_x, road_dir_z = self.entry_direction.x, self.entry_direction.z
@@ -506,7 +519,7 @@ class WindmillGenerator(Generator):
         windmill_nbt.build(*box.origin)
         dump()
         # print(runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]'))
-        runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]')
+        direct_interface.runCommand(f'setblock {x} {y+4} {z-1} minecraft:redstone_wall_torch[facing=north, lit=true]')
 
 
 def place_street_lamp(x, y, z, material, h=0):
@@ -527,7 +540,7 @@ def place_water_source(x, y, z, protected_points=None):
     p = Point(x, z, y)
     for dir in cardinal_directions(False):  # type: Direction
         dpos = p + dir.value
-        if getBlock(*dpos.coords).split(':')[-1] not in ground_blocks:
+        if direct_interface.getBlock(*dpos.coords).split(':')[-1] not in ground_blocks:
             state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
             setBlock(dpos, state)
             if protected_points:
@@ -567,7 +580,7 @@ def place_sign(position: Point, material: str, direction: Point, **kwargs):
     state += 'Text4: \'{"text":"' + kwargs.get("Text4", "") + '"}\''
     state += "}"
     command = f"setblock {position.x} {position.y} {position.z} {state}"
-    runCommand(command)
+    direct_interface.runCommand(command)
 
 
 if __name__ == '__main__':

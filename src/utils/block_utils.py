@@ -1,34 +1,29 @@
-# plant_blocks = [BlockAPI.block.Sapling, BlockAPI.block.Web, BlockAPI.block.UnusedShrub, BlockAPI.block.TallGrass, BlockAPI.block.Shrub,
-#                 BlockAPI.block.DesertShrub2, BlockAPI.block.Flower, BlockAPI.block.Rose, BlockAPI.block.BrownMushroom,
-#                 BlockAPI.block.RedMushroom, BlockAPI.block.SugarCane, BlockAPI.block.BrewingStand, BlockAPI.block.TripwireHook,
-#                 BlockAPI.block.Tripwire, BlockAPI.block.FlowerPot, BlockAPI.block.TallFlowers, BlockAPI.block.Wood, BlockAPI.block.Leaves]
-#
-# water_blocks = [BlockAPI.block.Water, BlockAPI.block.WaterActive, BlockAPI.block.Ice]
 from itertools import product
+import random
 from typing import Iterable, Set, Callable, Tuple
 
-from gdmc_http_client_python.interface import globalinterface, runCommand
-globalinterface.setBuffering(True)
-from gdmc_http_client_python.worldLoader import WorldSlice
-from utils import Point, BoundingBox, ndarray, posarray, BuildArea, Singleton
+from gdpc import interface, worldLoader, direct_interface, lookup
 
+from .geometry_utils import Point, BoundingBox, ndarray, posarray, BuildArea, Singleton
+
+interface.globalinterface.setBuffering(True)
 alterated_pos = set()
 
 
 def setBlock(point: Point, blockstate: str, buffer_size=1000):
     if point not in BuildArea():
         return
-    res = globalinterface.setBlockBuffered(point.x, point.y, point.z, blockstate, buffer_size)
+    res = interface.globalinterface.placeBlockBuffered(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
 
 
 def dump():
     from utils import BuildArea
     setBlock(BuildArea().origin, BlockAPI.blocks.Bedrock, 0)
-    runCommand("kill @e[type=minecraft:item]")
+    direct_interface.runCommand("kill @e[type=minecraft:item]")
 
 
-def getBlockRelativeAt(world_slice: WorldSlice, x: int, y: int, z: int):
+def getBlockRelativeAt(world_slice: worldLoader.WorldSlice, x: int, y: int, z: int):
     """
     Get block with coords relative to the building area
     Parameters
@@ -795,6 +790,37 @@ water_blocks = {b.Water, b.Ice, b.FrostedIce, b.PackedIce, b.BlueIce}
 
 lava_blocks = {b.Lava}
 
+cube_ends = ['bricks', 'glass', 'ore', 'block', 'terracotta', 'wool', 'cobblestone', 'sandstone', 'hyphae', 'debris', 'granite', 'basalt', 'log', 'wood', 'concrete', 'planks', 'blackstone', 'diorite', 'andesite', 'dirt', 'stone', 'pillar', 'quartz']
+block_ends = {}
+for c in lookup.BLOCKS:
+    if '_' not in c: continue
+    e = c.split('_')[-1]
+    block_ends.setdefault(e, set()).add(c)
+
+cubes = list(set().union(*(block_ends[e] for e in cube_ends)))
+
+
+def random_block() -> str:
+    return random.choice(cubes)
+
+def get_material(blockstate: str) -> str:
+    for _ in ['minecraft:', '_stairs', '_slab', '_door', '_fence', '_gate']:
+        blockstate = blockstate.replace(_, '')
+    return blockstate
+
+def random_material(*material_block_lists) -> str:
+    materials_set = None
+
+    for block_list in material_block_lists:
+        block_list_materials = {get_material(_) for _ in block_list}
+        if materials_set is None:
+            materials_set = block_list_materials
+        else:
+            materials_set.intersection_update(block_list_materials)
+
+    materials = list(materials_set)
+    return random.choice(materials)
+
 
 def connected_component(source_point, connection_condition, early_stopping_condition=None, check_limits=True):
     # type: (Point, Callable[[Point, Point], bool], Callable[[Set], bool], bool) -> (Point, ndarray)
@@ -835,7 +861,7 @@ def clear_tree_at(terrain, point: Point) -> None:
 
 
 def place_torch(x, y, z):
-    if globalinterface.getBlock(x, y, z).endswith(":air"):
+    if direct_interface.getBlock(x, y, z).endswith(":air"):
         torch = BlockAPI.getTorch()
         setBlock(Point(x, z, y), torch)
 
@@ -852,7 +878,7 @@ def fillBlocks(box: BoundingBox, block: str, blocksToReplace: str or Iterable[st
         blocksToReplace = {blocksToReplace}
     for x, y, z, in box.positions:
         p = Point(x, z, y)
-        if not blocksToReplace or globalinterface.getBlock(x, y, z)[10:] in blocksToReplace:
+        if not blocksToReplace or direct_interface.getBlock(x, y, z)[10:] in blocksToReplace:
             setBlock(p, block)
 
 
@@ -867,7 +893,7 @@ def symmetric_copy(origin: Point, size: Point, destination: Point, x_sym=False, 
         destination_y = destination.y + ((size.y - dy) if y_sym else dy)
         destination_z = destination.z + ((size.z - dz) if z_sym else dz)
 
-        block = globalinterface.getBlock(*(origin + dp).coords, True)
+        block = direct_interface.getBlock(*(origin + dp).coords, True)
         if x_sym:
             block = block.replace("west", "tmp").replace("east", "west").replace("tmp", "east")
         if y_sym:

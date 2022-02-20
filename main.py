@@ -16,7 +16,6 @@ warnings.filterwarnings("ignore")
 this_path = str(__file__)  # path to this file
 this_path = sep.join(this_path.split(sep)[:-1])  # path to the directory where
 if not this_path: this_path = "."
-sys.path.insert(0, this_path + sep + 'gdmc_http_client_python')  # local dependency to gdmc_http
 sys.path.insert(0, this_path + sep + 'src')  # path to our code
 logging.basicConfig()
 

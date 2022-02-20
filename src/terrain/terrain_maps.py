@@ -1,11 +1,12 @@
-from terrain import RoadNetwork
+from gdpc import worldLoader
+
+from terrain import RoadNetwork, EntityManager
 from terrain.biomes import BiomeMap
 from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
 from terrain.tree_map import TreesMap
 from utils import BuildArea, BoundingBox, Position, dump
 from utils.geometry_utils import building_positions
-from worldLoader import WorldSlice
 
 
 class TerrainMaps:
@@ -13,7 +14,9 @@ class TerrainMaps:
     The Map class gather all the maps representing the Minecraft Map selected for the filter
     """
 
-    def __init__(self, level: WorldSlice, area: BuildArea):
+    def __init__(self, level: worldLoader.WorldSlice, area: BuildArea):
+        for k, hm in level.heightmaps.items():
+            level.heightmaps[k] = hm[:-1, :-1]
         self.level = level
         self.area: BuildArea = area
         from time import time
@@ -39,6 +42,8 @@ class TerrainMaps:
 
         t1 = time()
         print(f'Computed terrain maps in {t1 - t0}')
+
+        self.entities: EntityManager = EntityManager.from_world_slice(level)
 
     @property
     def width(self):
@@ -70,7 +75,7 @@ class TerrainMaps:
         print(f"OK: {str(area)}")
         print("Requesting level...")
         t0 = time()
-        level = WorldSlice(area.x, area.z, area.x + area.width - 1, area.z + area.length - 1)
+        level = worldLoader.WorldSlice(area.x, area.z, area.x + area.width, area.z + area.length)
         print(f"completed in {(time() - t0)}s")
         return TerrainMaps(level, area)
 
@@ -93,3 +98,5 @@ class TerrainMaps:
                 if old_level.getBlockAt(*coords) != new_level.getBlockAt(*coords):
                     setBlock(Point(pos.abs_x, pos.abs_z, y), old_level.getBlockAt(*coords))
         dump()
+
+        self.entities.reset()

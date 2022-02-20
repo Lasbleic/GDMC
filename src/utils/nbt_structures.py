@@ -2,7 +2,7 @@ from os import sep
 
 from nbt.nbt import TAG_Compound, NBTFile, TAG_String
 
-from interface import runCommand
+from gdpc import direct_interface
 from utils import Point, setBlock, BlockAPI, get_project_path
 
 b = BlockAPI.blocks
@@ -46,7 +46,7 @@ class StructureNBT:
             blockState = self.__palette[blockTag.get('state').value]
             if blockTag.get('nbt'):
                 blockState += self.parse_data(blockTag.get('nbt'))
-                runCommand(f"setblock {blockPoint.x} {blockPoint.y} {blockPoint.z} {blockState}")
+                direct_interface.runCommand(f"setblock {blockPoint.x} {blockPoint.y} {blockPoint.z} {blockState}")
             else:
                 setBlock(blockPoint, blockState)
 

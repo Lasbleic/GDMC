@@ -1,7 +1,8 @@
 from typing import Tuple, List, Dict
 
-from interface import runCommand
-from worldLoader import WorldSlice
+from gdpc import direct_interface, worldLoader
+
+from .geometry_utils import Direction
 
 
 __all__ = ['Entity', 'detect_entities']
@@ -33,7 +34,17 @@ class Entity:
             self.__summoned = True
         self.__special_args = {arg: str(val) for arg, val in entity_args.items()}
         if name:
-            self.__special_args["CustomName"] = '\'{"text": "' + name + '"}\''  # CustomName: '{"text": "CatName"}'
+            self.set_name(name)
+
+    def __setitem__(self, property, value):
+        self.__special_args[property] = value
+
+    def set_name(self, name: str):
+        """
+        Names the entity, ie adds the property: {CustomName: '{"text": "CatName"}'}
+        :param name: name
+        """
+        self["CustomName"] = '\'{"text": "' + name + '"}\''
 
     def __str__(self):
         return "type={}, x={}, y={}, z={}".format(self.entity_type, *self.position)
@@ -59,7 +70,7 @@ class Entity:
             cmd = "summon {} {} {} {} ".format(self.entity_type, *dest) + '{' + self.nbt_str + '}'
         self.__summoned = True
         self.position = dest
-        return runCommand(cmd)
+        return direct_interface.runCommand(cmd)
 
     def kill(self) -> None:
         """
@@ -69,7 +80,7 @@ class Entity:
         if self.__summoned:
             self.__summoned = False
             cmd = f"kill @e[{str(self)}, limit=1, sort=nearest]"
-            return runCommand(cmd)
+            return direct_interface.runCommand(cmd)
 
     def reset(self) -> None:
         """
@@ -81,7 +92,7 @@ class Entity:
             self.kill()
 
 
-def detect_entities(level: WorldSlice) -> List[Entity]:
+def detect_entities(level: worldLoader.WorldSlice) -> List[Entity]:
     """
     Detect world entities from detethe nbt file of the build area
     :param level: world slice
@@ -96,3 +107,25 @@ def detect_entities(level: WorldSlice) -> List[Entity]:
             entities.append(Entity(e_id, pos))
 
     return entities
+
+
+def get_item_frame_entity(item: str, facing: Direction = Direction.Top, invisible: bool = False, item_rotation: int = 0, **kwargs) -> Entity:
+    direction_to_facing_id = {
+        Direction.Bottom: 0,
+        Direction.Top: 1,
+        Direction.North: 2,
+        Direction.South: 3,
+        Direction.West: 4,
+        Direction.East: 5
+    }
+
+    entity_args = {
+        "Facing": direction_to_facing_id[facing],
+        "Item": '{id:"' f'{item}' '", Count:1}',
+        "Invisible": int(invisible),
+        "ItemRotation": item_rotation
+    }
+
+    kwargs.update(entity_args)
+
+    return Entity("item_frame", **kwargs)

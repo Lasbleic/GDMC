@@ -3,7 +3,7 @@ from typing import Iterable
 
 from numpy import array, asarray
 
-from interface import requestBuildArea
+from gdpc.interface import requestBuildArea
 from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
 from utils import ndarray
@@ -74,7 +74,10 @@ class Position(Point):
     Point with integer coordinates, represents a position in the Minecraft world. Holds x, y, z coordinates relative to the building area, that can be converted to MC coords with the xa and za properties
     """
 
-    def __new__(cls, x, z, y=0):
+    def __new__(cls, x, z, y=0, absolute_coords=False):
+        if absolute_coords:
+            x -= BuildArea().x
+            z -= BuildArea().z
         ix, iy, iz = int(round(x)), int(round(y)), int(round(z))
         return Point.__new__(cls, ix, iz, iy)
 
@@ -229,7 +232,7 @@ class BuildArea(metaclass=Singleton):
         XFROM, XTO, ZFROM, ZTO = 0, 3, 2, 5
         if build_area_json is None:
             try:
-                build_area_json = requestBuildArea()
+                build_area_json = list(requestBuildArea())
             except IOError:
                 print("Connection Error -> using empty BuildArea")
                 build_area_json = {XFROM: 0, XTO: 1, ZFROM: 0, ZTO: 1}

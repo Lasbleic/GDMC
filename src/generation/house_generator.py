@@ -1,8 +1,8 @@
+from gdpc import worldLoader
+
 from generation.generators import *
 from generation.structure import Structure
-from interface import getBlock
 from utils import bernouilli, Direction
-from worldLoader import WorldSlice
 
 global current_struct  # type: Structure
 
@@ -258,7 +258,7 @@ class _RoomSymbol(CardinalGenerator):
         def valid_pos(x: int, y: int, z: int) -> bool:
             if (x in (self._box.minx, self._box.maxx - 1) and z in (self._box.minz, self._box.maxz - 1)):
                 return False
-            block = getBlock(x, y, z)
+            block = direct_interface.getBlock(x, y, z)
             return all(_ not in block for _ in ("door", "air", "glass"))
 
         y = self._box.miny + 1
@@ -284,8 +284,8 @@ class _RoomSymbol(CardinalGenerator):
         else:
             orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - wall_vec + stair_vec
 
-        upper_material: str = BlockAPI.getStairs(palette['door'], facing=stair_dir.name.lower())
-        lower_material: str = BlockAPI.getStairs(palette['door'], facing=(-stair_dir).name.lower(), half='top')
+        upper_material: str = BlockAPI.getStairs(palette['roofAlt'], facing=stair_dir.name.lower())
+        lower_material: str = BlockAPI.getStairs(palette['roofAlt'], facing=(-stair_dir).name.lower(), half='top')
         for _ in range(4):
             stair_pos: Point = orig_pos + Point(0, 0, _) + (stair_vec * _)
             current_struct.set(stair_pos, upper_material, 13)
@@ -358,8 +358,8 @@ class _RoofSymbol(CardinalGenerator):
                 current_struct.fill(south_box.translate(dy=-1), palette.get_roof_block('top', 'north'), 2)
                 wall1, tmp = attic_box.split(dx=1)
                 _, wall2 = tmp.split(dx=-1)
-                current_struct.fill(wall1, "bone_block[axis=y]", 6)
-                current_struct.fill(wall2, "bone_block[axis=y]", 6)
+                current_struct.fill(wall1, palette['wallAlt'], 6)
+                current_struct.fill(wall2, palette['wallAlt'], 6)
             else:
                 current_struct.fill(attic_box, palette.get_structure_block('z'), 8)
                 attic_box.expand(-1, 0, -1, inplace=True)
@@ -385,8 +385,8 @@ class _RoofSymbol(CardinalGenerator):
                 current_struct.fill(east_box.translate(dy=-1), palette.get_roof_block('top', 'west'), 2)
                 wall1, tmp = attic_box.split(dz=1)
                 _, wall2 = tmp.split(dz=-1)
-                current_struct.fill(wall1, "bone_block[axis=y]", 6)
-                current_struct.fill(wall2, "bone_block[axis=y]", 6)
+                current_struct.fill(wall1, palette['wallAlt'], 6)
+                current_struct.fill(wall2, palette['wallAlt'], 6)
             else:
                 current_struct.fill(attic_box, palette.get_structure_block('x'), 8)
                 attic_box.expand(-1, 0, -1, inplace=True)
@@ -473,12 +473,12 @@ class _WallSymbol(Generator):
                 current_struct.fill(box_win, palette['window'], 7)
                 self.children.append(_WallSymbol(box_wal))
 
-    def generate_door(self, door_dir, door_x, door_z, level: WorldSlice, palette: HousePalette):
+    def generate_door(self, door_dir, door_x, door_z, level: worldLoader.WorldSlice, palette: HousePalette):
         dump()
         box = self._box
         entry = Point(door_x, door_z)
         if self.length > 1:
-            is_win = [int(getBlock(box.minx, box.miny+1, box.minz+_).endswith(palette['window'])) for _ in range(box.length)]
+            is_win = [int(direct_interface.getBlock(box.minx, box.miny+1, box.minz+_).endswith(palette['window'])) for _ in range(box.length)]
             if sum(is_win) == 0: is_win = [0] + [1 for _ in range(len(is_win)-2)] + [0]
             door_val = [euclidean(entry, Point(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
             # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
@@ -490,7 +490,7 @@ class _WallSymbol(Generator):
                 door_box.expand(Direction.of(dz=1), inplace=True)
             DoorGenerator(door_box, door_dir).generate(level, palette=palette)
         else:
-            is_win = [int(getBlock(box.minx+_, box.miny+1, box.minz).endswith(palette['window'])) for _ in range(box.width)]
+            is_win = [int(direct_interface.getBlock(box.minx+_, box.miny+1, box.minz).endswith(palette['window'])) for _ in range(box.width)]
             if sum(is_win) == 0: is_win = [0] + [1 for _ in range(len(is_win)-2)] + [0]
             door_val = [euclidean(entry, Point(box.minx+_, box.minz)) if is_win[_] or not sum(is_win) else 1000. for _ in range(box.width)]
             door_x = argmin(door_val)

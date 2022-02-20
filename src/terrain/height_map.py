@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import cv2
 
-from gdmc_http_client_python.worldLoader import WorldSlice
+from gdpc.worldLoader import WorldSlice
 from utils import BuildArea, ground_blocks, water_blocks, lava_blocks, getBlockRelativeAt
 from terrain.map import Map
 from utils import Point

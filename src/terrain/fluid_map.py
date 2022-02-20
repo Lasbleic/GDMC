@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
-from gdmc_http_client_python.worldLoader import WorldSlice
+from gdpc.worldLoader import WorldSlice
 from utils import Point, cardinal_directions, water_blocks, lava_blocks, \
     BuildArea, getBlockRelativeAt
 import parameters

@@ -3,7 +3,7 @@ from itertools import product
 
 from numpy import zeros, array
 
-from gdmc_http_client_python.worldLoader import WorldSlice
+from gdpc.worldLoader import WorldSlice
 from terrain.map import Map
 from utils import BuildArea, Point, Position
 

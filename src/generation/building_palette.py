@@ -1,13 +1,19 @@
-from random import choice
+import random
+
+from gdpc import lookup
 
 from utils import BlockAPI
+from utils.block_utils import random_block, random_material
 
 b = BlockAPI.blocks
 
 
 class HousePalette(dict):
+    __material_main: str  # roofs
+    __material_alt: str  # under roofs, inside stairs
+    __wall_block_alt: str  # roofed wall
 
-    def __init__(self, base_bloc, floor_block, struct_block, wall_block, window_block, roof_type, roof_block, door_mat):
+    def __init__(self, base_bloc, floor_block, struct_block, wall_block, window_block, roof_type, roof_block, door_mat, roof_alt=None, wall_alt=None):
         super(HousePalette, self).__init__()
         self['roofType'] = roof_type
         self['roofBlock'] = roof_block
@@ -17,18 +23,22 @@ class HousePalette(dict):
         self['window'] = window_block
         self['floor'] = floor_block
         self['door'] = door_mat
+        self['roofAlt'] = roof_alt if roof_alt else roof_block
+        self['wallAlt'] = wall_alt if wall_alt else wall_block
 
-    def get_roof_block(self, facing, direction=None):
+    def get_roof_block(self, facing, direction=None, alternate=None):
         if direction is None:
             roof_block = BlockAPI.getSlab(self['roofBlock'], type=facing)
         elif self['roofType'] == 'flat':
             roof_block = self['roofBlock']
         else:
-            roof_block = BlockAPI.getStairs(self['roofBlock'], half=facing, facing=direction)
+            if alternate is None:
+                alternate = (facing == 'top')
+            roof_block = BlockAPI.getStairs(self['roofAlt'] if alternate else self['roofBlock'], half=facing, facing=direction)
         return roof_block
 
     def get_structure_block(self, axis):
-        block = self['structure']
+        block = self['structure'].replace('minecraft:', '')
         from utils.block_utils import BlockStateDict
         blockstates = BlockStateDict()
         if 'axis' in blockstates[block]:
@@ -179,7 +189,28 @@ def get_biome_palette(biome):
         if len(palette_options) == 0:
             return palette_options[0]
         else:
-            return choice(palette_options)
+            return random.choice(palette_options)
     except Exception:
         print("Exception occurred when getting palette for biome: {}".format(biome))
         return oak_palette1
+
+
+def random_palette() -> HousePalette:
+    """
+    Generates a random palette, mostly for debug purposes, could be nice to have a cool palette generator
+    :return: block palette to generate buildings
+    """
+    roof_type = random.choice(['gable'] * 3 + ['flat'])
+    roof_block = random_material(lookup.SLABS, lookup.STAIRS) if roof_type == 'gable' else random_block()
+    return HousePalette(
+        random_block(),
+        random_block(),
+        random_block(),
+        random_block(),
+        random.choice(lookup.GLASS),
+        roof_type,
+        roof_block,
+        random_material(lookup.DOORS, lookup.FENCES, lookup.GATES),
+        random_material(lookup.STAIRS),
+        random_block()
+    )

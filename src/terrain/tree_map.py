@@ -1,5 +1,6 @@
 from typing import Tuple
 
+from gdpc import worldLoader
 import numba
 from numba import prange, i8
 from numba.core.types import UniTuple, Set as nbSet
@@ -8,11 +9,10 @@ from terrain import HeightMap
 from terrain.map import Map
 from utils import *
 from utils.misc_objects_functions import _in_limits
-from worldLoader import WorldSlice
 
 
 class TreesMap(Map):
-    def __init__(self, level: WorldSlice, height: HeightMap):
+    def __init__(self, level: worldLoader.WorldSlice, height: HeightMap):
         values, trees = _process(level, height)
         super().__init__(values)
         self.__trees: List[List, Tuple[int, int, int]] = trees
@@ -27,7 +27,7 @@ class TreesMap(Map):
 
 
 # @numba.jit()
-def _detect_trunks(level: WorldSlice, height: HeightMap):
+def _detect_trunks(level: worldLoader.WorldSlice, height: HeightMap):
     # detect trunks
     first_elt = UniTuple(i8, 2)(height.width, height.length)
     # trunks = nbSet(UniTuple(i8, 2))(first_elt)
@@ -45,12 +45,11 @@ def _detect_trunks(level: WorldSlice, height: HeightMap):
     return trunks
 
 
-def _process(level: WorldSlice, height: HeightMap):
+def _process(level: worldLoader.WorldSlice, height: HeightMap):
     width, length = height.width, height.length
     values = zeros((width, length))
 
     trunks = _detect_trunks(level, height)
-    print(len(trunks))
 
     # Initialize tree structure & propagation
     tree_blocks: List[UniTuple(i8, 2)] = []
@@ -85,7 +84,6 @@ def _process(level: WorldSlice, height: HeightMap):
                         marked_blocks.add(possible_tree_point)
                         tree_blocks.append((*possible_tree_point, tree_index))
 
-    print(sum(len(tree) for tree in trees))
     return values, trees
 
 
