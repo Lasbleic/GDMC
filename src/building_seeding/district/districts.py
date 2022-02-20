@@ -1,5 +1,6 @@
+import itertools
 import random
-from typing import List, Dict
+from typing import Dict
 
 import numba
 import numpy as np
@@ -11,12 +12,11 @@ from sklearn.preprocessing import StandardScaler
 
 from building_seeding.settlement import DistrictCluster, Town
 from terrain import TerrainMaps, ObstacleMap
-from terrain.map import Map
-from utils import Point, product, full, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position
+from utils import Point, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position, PointArray
 from utils.misc_objects_functions import argmax, argmin, _in_limits, Singleton
 
 
-class Districts(Map):
+class Districts(PointArray):
     """
     Districts construction -> partitions the build area and select zones that will become settlements.
     Was implemented to add structure to large inputs
@@ -27,17 +27,19 @@ class Districts(Map):
     ~2/3 = outskirts
     more = countryside
     """
-    def __init__(self, area: BuildArea):
-        super().__init__(np.ones((area.width, area.length)))
-        self.keep_rate: float  # fraction of positions used in the clustering
-        self.__scaler = StandardScaler()
-        self.__coord_scale = 1
-        self.district_map: Map
-        self.seeders: Dict[int, DistrictSeeder] = {}
-        self.name_gen = CityNameGenerator()
-        self.town_indexes = []  # indexes of built districts
-        self.towns = {}
-        self.districtClusters: Dict[int, DistrictCluster] = {}
+    def __new__(cls, area: BuildArea):
+        obj = super().__new__(cls, np.ones((area.width, area.length)))
+        obj.keep_rate: float  # fraction of positions used in the clustering
+        obj.__scaler = StandardScaler()
+        obj.__coord_scale = 1
+        obj.district_map: PointArray
+        obj.seeders: Dict[int, DistrictSeeder] = {}
+        obj.name_gen = CityNameGenerator()
+        obj.town_indexes = []  # indexes of built districts
+        obj.towns = {}
+        obj.districtClusters: Dict[int, DistrictCluster] = {}
+
+        return obj
 
     def build(self, maps: TerrainMaps, **kwargs):
         visualize = kwargs.get("visualize", False)
@@ -127,7 +129,7 @@ class Districts(Map):
         n_samples = min(1e4, width * length)  # target number of samples
         self.keep_rate = n_samples / (width * length)  # resulting portion of positions taken into account
         raw_samples = [[x, z, Districts.suitability(x, z, maps)]
-                       for x, z in product(range(width), range(length))
+                       for x, z in itertools.product(range(width), range(length))
                        if bernouilli(self.keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)]  # list (x, z, score)
         threshold_score = np.median([_[-1] for _ in raw_samples])  # median score of the samples
         raw_samples = list(
@@ -178,7 +180,7 @@ class Districts(Map):
         propagation.fit(samples[:, :2], clusters.labels_)
 
         # all locations of the build area in a flattened array
-        distribution = np.array([[x, z] for x, z in product(range(self.width), range(self.length))])
+        distribution = np.array([[x, z] for x, z in itertools.product(range(self.width), range(self.length))])
 
         # cluster index for each of these locations
         neighborhood = propagation.predict(distribution)  # type: np.ndarray
@@ -190,8 +192,8 @@ class Districts(Map):
         values = np.vectorize(lambda label: label_score[label])(neighborhood)
 
         # store results
-        self.district_map = Map(neighborhood)
-        self.score_map = Map(values)
+        self.district_map = PointArray(neighborhood)
+        self.score_map = PointArray(values)
 
         density_matrix = None
         for town_index in self.town_indexes:
@@ -259,7 +261,7 @@ class CityNameGenerator(metaclass=Singleton):
     Sample names are split around consonants and vowels and linked in a markov chain.
     This same Markov Chain is explored to generate new names
     """
-    INPUT = ["Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Montpellier", "Strasbourg", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", "Saint-Etienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nimes", "Villeurbanne", "Saint-Denis", "Le Mans", "Aix-en-Provence", "Clermont-Ferrand", "Brest", "Tours", "Limoges", "Amiens", "Annecy", "Perpignan", "Boulogne-Billancourt", "Metz", "Besançon", "Orleans", "Saint-Denis", "Argenteuil", "Mulhouse", "Rouen", "Montreuil", "Caen", "Saint-Paul", "Nancy", "Noumea", "Tourcoing", "Roubaix", "Nanterre", "Vitry-sur-Seine", "Avignon", "Creteil", "Dunkerque", "Poitiers", "Asnieres-sur-Seine", "Versailles", "Colombes", "Saint-Pierre", "Aubervilliers", "Aulnay-sous-Bois", "Courbevoie", "Fort-de-France", "Cherbourg-en-Cotentin", "Rueil-Malmaison", "Pau", "Champigny-sur-Marne", "Le Tampon", "Beziers", "Calais", "La Rochelle", "Saint-Maur-des-Fosses", "Antibes", "Cannes", "Mamoudzou", "Colmar", "Merignac", "Saint-Nazaire", "Drancy", "Issy-les-Moulineaux", "Ajaccio", "Noisy-le-Grand", "Bourges", "La Seyne-sur-Mer", "Venissieux", "Levallois-Perret", "Quimper", "Cergy", "Valence", "Villeneuve-d'Ascq", "Antony", "Pessac", "Troyes", "Neuilly-sur-Seine", "Clichy", "Montauban", "Chambery", "Ivry-sur-Seine", "Niort", "Cayenne", "Lorient", "Sarcelles", "Villejuif", "Hyeres", "Saint-Andre", "Saint-Quentin", "Les Abymes", "Le Blanc-Mesnil", "Pantin", "Maisons-Alfort", "Beauvais", "epinay-sur-Seine", "evry", "Chelles", "Cholet", "Meaux", "Fontenay-sous-Bois", "La Roche-sur-Yon", "Saint-Louis", "Narbonne", "Bondy", "Vannes", "Frejus", "Arles", "Clamart", "Sartrouville", "Bobigny", "Grasse", "Sevran", "Corbeil-Essonnes", "Laval", "Belfort", "Albi", "Vincennes", "evreux", "Martigues", "Cagnes-sur-Mer", "Bayonne", "Montrouge", "Suresnes", "Saint-Ouen", "Massy", "Charleville-Mezieres", "Brive-la-Gaillarde", "Vaulx-en-Velin", "Carcassonne", "Saint-Herblain", "Saint-Malo", "Blois", "Aubagne", "Chalon-sur-Saone", "Meudon", "Chalons-en-Champagne", "Puteaux", "Saint-Brieuc", "Saint-Priest", "Salon-de-Provence", "Mantes-la-Jolie", "Rosny-sous-Bois", "Gennevilliers", "Livry-Gargan", "Alfortville", "Bastia", "Valenciennes", "Choisy-le-Roi", "Chateauroux", "Sete", "Saint-Laurent-du-Maroni", "Noisy-le-Sec", "Istres", "Garges-les-Gonesse", "Boulogne-sur-Mer", "Caluire-et-Cuire", "Talence", "Angouleme", "La Courneuve", "Le Cannet", "Castres", "Wattrelos", "Bourg-en-Bresse", "Gap", "Arras", "Bron", "Thionville", "Tarbes", "Draguignan", "Compiegne", "Le Lamentin", "Douai", "Saint-Germain-en-Laye", "Melun", "Reze", "Gagny", "Stains", "Ales", "Bagneux", "Marcq-en-Baroeul", "Chartres", "Colomiers", "Anglet", "Saint-Martin-d'Heres", "Montelimar", "Pontault-Combault", "Saint-Benoit", "Saint-Joseph", "Joue-les-Tours", "Chatillon", "Poissy", "Montluçon", "Villefranche-sur-Saone", "Villepinte", "Savigny-sur-Orge", "Bagnolet", "Sainte-Genevieve-des-Bois", "echirolles", "La Ciotat", "Creil", "Le Port", "Annemasse", "Saint-Martin ", "Conflans-Sainte-Honorine", "Thonon-les-Bains", "Saint-Chamond", "Roanne", "Neuilly-sur-Marne", "Auxerre", "Tremblay-en-France", "Saint-Raphaël", "Franconville", "Haguenau", "Nevers", "Vitrolles", "Agen", "Le Perreux-sur-Marne", "Marignane", "Saint-Leu", "Romans-sur-Isere", "Six-Fours-les-Plages", "Chatenay-Malabry", "Macon", "Montigny-le-Bretonneux", "Palaiseau", "Cambrai", "Sainte-Marie", "Meyzieu", "Athis-Mons", "La Possession", "Villeneuve-Saint-Georges", "Matoury", "Trappes", "Koungou", "Les Mureaux", "Houilles", "epinal", "Plaisir", "Dumbea", "Chatellerault", "Schiltigheim", "Villenave-d'Ornon", "Nogent-sur-Marne", "Lievin", "Baie-Mahault", "Chatou", "Goussainville", "Dreux", "Viry-Chatillon", "L'Hay-les-Roses", "Vigneux-sur-Seine", "Charenton-le-Pont", "Mont-de-Marsan", "Saint-Medard-en-Jalles", "Pontoise", "Cachan", "Lens", "Rillieux-la-Pape", "Savigny-le-Temple", "Maubeuge", "Clichy-sous-Bois", "Dieppe", "Vandoeuvre-les-Nancy", "Malakoff", "Perigueux", "Aix-les-Bains", "Vienne", "Sotteville-les-Rouen", "Saint-Laurent-du-Var", "Saint-etienne-du-Rouvray", "Soissons", "Saumur", "Vierzon", "Alençon", "Vallauris", "Aurillac", "Le Grand-Quevilly", "Montbeliard", "Saint-Dizier", "Vichy", "Biarritz", "Orly", "Bruay-la-Buissiere", "Le Creusot"]
+    INPUT = ["Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Montpellier", "Strasbourg", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", "Saint-Etienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nimes", "Villeurbanne", "Saint-Denis", "Le Mans", "Aix-en-Provence", "Clermont-Ferrand", "Brest", "Tours", "Limoges", "Amiens", "Annecy", "Perpignan", "Boulogne-Billancourt", "Metz", "Besançon", "Orleans", "Saint-Denis", "Argenteuil", "Mulhouse", "Rouen", "Montreuil", "Caen", "Saint-Paul", "Nancy", "Noumea", "Tourcoing", "Roubaix", "Nanterre", "Vitry-sur-Seine", "Avignon", "Creteil", "Dunkerque", "Poitiers", "Asnieres-sur-Seine", "Versailles", "Colombes", "Saint-Pierre", "Aubervilliers", "Aulnay-sous-Bois", "Courbevoie", "Fort-de-France", "Cherbourg-en-Cotentin", "Rueil-Malmaison", "Pau", "Champigny-sur-Marne", "Le Tampon", "Beziers", "Calais", "La Rochelle", "Saint-Maur-des-Fosses", "Antibes", "Cannes", "Mamoudzou", "Colmar", "Merignac", "Saint-Nazaire", "Drancy", "Issy-les-Moulineaux", "Ajaccio", "Noisy-le-Grand", "Bourges", "La Seyne-sur-Mer", "Venissieux", "Levallois-Perret", "Quimper", "Cergy", "Valence", "Villeneuve-d'Ascq", "Antony", "Pessac", "Troyes", "Neuilly-sur-Seine", "Clichy", "Montauban", "Chambery", "Ivry-sur-Seine", "Niort", "Cayenne", "Lorient", "Sarcelles", "Villejuif", "Hyeres", "Saint-Andre", "Saint-Quentin", "Les Abymes", "Le Blanc-Mesnil", "Pantin", "Maisons-Alfort", "Beauvais", "epinay-sur-Seine", "evry", "Chelles", "Cholet", "Meaux", "Fontenay-sous-Bois", "La Roche-sur-Yon", "Saint-Louis", "Narbonne", "Bondy", "Vannes", "Frejus", "Arles", "Clamart", "Sartrouville", "Bobigny", "Grasse", "Sevran", "Corbeil-Essonnes", "Laval", "Belfort", "Albi", "Vincennes", "Evreux", "Martigues", "Cagnes-sur-Mer", "Bayonne", "Montrouge", "Suresnes", "Saint-Ouen", "Massy", "Charleville-Mezieres", "Brive-la-Gaillarde", "Vaulx-en-Velin", "Carcassonne", "Saint-Herblain", "Saint-Malo", "Blois", "Aubagne", "Chalon-sur-Saone", "Meudon", "Chalons-en-Champagne", "Puteaux", "Saint-Brieuc", "Saint-Priest", "Salon-de-Provence", "Mantes-la-Jolie", "Rosny-sous-Bois", "Gennevilliers", "Livry-Gargan", "Alfortville", "Bastia", "Valenciennes", "Choisy-le-Roi", "Chateauroux", "Sete", "Saint-Laurent-du-Maroni", "Noisy-le-Sec", "Istres", "Garges-les-Gonesse", "Boulogne-sur-Mer", "Caluire-et-Cuire", "Talence", "Angouleme", "La Courneuve", "Le Cannet", "Castres", "Wattrelos", "Bourg-en-Bresse", "Gap", "Arras", "Bron", "Thionville", "Tarbes", "Draguignan", "Compiegne", "Le Lamentin", "Douai", "Saint-Germain-en-Laye", "Melun", "Reze", "Gagny", "Stains", "Ales", "Bagneux", "Marcq-en-Baroeul", "Chartres", "Colomiers", "Anglet", "Saint-Martin-d'Heres", "Montelimar", "Pontault-Combault", "Saint-Benoit", "Saint-Joseph", "Joue-les-Tours", "Chatillon", "Poissy", "Montluçon", "Villefranche-sur-Saone", "Villepinte", "Savigny-sur-Orge", "Bagnolet", "Sainte-Genevieve-des-Bois", "echirolles", "La Ciotat", "Creil", "Le Port", "Annemasse", "Saint-Martin ", "Conflans-Sainte-Honorine", "Thonon-les-Bains", "Saint-Chamond", "Roanne", "Neuilly-sur-Marne", "Auxerre", "Tremblay-en-France", "Saint-Raphael", "Franconville", "Haguenau", "Nevers", "Vitrolles", "Agen", "Le Perreux-sur-Marne", "Marignane", "Saint-Leu", "Romans-sur-Isere", "Six-Fours-les-Plages", "Chatenay-Malabry", "Macon", "Montigny-le-Bretonneux", "Palaiseau", "Cambrai", "Sainte-Marie", "Meyzieu", "Athis-Mons", "La Possession", "Villeneuve-Saint-Georges", "Matoury", "Trappes", "Koungou", "Les Mureaux", "Houilles", "epinal", "Plaisir", "Dumbea", "Chatellerault", "Schiltigheim", "Villenave-d'Ornon", "Nogent-sur-Marne", "Lievin", "Baie-Mahault", "Chatou", "Goussainville", "Dreux", "Viry-Chatillon", "L'Hay-les-Roses", "Vigneux-sur-Seine", "Charenton-le-Pont", "Mont-de-Marsan", "Saint-Medard-en-Jalles", "Pontoise", "Cachan", "Lens", "Rillieux-la-Pape", "Savigny-le-Temple", "Maubeuge", "Clichy-sous-Bois", "Dieppe", "Vandoeuvre-les-Nancy", "Malakoff", "Perigueux", "Aix-les-Bains", "Vienne", "Sotteville-les-Rouen", "Saint-Laurent-du-Var", "Saint-etienne-du-Rouvray", "Soissons", "Saumur", "Vierzon", "Alençon", "Vallauris", "Aurillac", "Le Grand-Quevilly", "Montbeliard", "Saint-Dizier", "Vichy", "Biarritz", "Orly", "Bruay-la-Buissiere", "Le Creusot"]
 
     def __init__(self):
         self.beg_symbol = set()

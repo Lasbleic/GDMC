@@ -4,8 +4,7 @@ from itertools import product
 from numpy import zeros, array
 
 from gdpc.worldLoader import WorldSlice
-from terrain.map import Map
-from utils import BuildArea, Point, Position
+from utils import BuildArea, Point, Position, PointArray
 
 
 class Biomes(Enum):
@@ -67,9 +66,9 @@ class Biomes(Enum):
         return self.value[1]
 
 
-class BiomeMap(Map):
+class BiomeMap(PointArray):
 
-    def __init__(self, level: WorldSlice, area: BuildArea):
+    def __new__(cls, level: WorldSlice, area: BuildArea):
         # biomes
         values = zeros((level.chunkRect[2] * 4, level.chunkRect[3] * 4))
         for chunkX, chunkZ in product(range(level.chunkRect[2]), range(level.chunkRect[3])):
@@ -78,8 +77,9 @@ class BiomeMap(Map):
             x0, z0 = chunkX * 4, chunkZ * 4
             values[x0: (x0+4), z0: (z0+4)] = array(biomes).reshape((4, 4), order='F')
 
-        super().__init__(values)
-        self.__offset = Point(area.x % 16, area.z % 16)
+        obj = super().__new__(cls, values)
+        obj.__offset = Point(area.x % 16, area.z % 16)
+        return obj
 
     def __getitem__(self, item):
         if not isinstance(item, Point):

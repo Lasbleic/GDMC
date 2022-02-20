@@ -1,8 +1,9 @@
 """
 Village skeleton growth
 """
-
-from typing import Tuple
+import itertools
+import time
+from typing import List, Set, Dict, Tuple
 
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.district.districts import Districts
@@ -72,13 +73,13 @@ class VillageSkeleton:
         map_plots = VisuHandler(do_visu, self.maps, self.__parcel_list)
         build_iter = self.building_iterator
 
-        t0 = time()
+        t0 = time.time()
         for building_type in build_iter:
 
             print(f"\nTrying to place {building_type.name} - #{build_iter.count} out of {build_iter.size}")
 
             # Village Element Seeding Process
-            self.__interest.reuse_existing_parcel(building_type)  # If succeeds should update building_type in place
+            # self.__interest.reuse_existing_parcel(building_type)  # If succeeds should update building_type in place
             building_position = self.__interest.get_seed(building_type)
 
             if building_position is None:
@@ -93,7 +94,7 @@ class VillageSkeleton:
             map_plots.handle_new_parcel(self.__interest[building_type])  # does nothing if not do_visu
             if cycles:
                 self.__handle_new_road_cycles(cycles)
-            if time_limit and time() - t0 >= time_limit:
+            if time_limit and time.time() - t0 >= time_limit:
                 print("Time limit reached: early stopping parcel seeding")
                 break
 
@@ -116,7 +117,7 @@ class CityBlock(Bounds):
         return net.get_distance(dst_point) > 0
 
     def parcels(self, btype: BuildingType) -> List[Parcel]:
-        def subdivide(_pos: Position, _mask: posarray, _ndiv: int) -> List[Tuple[Position, ndarray]]:
+        def subdivide(_pos: Position, _mask: ndarray, _ndiv: int) -> List[Tuple[Position, ndarray]]:
             if _ndiv == 1:
                 return [(_pos, _mask)]
 
@@ -159,7 +160,7 @@ def cycle_preprocess(road_points: Set[Point]) -> Set[Point]:
     # Build graph associated to the road paths
     graph: Dict[Point, Set[Point]] = {node: set() for node in road_points}  # graph as adjacency sets
     for node in road_points:
-        for dx, dz in filter(any, product(range(-1, 2), range(-1, 2))):
+        for dx, dz in filter(any, itertools.product(range(-1, 2), range(-1, 2))):
             neighbour = node + Point(dx, dz)
             if neighbour in road_points:
                 graph[node].add(neighbour)

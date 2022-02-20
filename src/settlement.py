@@ -1,10 +1,12 @@
+import itertools
 import logging
 import traceback
 from math import exp
 from random import choice
+from typing import List, Dict
 
-from numpy import percentile
-from numpy.random import geometric
+import numpy as np
+from sortedcontainers import SortedList
 
 from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType
 from generation.building_palette import get_biome_palette
@@ -66,7 +68,7 @@ class Settlement:
 
     def init_road_network(self):
         max_road_count = max(1, min(self.limits.width, self.limits.length) // MEAN_ROAD_COVERED_SURFACE)
-        road_count = min(geometric(1. / max_road_count), max_road_count * 3 // 2)
+        road_count = min(np.random.geometric(1. / max_road_count), max_road_count * 3 // 2)
         logging.debug('New settlement will have {} external connections B)'.format(road_count))
         out_connections = [Point(self.limits.width//2, self.limits.length//2)]
 
@@ -125,8 +127,8 @@ class Settlement:
         # set parcels heights
         def define_parcels_heights(__parcel):
             # type: (Parcel) -> None
-            min_y = percentile(__parcel.height_map, 25)
-            max_y = percentile(__parcel.height_map, 75)
+            min_y = np.percentile(__parcel.height_map, 25)
+            max_y = np.percentile(__parcel.height_map, 75)
             road_y = self._maps.height_map[__parcel.entry_point]
             y = road_y
             if road_y > max_y:
@@ -195,7 +197,7 @@ class Settlement:
         smooth_height = cv2.medianBlur(base_height, 7)
 
         # Compute constructable locations: road net + parcels
-        mask = zeros(base_height.shape)
+        mask = np.zeros(base_height.shape)
 
         for pos in self._road_network.road_blocks:
             x0 = max(pos.x - 2, 0)
@@ -215,7 +217,7 @@ class Settlement:
         mask[self._maps.fluid_map.water > 0] = 0  # discount water
 
         for x, z in filter(lambda u: mask[u] and base_height[u] != smooth_height[u],
-                           product(range(self.limits.width), range(self.limits.length))):
+                           itertools.product(range(self.limits.width), range(self.limits.length))):
             xa = x + self.limits.x
             za = z + self.limits.z
             ya = base_height[x, z]
@@ -244,7 +246,7 @@ class Settlement:
             return arr.sum() - 1
 
         def get_neighbour(p: Point):
-            for dx, dz in product(range(-1, 2), range(-1, 2)):
+            for dx, dz in itertools.product(range(-1, 2), range(-1, 2)):
                 if self._maps.in_limits(p + Point(dx, dz), False) and road_map[p.x + dx, p.z + dz]:
                     return p + Point(dx, dz)
 

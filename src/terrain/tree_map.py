@@ -1,22 +1,24 @@
-from typing import Tuple
+from typing import Tuple, List
 
 from gdpc import worldLoader
 import numba
 from numba import prange, i8
 from numba.core.types import UniTuple, Set as nbSet
+import numpy as np
 
 from terrain import HeightMap
-from terrain.map import Map
 from utils import *
 from utils.misc_objects_functions import _in_limits
 
 
-class TreesMap(Map):
-    def __init__(self, level: worldLoader.WorldSlice, height: HeightMap):
+class TreesMap(PointArray):
+    def __new__(cls, level: worldLoader.WorldSlice, height: HeightMap):
         values, trees = _process(level, height)
-        super().__init__(values)
-        self.__trees: List[List, Tuple[int, int, int]] = trees
-        self.__origin = Point(level.rect[0], level.rect[1])
+        obj = super().__new__(cls, values)
+        obj.__trees: List[List, Tuple[int, int, int]] = trees
+        obj.__origin = Point(level.rect[0], level.rect[1])
+
+        return obj
 
     def remove_tree_at(self, position: Point):
         tree_index = int(self[position])
@@ -47,7 +49,7 @@ def _detect_trunks(level: worldLoader.WorldSlice, height: HeightMap):
 
 def _process(level: worldLoader.WorldSlice, height: HeightMap):
     width, length = height.width, height.length
-    values = zeros((width, length))
+    values = np.zeros((width, length))
 
     trunks = _detect_trunks(level, height)
 

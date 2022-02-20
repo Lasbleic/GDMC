@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Iterable
 
-from numpy import array, asarray
+import numpy as np
 
 from gdpc.interface import requestBuildArea
 from utils.misc_objects_functions import argmax, Singleton
@@ -16,7 +16,7 @@ class Point(ndarray):
     """
 
     def __new__(cls, x, z, y=0):
-        return asarray(array((x, y, z))).view(cls)
+        return np.asarray(np.array((x, y, z))).view(cls)
 
     def __array_finalize__(self, obj):
         if obj is None: return
@@ -385,8 +385,7 @@ class TransformBox(BoundingBox):
         xm, zm = (self.minx + self.maxx) // 2, (self.minz + self.maxz) // 2
         corners = [Point(self.minx, zm), Point(self.maxx-1, zm), Point(xm, self.minz), Point(xm, self.maxz-1)]
         distance = [euclidean(px, _) for _ in corners]
-        from numpy import argmin
-        i = argmin(distance)
+        i = np.argmin(distance)
         if i == 0:
             return Point(0, px.z - self.minz) if relative_coords else Point(self.minx, px.z)
         elif i == 1:
@@ -411,32 +410,6 @@ class TransformBox(BoundingBox):
     @property
     def surface(self):
         return self.width * self.length
-
-
-class posarray(ndarray):
-    @classmethod
-    def of(cls, values: ndarray):
-        array = posarray(values.shape, dtype=values.dtype)
-        array[:] = values[:]
-        return array
-
-    def __getitem__(self, item):
-        if isinstance(item, Point):
-            return self[item.x, item.z]
-        return super(posarray, self).__getitem__(item)
-
-    def __setitem__(self, key, value):
-        if isinstance(key, Point):
-            return self.__setitem__((key.x, key.z), value)
-        return super(posarray, self).__setitem__(key, value)
-
-    @property
-    def width(self):
-        return self.shape[0]
-
-    @property
-    def length(self):
-        return self.shape[1]
 
 
 class Bounds:

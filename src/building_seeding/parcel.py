@@ -1,5 +1,7 @@
 from random import randint
 
+import numpy as np
+
 import terrain
 from building_seeding.building_encyclopedia import BUILDING_ENCYCLOPEDIA
 from building_seeding.building_pool import BuildingType
@@ -25,7 +27,7 @@ class Parcel(TransformBox):
 
         # init bounds
         super().__init__((self.center.x - (width // 2), 0, self.center.z - (length // 2)), (width, 1, length))
-        self._mask = full((self.width, self.length), True)
+        self._mask = np.full((self.width, self.length), True)
 
         self.building_type: BuildingType = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
@@ -56,7 +58,7 @@ class Parcel(TransformBox):
         assert self.is_expendable(direction)  # trust the user
         ObstacleMap().hide_obstacle(*self.obstacle(forget=True), False)
         super().expand(direction, inplace=True)
-        self._mask = full((self.width, self.length), True)
+        self._mask = np.full((self.width, self.length), True)
         # mark parcel points on obstacle terrain
         ObstacleMap().add_obstacle(*self.obstacle())
 
@@ -87,7 +89,7 @@ class Parcel(TransformBox):
                 self.__obstacle = None
         elif margin > 0:
             point = self.position - Point(margin, margin)
-            mask = full((self.width + 2 * margin, self.length + 2 * margin), True)
+            mask = np.full((self.width + 2 * margin, self.length + 2 * margin), True)
             obs = self.__obstacle = point, mask
         else:
             obs = self.__obstacle = self.position, self._mask

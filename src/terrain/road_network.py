@@ -1,8 +1,9 @@
 # coding=utf-8
+import time
 from random import choice
-from typing import Callable
+from typing import Callable, List, Set
 
-from numpy import empty
+from sortedcontainers import SortedList
 
 import terrain
 from generation.generators import *
@@ -24,12 +25,12 @@ class RoadNetwork(metaclass=Singleton):
         # type: (int, int, terrain.TerrainMaps) -> RoadNetwork
         self.width = width
         self.length = length
-        self.network = posarray.of(zeros((width, length), dtype=int))
+        self.network = np.zeros((width, length), dtype=int)
         # Representing the distance from the network + the path to the network
-        self.cost_map = posarray.of(full((width, length), MAX_INT))
-        self.distance_map = posarray.of(full((width, length), MAX_INT))
+        self.cost_map = PointArray(np.full((width, length), MAX_INT))
+        self.distance_map = PointArray(np.full((width, length), MAX_INT))
         # paths from existing road points to every reachable destination
-        self.path_map = posarray.of(empty((width, length), dtype=list))
+        self.path_map = PointArray(np.empty((width, length), dtype=list))
         self.lambda_max = MAX_LAMBDA
 
         # points passed through create_road or connect_to_network
@@ -148,10 +149,10 @@ class RoadNetwork(metaclass=Singleton):
             assert root_point is not None and ending_point is not None
             print(f"[RoadNetwork] Compute road path from {str(root_point + self.terrain.area.origin)} "
                   f"towards {str(ending_point + self.terrain.area.origin)}", end="")
-            _t0 = time()
+            _t0 = time.time()
             path = self.__pathFinder.getPath(root_point, ending_point)
             self.nodes.update({root_point.asPosition, ending_point.asPosition})
-            print(f" in {(time() - _t0):0.2f}s")
+            print(f" in {(time.time() - _t0):0.2f}s")
         self.__set_road(path)
         return path
 
@@ -179,9 +180,9 @@ class RoadNetwork(metaclass=Singleton):
             path = self.path_map[target]
             print(f"[RoadNetwork] Found existing road towards {str(target)}")
         else:
-            _t0 = time()
+            _t0 = time.time()
             path = self.__pathFinder.getPathTowards(target)
-            print(f"[RoadNetwork] Computed road path towards {str(target)} in {(time() - _t0):0.2f}s")
+            print(f"[RoadNetwork] Computed road path towards {str(target)} in {(time.time() - _t0):0.2f}s")
 
         # if a* fails, return
         if not path:
@@ -197,7 +198,7 @@ class RoadNetwork(metaclass=Singleton):
         self.__set_road(path)
         self.nodes.add(target.asPosition)
 
-        _t1, cycles = time(), []
+        _t1, cycles = time.time(), []
         for node in sorted(self.nodes, key=lambda n: euclidean(n, target))[1:min(CYCLE_ALTERNATIVES, len(self.nodes))]:
             old_path, new_path = self.cycle_creation_condition(node, target)
             if new_path:
@@ -206,7 +207,7 @@ class RoadNetwork(metaclass=Singleton):
                 if len(cycles) == 2:
                     # allow max 2 new cycles
                     break
-        print(f"[RoadNetwork] Computed {len(cycles)} new road cycles in {(time() - _t1):0.2f}s")
+        print(f"[RoadNetwork] Computed {len(cycles)} new road cycles in {(time.time() - _t1):0.2f}s")
 
         if path and all(euclidean(path[0], node) > DIST_BETWEEN_NODES for node in self.nodes):
             self.nodes.add(path[0].asPosition)
@@ -240,14 +241,13 @@ class RoadNetwork(metaclass=Singleton):
         """
 
         def init():
-            _distance_map = posarray.of(
-                full((self.width, self.length), MAX_INT))  # on foot distance walking from road points
-            _cost_map = posarray.of(full((self.width, self.length), MAX_INT))  # cost distance building from road points
+            _distance_map = PointArray(np.full((self.width, self.length), MAX_INT))  # on foot distance walking from road points
+            _cost_map = PointArray(np.full((self.width, self.length), MAX_INT))  # cost distance building from road points
             for root_point in root_points:
                 _distance_map[root_point] = 0
                 _cost_map[root_point] = 0
             _neighbours = SortedList(root_points, lambda p: _cost_map[p])
-            _predecessor_map = posarray.of(empty((self.width, self.length), dtype=object))
+            _predecessor_map = PointArray(np.empty((self.width, self.length), dtype=object))
             return _cost_map, _distance_map, _neighbours, _predecessor_map
 
         def update_distance(updated_point, neighbor, _neighbors: SortedList):
@@ -313,7 +313,7 @@ class RoadNetwork(metaclass=Singleton):
         from utils.algorithms import a_star
         if root_point == ending_point:
             return [root_point]
-        t0 = time()
+        t0 = time.time()
         try:
             tuple_path = a_star((root_point.x, root_point.z), (ending_point.x, ending_point.z), (self.width, self.length),
                                 lambda u, v: cost_function(Position(u[0], u[1]), Position(v[0], v[1])))
@@ -321,7 +321,7 @@ class RoadNetwork(metaclass=Singleton):
         except SystemError or KeyError or ValueError:
             return []
         if timer:
-            t0 = time() - t0 + .001
+            t0 = time.time() - t0 + .001
             print(f"Fast a*'ed a {len(path)} blocks road in {int(t0) if t0 > 1 else t0} seconds, "
                   f"avg: {int(len(path) / t0)}mps")
         return path
@@ -349,12 +349,12 @@ class RoadNetwork(metaclass=Singleton):
 
     @property
     def obstacle(self):
-        obs = full((self.width, self.length), False)
+        obs = np.full((self.width, self.length), False)
         for p in self.road_blocks.union(self.special_road_blocks):
             x0, z0 = p.x, p.z
             # build a circular obstacle of designated width around road point
             margin = self.get_road_width(x0, z0) / 2 - .5
-            for x1, z1 in product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
+            for x1, z1 in itertools.product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
                 obs[x1, z1] = True
         return obs
 

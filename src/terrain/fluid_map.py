@@ -9,32 +9,33 @@ from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
 from gdpc.worldLoader import WorldSlice
 from utils import Point, cardinal_directions, water_blocks, lava_blocks, \
-    BuildArea, getBlockRelativeAt
+    BuildArea, getBlockRelativeAt, PointArray
 import parameters
 from terrain.biomes import BiomeMap
-from terrain.map import Map
 from utils.algorithms.fast_dijkstra import fast_dijkstra
 from utils.parameters import MIN_DIST_TO_OCEAN, MIN_DIST_TO_RIVER, \
     MIN_DIST_TO_LAVA
 
 
-class FluidMap(Map):
+class FluidMap(PointArray):
 
-    def __init__(self, level: WorldSlice, area: BuildArea, terrain, **kwargs):
+    def __new__(cls, level: WorldSlice, area: BuildArea, terrain, **kwargs):
         values = np.zeros((area.width, area.length), dtype=np.int0)
-        super().__init__(values)
-        self.area = area
-        self.__water_map = np.full((area.width, area.length), 0)
-        self.__lava_map = np.full((area.width, area.length), False)
-        self.terrain = terrain
-        self.__water_limit = kwargs.get("water_limit", parameters.MAX_WATER_EXPLORATION)
-        self.__lava_limit = kwargs.get("lava_limit", parameters.MAX_LAVA_EXPLORATION)
+        obj = super().__new__(cls, values)
+        obj.area = area
+        obj.__water_map = np.full((area.width, area.length), 0)
+        obj.__lava_map = np.full((area.width, area.length), False)
+        obj.terrain = terrain
+        obj.__water_limit = kwargs.get("water_limit", parameters.MAX_WATER_EXPLORATION)
+        obj.__lava_limit = kwargs.get("lava_limit", parameters.MAX_LAVA_EXPLORATION)
         
-        self.__borderpts = []  # type: List[Point]
-        self.__coastline = []  # type: List[Point]
+        obj.__borderpts = []  # type: List[Point]
+        obj.__coastline = []  # type: List[Point]
 
-        self.has_lava = self.has_river = self.has_ocean = False
-        self.detect_sources(level)
+        obj.has_lava = obj.has_river = obj.has_ocean = False
+        obj.detect_sources(level)
+
+        return obj
 
     def detect_sources(self, level, algorithm='spread', kernel='knn', param=16):
         # type: (WorldSlice, str, str, int) -> None

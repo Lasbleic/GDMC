@@ -1,15 +1,17 @@
+import itertools
+
 import numpy as np
 
 from utils import *
-from .map import Map
 
 
-class ObstacleMap(Map, metaclass=Singleton):
+class ObstacleMap(PointArray, metaclass=Singleton):
 
-    def __init__(self, values: np.ndarray = None, maps=None):
-        super().__init__(values)
-        self.__all_maps = maps
-        self.__hidden_obstacles = []
+    def __new__(cls, values: np.ndarray = None, maps=None):
+        obj = super().__new__(cls, values)
+        obj.__all_maps = maps
+        obj.__hidden_obstacles = []
+        return obj
 
     @classmethod
     def from_terrain(cls, terrain):
@@ -55,7 +57,7 @@ class ObstacleMap(Map, metaclass=Singleton):
         -------
         """
         if mask is None:
-            mask = full((1, 1), True)
+            mask = np.full((1, 1), True)
         self.__add_obstacle(point, mask, 1)
 
     def is_accessible(self, point):
@@ -63,10 +65,10 @@ class ObstacleMap(Map, metaclass=Singleton):
         return self[point.x, point.z] == 0
 
     def __set_obstacle(self, x, z, cost=1):
-        self._values[x, z] += cost
+        self[x, z] += cost
 
     def __add_obstacle(self, point, mask, cost):
-        for dx, dz in product(range(mask.shape[0]), range(mask.shape[1])):
+        for dx, dz in itertools.product(range(mask.shape[0]), range(mask.shape[1])):
             p = point + Point(dx, dz)
             if self.__all_maps.in_limits(p, False) and mask[dx, dz]:
                 self.__set_obstacle(p.x, p.z, cost)
@@ -75,7 +77,7 @@ class ObstacleMap(Map, metaclass=Singleton):
         """Hide an obstacle on the map, if store_obstacle, the obstacle will be stored in self._hidden_obstacles
         and later added again with reveal_obstacles()"""
         if mask is None:
-            mask = full((1, 1), True)
+            mask = np.full((1, 1), True)
         self.__add_obstacle(point, mask, -1)
         if store_obstacle:
             self.__hidden_obstacles.append((Point(point.x, point.z), array(mask)))

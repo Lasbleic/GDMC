@@ -4,7 +4,8 @@ from typing import Iterable, Set, Callable, Tuple
 
 from gdpc import interface, worldLoader, direct_interface, lookup
 
-from .geometry_utils import Point, BoundingBox, ndarray, posarray, BuildArea, Singleton
+from utils import PointArray
+from .geometry_utils import Point, BoundingBox, ndarray, BuildArea, Singleton
 
 interface.globalinterface.setBuffering(True)
 alterated_pos = set()
@@ -790,7 +791,7 @@ water_blocks = {b.Water, b.Ice, b.FrostedIce, b.PackedIce, b.BlueIce}
 
 lava_blocks = {b.Lava}
 
-cube_ends = ['bricks', 'glass', 'ore', 'block', 'terracotta', 'wool', 'cobblestone', 'sandstone', 'hyphae', 'debris', 'granite', 'basalt', 'log', 'wood', 'concrete', 'planks', 'blackstone', 'diorite', 'andesite', 'dirt', 'stone', 'pillar', 'quartz']
+cube_ends = ['bricks', 'ore', 'block', 'terracotta', 'wool', 'cobblestone', 'sandstone', 'hyphae', 'debris', 'granite', 'basalt', 'log', 'wood', 'concrete', 'planks', 'blackstone', 'diorite', 'andesite', 'dirt', 'stone', 'pillar', 'quartz']
 block_ends = {}
 for c in lookup.BLOCKS:
     if '_' not in c: continue
@@ -853,7 +854,7 @@ def connected_component(source_point, connection_condition, early_stopping_condi
     mask = full((width, length), False)
     for p in component:
         mask[p.x - min_x, p.z - min_z] = True
-    return origin, posarray.of(mask)
+    return origin, PointArray(mask)
 
 
 def clear_tree_at(terrain, point: Point) -> None:

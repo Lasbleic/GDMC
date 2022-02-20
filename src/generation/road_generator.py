@@ -1,7 +1,9 @@
+import itertools
 from math import ceil
 from time import sleep
+from typing import Dict
 
-import numpy
+import numpy as np
 from numpy import uint8
 from numpy.random.mtrand import choice
 
@@ -25,8 +27,8 @@ class RoadGenerator(Generator):
         terrain: TerrainMaps
         print("[RoadGenerator] generating road blocks...", end='')
 
-        road_height_map = zeros(height_map.shape, dtype=uint8)
-        network = zeros((self.width, self.length))
+        road_height_map = np.zeros(height_map.shape, dtype=uint8)
+        network = np.zeros((self.width, self.length))
         network_palette = {}
         palette_network = {}
         x0, z0 = self.__origin.x, self.__origin.z
@@ -73,7 +75,7 @@ class RoadGenerator(Generator):
         print("OK")
 
     def __generate_street_lamps(self, terrain, districts):
-        unlit_array: ndarray = zeros((self.width, self.length), dtype=numpy.uint8)
+        unlit_array: ndarray = np.zeros((self.width, self.length), dtype=np.uint8)
         network = self.__network
         W, L = self.width, self.length
         for dw in range(2, -1, -1):  # dw in (2, 1, 0):
@@ -87,8 +89,8 @@ class RoadGenerator(Generator):
 
         x0, z0 = self.__origin.x, self.__origin.z
         while unlit_array.sum():
-            unlit_pos = numpy.where(unlit_array > 0)
-            unlit_idx = numpy.random.randint(len(unlit_pos[0])) if len(unlit_pos[0]) > 1 else 0
+            unlit_pos = np.where(unlit_array > 0)
+            unlit_idx = np.random.randint(len(unlit_pos[0])) if len(unlit_pos[0]) > 1 else 0
             x, z = unlit_pos[0][unlit_idx], unlit_pos[1][unlit_idx]
             y = terrain.height_map[x, z]
             r = network.get_closest_road_point(Point(x, z))
@@ -112,7 +114,7 @@ class RoadGenerator(Generator):
                 continue
 
             m = 10
-            for dx, dz in filter(lambda dxz: (abs(dxz[0]) + abs(dxz[1])) <= m, product(range(-m, m+1), range(-m, m+1))):
+            for dx, dz in filter(lambda dxz: (abs(dxz[0]) + abs(dxz[1])) <= m, itertools.product(range(-m, m+1), range(-m, m+1))):
                 if 0 <= (x + dx) < W and 0 <= (z + dz) < L:
                     unlit_array[x+dx, z+dz] = 0
 
@@ -121,7 +123,7 @@ class RoadGenerator(Generator):
         palette: RoadPalette = city_road_palette if districts[x, z] <= 1 else rusty_road_palette
 
         # Computes local road height depending of the height of road blocks +-1 block away
-        surround_iter = product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
+        surround_iter = itertools.product(sym_range(x, 1, self.width), sym_range(z, 1, self.length))
         surround_alt = {Point(x1, z1, height_map[x1, z1]) for (x1, z1) in surround_iter if self.__network.is_road(x1, z1)}
         if not surround_alt:
             return height_map[x, z], palette.block
@@ -181,7 +183,7 @@ class RoadGenerator(Generator):
             orig_path_height = path_height.copy()
             # while there is a 2 block elevation in the path, smooth path heights
             changed = False
-            elevation = abs(numpy.diff(path_height)).max()
+            elevation = abs(np.diff(path_height)).max()
             if elevation > 1:
                 path_height[:3] = path_height[:3].mean()
                 path_height[-3:] = path_height[-3:].mean()
@@ -189,8 +191,8 @@ class RoadGenerator(Generator):
             while elevation > 1:
                 changed = True
                 # convolving outside kernel edges works bad
-                path_height[3:-3] = numpy.convolve(path_height, smoothing_kernel, 'valid')
-                new_elevation = abs(numpy.diff(path_height)).max()
+                path_height[3:-3] = np.convolve(path_height, smoothing_kernel, 'valid')
+                new_elevation = abs(np.diff(path_height)).max()
 
                 if new_elevation >= elevation:
                     break
@@ -206,7 +208,7 @@ class RoadGenerator(Generator):
                     ObstacleMap().add_obstacle(point)
 
         # else:
-        #     elevation = numpy.abs(numpy.diff(path_height))
+        #     elevation = np.abs(np.diff(path_height))
         #     length = len(elevation)
         #     begin = next(i for i in range(length) if elevation[i] > 1)
         #     end = next(length-i for i in range(length) if elevation[length-i-1] > 1)
@@ -242,9 +244,9 @@ class Bridge(Generator):
         length = len(heights)
         target_bridge_height = water_height + 2.5  # ideal height so that boats can pass under the bridge
 
-        h1 = numpy.full(length, target_bridge_height)
-        h2 = numpy.array([y0 + (i / 2) if i <= (length / 2) else y1 + ((length-i-1) / 2) for i in range(length)]) + .5
-        bridge_height = numpy.minimum(h1, h2)
+        h1 = np.full(length, target_bridge_height)
+        h2 = np.array([y0 + (i / 2) if i <= (length / 2) else y1 + ((length-i-1) / 2) for i in range(length)]) + .5
+        bridge_height = np.minimum(h1, h2)
 
         for p, h in zip(self.__points, bridge_height):
             ap = p + self.__origin

@@ -43,8 +43,8 @@ class ProcHouseGenerator(Generator):
         w1, l1 = 0, 0
         while not (MIN_S <= w1 <= MAX_S and MIN_S <= l1 <= MAX_S and MIN_R <= (w1 / l1) <= MAX_R):
             # generate main building
-            w1 = randint(AVG_S, w0) if w0 > AVG_S else w0
-            l1 = randint(AVG_S, l0) if l0 > AVG_S else l0
+            w1 = random.randint(AVG_S, w0) if w0 > AVG_S else w0
+            l1 = random.randint(AVG_S, l0) if l0 > AVG_S else l0
         self._layout_width = w1
         self._layout_length = l1
         main_box = TransformBox(self._box.origin + (0, 1, 0), (w1, h0, l1))
@@ -56,10 +56,10 @@ class ProcHouseGenerator(Generator):
         # extension in x
         try:
             max_width = w0 - w1  # available width
-            width = randint(-max_width, max_width)  # annex width, west or east of main room
+            width = random.randint(-max_width, max_width)  # annex width, west or east of main room
             width = 2 * width if (abs(width) == 1) and max_width >= 2 else width
-            length = randint(5, l1 - 2)  # annex length, limited by main room's dimension
-            delta = randint(0, l1 - length)  # position relative to main room
+            length = random.randint(5, l1 - 2)  # annex length, limited by main room's dimension
+            delta = random.randint(0, l1 - length)  # position relative to main room
 
             if width:
                 if width > 0:
@@ -79,10 +79,10 @@ class ProcHouseGenerator(Generator):
         # extension in z
         try:
             max_length = l0 - l1  # available width
-            length = randint(-max_length, max_length)  # annex length, north or south of main room
+            length = random.randint(-max_length, max_length)  # annex length, north or south of main room
             length = 2 * length if (abs(length) == 1) and max_length >= 2 else length
-            width = randint(5, w1 - 2)  # annex length, limited by main room's dimension
-            delta = randint(0, w1 - width)  # position relative to main room
+            width = random.randint(5, w1 - 2)  # annex length, limited by main room's dimension
+            delta = random.randint(0, w1 - width)  # position relative to main room
 
             if length:
                 if length > 0:
@@ -125,7 +125,7 @@ class ProcHouseGenerator(Generator):
         possible_stair_dir.difference_update(main_room._neighbors.keys())
 
         if possible_stair_dir:
-            stair_wall = rdChoice(list(possible_stair_dir))  # if there remains suitable ones, pick one
+            stair_wall = random.choice(list(possible_stair_dir))  # if there remains suitable ones, pick one
 
         revved = False
         if stair_wall:
@@ -247,13 +247,13 @@ class _RoomSymbol(CardinalGenerator):
         x0, y, z0 = self.origin + (1, 0, 1)
         xM, zM = x0 + self.width - 3, z0 + self.length - 3
         if xM >= x0 and zM >= z0:
-            x, z = randint(x0, xM), randint(z0, zM)
+            x, z = random.randint(x0, xM), random.randint(z0, zM)
             place_torch(x, y, z)
 
     def generate_ladder(self):
         b = self._box
-        border_pts = set(product(range(b.minx, b.maxx), range(b.minz, b.maxz)))
-        border_pts.difference_update(product(range(b.minx + 1, b.maxx - 1), range(b.minz + 1, b.maxz - 1)))
+        border_pts = set(itertools.product(range(b.minx, b.maxx), range(b.minz, b.maxz)))
+        border_pts.difference_update(itertools.product(range(b.minx + 1, b.maxx - 1), range(b.minz + 1, b.maxz - 1)))
 
         def valid_pos(x: int, y: int, z: int) -> bool:
             if (x in (self._box.minx, self._box.maxx - 1) and z in (self._box.minz, self._box.maxz - 1)):
@@ -435,7 +435,7 @@ class _WallSymbol(Generator):
                 box_win = TransformBox(self._box.origin + (1, 0, 0), (2, self.height, 1))
                 self.children.append(_WallSymbol(box_win))
             else:
-                for half_wall_box in self._box.split(dx=randint(3, self.width - 3)):
+                for half_wall_box in self._box.split(dx=random.randint(3, self.width - 3)):
                     self.children.append(_WallSymbol(half_wall_box))
         else:
             # uneven wall: derive in column | window | wall
@@ -460,7 +460,7 @@ class _WallSymbol(Generator):
                 box_win = TransformBox(self._box.origin + (0, 0, 1), (1, self.height, 2))
                 self.children.append(_WallSymbol(box_win))
             else:
-                for half_wall_box in self._box.split(dz=randint(3, self.length - 3)):
+                for half_wall_box in self._box.split(dz=random.randint(3, self.length - 3)):
                     self.children.append(_WallSymbol(half_wall_box))
         else:
             # uneven wall: derive in column | window | wall

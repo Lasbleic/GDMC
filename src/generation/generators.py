@@ -1,6 +1,7 @@
+import itertools
 from math import floor
-from random import choice as rdChoice
-from random import randint, random
+import random
+from typing import List, Tuple
 
 import numpy as np
 from gdpc import direct_interface
@@ -24,11 +25,11 @@ class Generator:
         self._sub_generator_function = None
 
     def _clear_trees(self, level):
-        for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
+        for x, z in itertools.product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
             clear_tree_at(level, Point(x, z))
 
     def surface_pos(self, height_map):
-        for x, z in product(range(self.width), range(self.length)):
+        for x, z in itertools.product(range(self.width), range(self.length)):
             yield x + self.origin.x, height_map[x, z], z + self.origin.z
 
     def choose_sub_generator(self, parcels):
@@ -112,12 +113,12 @@ class Generator:
 class MaskedGenerator(Generator):
     def __init__(self, box, **kwargs):
         Generator.__init__(self, box, **kwargs)
-        self._mask = kwargs.get("mask", full((box.width, box.length), True))
+        self._mask = kwargs.get("mask", np.full((box.width, box.length), True))
 
     def _terraform(self, level, height_map):
         # type: (TerrainMaps, array) -> ndarray
         mean_y = int(round(height_map.mean()))
-        terraform_map = zeros(height_map.shape)
+        terraform_map = np.zeros(height_map.shape)
         for x, y, z in self.surface_pos(height_map):
             if y > mean_y:
                 vbox = BoundingBox((x, mean_y + 1, z), (1, y - mean_y + 1, 1))
@@ -153,15 +154,15 @@ class MaskedGenerator(Generator):
         else:
             # internal point to the box, could still be a corner
             try:
-                x_lateral = not (self.is_masked(pos + utils.Direction.East.value, absolute_coords=True)
-                                 and self.is_masked(pos + utils.Direction.West.value, absolute_coords=True)
+                x_lateral = not (self.is_masked(pos + Direction.East.value, absolute_coords=True)
+                                 and self.is_masked(pos + Direction.West.value, absolute_coords=True)
                                  )
             except IndexError:
                 x_lateral = False
 
             try:
-                z_lateral = not (self.is_masked(pos + utils.Direction.South.value, absolute_coords=True)
-                                 and self.is_masked(pos + utils.Direction.North.value, absolute_coords=True)
+                z_lateral = not (self.is_masked(pos + Direction.South.value, absolute_coords=True)
+                                 and self.is_masked(pos + Direction.North.value, absolute_coords=True)
                                  )
             except IndexError:
                 z_lateral = False
@@ -181,7 +182,7 @@ class MaskedGenerator(Generator):
 
     def _clear_trees(self, level):
         x0, z0 = self.origin.x, self.origin.z
-        for x, z in product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
+        for x, z in itertools.product(range(self._box.minx, self._box.maxx), range(self._box.minz, self._box.maxz)):
             if self._mask[x - x0, z - z0]:
                 clear_tree_at(level, Point(x, z))
 
@@ -194,7 +195,7 @@ class MaskedGenerator(Generator):
         Removes narrow positions from the mask
         """
         def surrounding(x, z):
-            return filter(lambda xz: xz != (x, z) and self.is_masked(xz[0], xz[1], True), product(range(x-1, x+2), range(z-1, z+2)))
+            return filter(lambda xz: xz != (x, z) and self.is_masked(xz[0], xz[1], True), itertools.product(range(x-1, x+2), range(z-1, z+2)))
 
         def is_corner(xz):
             return self.is_corner(Point(*xz))
@@ -202,7 +203,7 @@ class MaskedGenerator(Generator):
         def in_inner_mask(xz):
             return self.is_masked(*xz, True) and not self.is_lateral(*xz)
 
-        mask_corners = {(x, z) for (x, y, z) in self.surface_pos(zeros((self.width, self.length))) if self.is_corner(Point(x, z))}
+        mask_corners = {(x, z) for (x, y, z) in self.surface_pos(np.zeros((self.width, self.length))) if self.is_corner(Point(x, z))}
         while mask_corners:
             corner = mask_corners.pop()
             if all(not in_inner_mask(xz) for xz in surrounding(*corner)):
@@ -297,8 +298,8 @@ class CropGenerator(MaskedGenerator):
         # place animals
         animal_count = sum(self._mask.flat) // SURFACE_PER_ANIMAL
         while animal_count > 0:
-            x = randint(fence_box.minx, fence_box.maxx - 1)
-            z = randint(fence_box.minz, fence_box.maxz - 1)
+            x = random.randint(fence_box.minx, fence_box.maxx - 1)
+            z = random.randint(fence_box.minz, fence_box.maxz - 1)
             y = height_map[x - self.origin.x, z - self.origin.z] + 1
             if self.is_masked(x, z, True) and not self.is_lateral(x, z):
                 if entities:
@@ -306,7 +307,7 @@ class CropGenerator(MaskedGenerator):
                 else:
                     entity = Entity(animal)
                 if bernouilli(.3):
-                    entity["Age"] = randint(-25000, -5000)
+                    entity["Age"] = random.randint(-25000, -5000)
                 entity.move_to((x, y, z))
                 animal_count -= 1
             else:
@@ -318,15 +319,15 @@ class CropGenerator(MaskedGenerator):
         self._mask &= (height >= min_height) & (height <= max_height)
         # block states
         b = alpha
-        crop_type, max_age = rdChoice([(b.Carrots, 7), (b.Beetroots, 3), (b.Potatoes, 7), (b.Wheat, 7)])
-        crop_age = randint(max_age // 4, 1 + max_age * 3 // 4)
+        crop_type, max_age = random.choice([(b.Carrots, 7), (b.Beetroots, 3), (b.Potatoes, 7), (b.Wheat, 7)])
+        crop_age = random.randint(max_age // 4, 1 + max_age * 3 // 4)
 
         # Place crops
         for x, y, z in self.surface_pos(height):
             # farmland
             setBlock(Point(x, z, y), f"farmland[moisture=7]")
             # crop
-            crop_age = crop_age + random() - .5
+            crop_age = crop_age + random.random() - .5
             int_crop_age = pos_bound(int(round(crop_age)), max_age)
             crop_block = f"{crop_type}[age={int_crop_age}]"
             setBlock(Point(x, z, y+1), crop_block)
@@ -336,7 +337,7 @@ class CropGenerator(MaskedGenerator):
 
     def _gen_harvested_crop(self, height_map, palette=None):
         # TODO: fix water sources
-        mx, mz = randint(0, 1), randint(0, 2)
+        mx, mz = random.randint(0, 1), random.randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
             if (x % 2 == mx and (z + x // 2) % 3 == mz) and bernouilli():
                 setBlock(Point(x, z, y), alpha.Dirt)  # dirt under hay bales
@@ -360,7 +361,7 @@ class CropGenerator(MaskedGenerator):
         irrigated[1:-1, 1:-1] = 1  # make border points as irrigated so water won't spawn on them
         irrigated = np.minimum(irrigated, self._mask[:].astype(int))
 
-        def sample_dry_pos() -> Position:
+        def sample_dry_pos() -> Tuple[int, int, int]:
             dry_pos = np.where(irrigated == 1)
             index = np.random.randint(len(dry_pos[0]))
             x, z = dry_pos[0][index], dry_pos[1][index]
@@ -413,7 +414,7 @@ class CropGenerator(MaskedGenerator):
         if not self.is_masked(p, absolute_coords=True):
             return False
         x0, z0 = x - self.origin.x, z - self.origin.z
-        for x1, z1 in product(sym_range(x0, 1, self.width), sym_range(z0, 1, self.length)):
+        for x1, z1 in itertools.product(sym_range(x0, 1, self.width), sym_range(z0, 1, self.length)):
             if not self.is_masked(x1, z1):
                 return True
         return False
@@ -531,7 +532,7 @@ def place_street_lamp(x, y, z, material, h=0):
 
 def place_torch_post(x, y, z, block=None):
     if block is None:
-        block = rdChoice([alpha.OakFence, alpha.CobblestoneWall, alpha.MossyCobblestoneWall, alpha.SpruceFence])
+        block = random.choice([alpha.OakFence, alpha.CobblestoneWall, alpha.MossyCobblestoneWall, alpha.SpruceFence])
     setBlock(Point(x, z, y+1), block)
     place_torch(x, y+2, z)
 

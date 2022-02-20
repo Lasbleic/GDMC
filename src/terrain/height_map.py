@@ -4,29 +4,32 @@ import numpy as np
 import cv2
 
 from gdpc.worldLoader import WorldSlice
-from utils import BuildArea, ground_blocks, water_blocks, lava_blocks, getBlockRelativeAt
-from terrain.map import Map
+from utils import BuildArea, ground_blocks, water_blocks, lava_blocks, getBlockRelativeAt, PointArray
 from utils import Point
 
 
-class HeightMap(Map):
-    def __init__(self, level: WorldSlice, area: BuildArea):
+class HeightMap(PointArray):
+    __air_height: PointArray
+
+    def __new__(cls, level: WorldSlice, area: BuildArea):
         # highest non air block
-        super().__init__(self.__calcGoodHeightmap(level))
-        self.area = area
-        self.__air_height: Map = Map(level.heightmaps["WORLD_SURFACE"][:] - 1)
+        obj = super().__new__(cls, HeightMap.__calcGoodHeightmap(level))
+        obj.area = area
+        obj.__air_height = PointArray(level.heightmaps["WORLD_SURFACE"][:] - 1)
 
         # highest solid block (below oceans)
-        self.__ocean_floor: Map = Map(np.minimum(self[:], level.heightmaps["OCEAN_FLOOR"]))
+        obj.__ocean_floor: PointArray = PointArray(np.minimum(obj[:], level.heightmaps["OCEAN_FLOOR"]))
 
         # uses absolute coordinates
-        self.__origin = Point(area.x, area.z)
+        obj.__origin = Point(area.x, area.z)
 
-        self.__steepness_x = cv2.Scharr(np.array(self[:], dtype=np.uint8), 5, 1, 0)
-        self.__steepness_z = cv2.Scharr(np.array(self[:], dtype=np.uint8), 5, 0, 1)
+        obj.__steepness_x = cv2.Scharr(np.array(obj[:], dtype=np.uint8), 5, 1, 0)
+        obj.__steepness_z = cv2.Scharr(np.array(obj[:], dtype=np.uint8), 5, 0, 1)
 
-        self.__steepness_x = cv2.GaussianBlur(self.__steepness_x, (5, 5), 0) / 32
-        self.__steepness_z = cv2.GaussianBlur(self.__steepness_z, (5, 5), 0) / 32
+        obj.__steepness_x = cv2.GaussianBlur(obj.__steepness_x, (5, 5), 0) / 32
+        obj.__steepness_z = cv2.GaussianBlur(obj.__steepness_z, (5, 5), 0) / 32
+
+        return obj
 
     def upper_height(self, xr: Point or int, zr=None):
         """
