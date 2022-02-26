@@ -13,6 +13,7 @@ from building_seeding.parcel import Parcel, MaskedParcel
 from parameters import MIN_PARCEL_SIZE, AVERAGE_PARCEL_SIZE, MAX_PARCELS_IN_BLOCK
 from terrain import TerrainMaps, ObstacleMap, RoadNetwork
 from utils import *
+from utils.algorithms.graphs import *
 
 
 class VillageSkeleton:
@@ -79,7 +80,7 @@ class VillageSkeleton:
             print(f"\nTrying to place {building_type.name} - #{build_iter.count} out of {build_iter.size}")
 
             # Village Element Seeding Process
-            # self.__interest.reuse_existing_parcel(building_type)  # If succeeds should update building_type in place
+            building_type = self.__interest.try_to_reuse_existing_parcel(building_type)
             building_position = self.__interest.get_seed(building_type)
 
             if building_position is None:
@@ -108,7 +109,9 @@ class CityBlock(Bounds):
         self.__road_points = road_cycle
         self.__maps = maps
         max_block_surface = MAX_PARCELS_IN_BLOCK * (AVERAGE_PARCEL_SIZE ** 2)
-        self.__origin, self.__mask = connected_component(mean(road_cycle).asPosition, self.connection, early_stopping_condition=(lambda block: len(block) > max_block_surface))
+        block_points = connected_component(GridGraph(False), mean(road_cycle).asPosition, self.connection, max_block_surface)
+        p, m = point_set_as_array(block_points)
+        self.__origin, self.__mask = p.view(Position), m.view(PointArray)
         super().__init__(self.__origin, Point(self.__mask.width, self.__mask.length))
 
     @staticmethod
@@ -116,33 +119,34 @@ class CityBlock(Bounds):
         net: RoadNetwork = RoadNetwork.INSTANCE
         return net.get_distance(dst_point) > 0
 
+    def __subdivide(self, pos: Position, mask: PointArray, ndiv: int) -> List[Tuple[Position, ndarray]]:
+        if ndiv == 1:
+            return [(pos, mask)]
+
+        n1, n2 = ndiv // 2, ndiv - ndiv // 2
+        if n1 != n2 and bernouilli(): n1, n2 = n2, n1
+        optimal_score = n1 / ndiv
+        if mask.width > mask.length:
+            # cut along x -> 1st index
+            scores = [mask[cut:, :].sum() / mask.sum() for cut in range(mask.width)]
+            cut = argmin([abs(optimal_score - score) for score in scores])
+            mask1, mask2 = mask[:cut, :], mask[cut:, :]
+            orig1, orig2 = pos, pos + Point(cut, 0)
+        else:
+            # cut along z -> 2nd index
+            scores = [mask[:, cut:].sum() / mask.sum() for cut in range(mask.length)]
+            cut = argmin([abs(optimal_score - score) for score in scores])
+            mask1, mask2 = mask[:, :cut], mask[:, cut:]
+            orig1, orig2 = pos, pos + Point(0, cut)
+
+        return self.__subdivide(orig1, mask1, n1) + self.__subdivide(orig2, mask2, n2)
+
     def parcels(self, btype: BuildingType) -> List[Parcel]:
-        def subdivide(_pos: Position, _mask: ndarray, _ndiv: int) -> List[Tuple[Position, ndarray]]:
-            if _ndiv == 1:
-                return [(_pos, _mask)]
-
-            n1, n2 = _ndiv // 2, _ndiv - _ndiv // 2
-            if n1 != n2 and bernouilli(): n1, n2 = n2, n1
-            optimal_score = n1 / _ndiv
-            if mask.width > mask.length:
-                # cut along x -> 1st index
-                scores = [mask[cut:, :].sum() / mask.sum() for cut in range(mask.width)]
-                cut = argmin([abs(optimal_score - score) for score in scores])
-                mask1, mask2 = mask[cut:, :], mask[:cut, :]
-                orig1, orig2 = _pos, _pos + Point(cut, 0)
-            else:
-                # cut along z -> 2nd index
-                scores = [mask[:, cut:].sum() / mask.sum() for cut in range(mask.length)]
-                cut = argmin([abs(optimal_score - score) for score in scores])
-                mask1, mask2 = mask[:, cut:], mask[:, :cut]
-                orig1, orig2 = _pos, _pos + Point(0, cut)
-
-            return subdivide(orig1, mask1, n1) + subdivide(orig2, mask2, n2)
-
-        orig = self.__origin
-        mask = self.__mask
         parcel_count = 1 + self.surface // (AVERAGE_PARCEL_SIZE ** 2)
-        return [MaskedParcel(pos, btype, self.__maps, mask) for (pos, mask) in subdivide(orig, mask, parcel_count)]
+        new_parcels = []
+        for parcel_pos, parcel_mask in self.__subdivide(self.__origin, self.__mask, parcel_count):
+            new_parcels.append(MaskedParcel(parcel_pos, btype, mc_map=self.__maps, mask=parcel_mask))
+        return new_parcels
 
     @property
     def surface(self):

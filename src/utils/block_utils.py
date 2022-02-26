@@ -1,11 +1,10 @@
-from itertools import product
 import random
-from typing import Iterable, Set, Callable, Tuple
+from itertools import product
+from typing import Iterable
 
 from gdpc import interface, worldLoader, direct_interface, lookup
 
-from utils import PointArray
-from .geometry_utils import Point, BoundingBox, ndarray, BuildArea, Singleton
+from .geometry_utils import Point, BoundingBox, BuildArea, Singleton
 
 interface.globalinterface.setBuffering(True)
 alterated_pos = set()
@@ -14,6 +13,11 @@ alterated_pos = set()
 def setBlock(point: Point, blockstate: str, buffer_size=1000):
     if point not in BuildArea():
         return
+    if "glazed_terracotta" in blockstate:
+        rotation_id = (point.x % 2) * 2 + (point.z % 2)
+        rotations = ['north', 'west', 'east', 'south']
+        blockstate += f"[facing={rotations[rotation_id]}]"
+
     res = interface.globalinterface.placeBlockBuffered(point.x, point.y, point.z, blockstate, buffer_size)
     alterated_pos.add((point.x, point.z))
 
@@ -791,7 +795,9 @@ water_blocks = {b.Water, b.Ice, b.FrostedIce, b.PackedIce, b.BlueIce}
 
 lava_blocks = {b.Lava}
 
-cube_ends = ['bricks', 'ore', 'block', 'terracotta', 'wool', 'cobblestone', 'sandstone', 'hyphae', 'debris', 'granite', 'basalt', 'log', 'wood', 'concrete', 'planks', 'blackstone', 'diorite', 'andesite', 'dirt', 'stone', 'pillar', 'quartz']
+cube_ends = ['bricks', 'ore', 'block', 'terracotta', 'wool', 'cobblestone', 'sandstone', 'hyphae', 'debris', 'granite',
+             'basalt', 'log', 'wood', 'concrete', 'planks', 'blackstone', 'diorite', 'andesite', 'dirt', 'stone',
+             'pillar', 'quartz']
 block_ends = {}
 for c in lookup.BLOCKS:
     if '_' not in c: continue
@@ -804,10 +810,12 @@ cubes = list(set().union(*(block_ends[e] for e in cube_ends)))
 def random_block() -> str:
     return random.choice(cubes)
 
+
 def get_material(blockstate: str) -> str:
     for _ in ['minecraft:', '_stairs', '_slab', '_door', '_fence', '_gate']:
         blockstate = blockstate.replace(_, '')
     return blockstate
+
 
 def random_material(*material_block_lists) -> str:
     materials_set = None
@@ -821,40 +829,6 @@ def random_material(*material_block_lists) -> str:
 
     materials = list(materials_set)
     return random.choice(materials)
-
-
-def connected_component(source_point, connection_condition, early_stopping_condition=None, check_limits=True):
-    # type: (Point, Callable[[Point, Point], bool], Callable[[Set], bool], bool) -> (Point, ndarray)
-    from numpy import full
-    component, points_to_explore = set(), {source_point}
-    # firstly, get all connected points in a set
-    while points_to_explore:
-        if early_stopping_condition and early_stopping_condition(component):
-            break
-        comp_point = points_to_explore.pop()
-        component.add(comp_point)
-
-        # explore direct neighbours for possible connected points
-        for dx, dz in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            x, z = comp_point.x + dx, comp_point.z + dz
-            neighbour = Point(x, z)
-            from utils import BuildArea
-            valid_x, valid_z = (0 <= x < BuildArea().width), (0 <= z < BuildArea().length)
-            if (not check_limits or (valid_x and valid_z)) \
-                    and connection_condition(comp_point, neighbour) \
-                    and neighbour not in component:
-                points_to_explore.add(neighbour)
-
-    # secondly, generate a mask and a masked parcel to hold relevant info
-    min_x, max_x = min(_.x for _ in component), max(_.x for _ in component)
-    min_z, max_z = min(_.z for _ in component), max(_.z for _ in component)
-    origin = Point(min_x, min_z)
-    width = max_x - min_x + 1
-    length = max_z - min_z + 1
-    mask = full((width, length), False)
-    for p in component:
-        mask[p.x - min_x, p.z - min_z] = True
-    return origin, PointArray(mask)
 
 
 def clear_tree_at(terrain, point: Point) -> None:

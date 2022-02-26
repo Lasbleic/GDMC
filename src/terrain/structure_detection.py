@@ -3,9 +3,10 @@ from typing import List, Set
 
 import numpy
 
-from terrain import TerrainMaps
-from utils import Position, connected_component, building_positions, getBlockRelativeAt, BlockAPI
 from building_seeding import Parcel, MaskedParcel, BuildingType
+from terrain import TerrainMaps
+from utils import Position, building_positions, PointArray
+from utils.algorithms.graphs import connected_component, GridGraph, point_set_as_array
 
 
 class StructureDetector:
@@ -48,13 +49,12 @@ class StructureDetector:
         components = []
 
         while points_to_explore:
-            struct_origin, struct_mask = connected_component(points_to_explore.pop(),
-                                                             lambda _, p: Position(p.x, p.z) in points_to_explore)
-            for dx, dz in product(range(struct_mask.shape[0]), range(struct_mask.shape[1])):
-                if struct_mask[dx, dz]:
-                    pos = Position(struct_origin.x + dx, struct_origin.z + dz)
-                    if pos in points_to_explore:
-                        points_to_explore.remove(pos)
+            def connection(n1, n2):
+                return n2 in points_to_explore
+            component = connected_component(GridGraph(False), points_to_explore.pop(), connection)
+            struct_origin, struct_mask = point_set_as_array(component)
+            struct_origin, struct_mask = struct_origin.view(Position), struct_mask.view(PointArray)
+            points_to_explore.difference_update(component)
             components.append(MaskedParcel(struct_origin, btype, self.terrain, struct_mask))
 
         return components

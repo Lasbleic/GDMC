@@ -1,4 +1,5 @@
 from random import randint
+from typing import Tuple
 
 import numpy as np
 
@@ -31,10 +32,10 @@ class Parcel(TransformBox):
 
         self.building_type: BuildingType = building_type
         self._map = mc_map  # type: terrain.TerrainMaps
-        self._entry_point: Position = seed if building_type is BuildingType.ghost else None
-        if self._entry_point is None:
+        self._entry_point: Position = seed.asPosition
+        if self._entry_point is not BuildingType.ghost:
             self.compute_entry_point()
-        self.__obstacle = None
+        self._obstacle = None
 
     def __eq__(self, other):
         if not isinstance(other, Parcel):
@@ -45,9 +46,17 @@ class Parcel(TransformBox):
         return "{} parcel at {}".format(self.building_type.name, self.center)
 
     def compute_entry_point(self) -> None:
+        """
+        Computes entry point of the parcel based on the closest road point
+        """
         road_net = self._map.road_network
 
         def key(road_block):
+            """
+            arbitrary key to find closest road point
+            :param road_block:
+            :return:
+            """
             road_y = self._map.height_map[road_block.x, road_block.z]
             self_y = self._map.height_map[self.mean_x, self.mean_z]
             return manhattan(Point(self.mean_x, self.mean_z, self_y), Point(road_block.x, road_block.z, road_y))
@@ -55,6 +64,9 @@ class Parcel(TransformBox):
         self._entry_point = argmin(road_net.road_blocks, key=key) if road_net.road_blocks else Position(0, 0)
 
     def expand(self, direction: Direction, **kwargs):
+        """
+        Extend the parcel in the given Direction
+        """
         assert self.is_expendable(direction)  # trust the user
         ObstacleMap().hide_obstacle(*self.obstacle(forget=True), False)
         super().expand(direction, inplace=True)
@@ -63,6 +75,9 @@ class Parcel(TransformBox):
         ObstacleMap().add_obstacle(*self.obstacle())
 
     def is_expendable(self, direction: Direction) -> bool:
+        """
+        Computes whether the parcel can be extended in a given Direction
+        """
         if self._map is None:
             return False
         # try:
@@ -73,7 +88,7 @@ class Parcel(TransformBox):
         if ext.minx < 0 or ext.minz < 0 or ext.maxx >= obstacle.width or ext.maxz >= obstacle.length:
             return False
 
-        no_obstacle = obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz].sum() == 0
+        no_obstacle = (obstacle[ext.minx:ext.maxx, ext.minz:ext.maxz] == 0).all()
         # h = self._map.height_map.box_height(expanded, True)
         # flat_extend = (h.max() - h.min()) / min(expanded.width, expanded.length) <= 0.7
         flat_extend = True
@@ -82,17 +97,23 @@ class Parcel(TransformBox):
         valid_ratio = (expanded.width <= 3 and expanded.length <= 3) or MIN_RATIO_SIDE <= expanded_ratio
         return no_obstacle and valid_sizes and valid_ratio and flat_extend
 
-    def obstacle(self, margin=0, forget=False):
-        if self.__obstacle:
-            obs = self.__obstacle
+    def obstacle(self, margin=0, forget=False) -> Tuple[Position, ndarray]:
+        """
+        Returns the obstacle associated to the parcel
+        :param margin: optional extension of the obstacle mask in every direction
+        :param forget: whether to forget the previously computed mask
+        :return:
+        """
+        if self._obstacle:
+            obs = self._obstacle
             if forget:
-                self.__obstacle = None
-        elif margin > 0:
+                self._obstacle = None
+        elif margin > 0 and self.mask.all():
             point = self.position - Point(margin, margin)
             mask = np.full((self.width + 2 * margin, self.length + 2 * margin), True)
-            obs = self.__obstacle = point, mask
+            obs = self._obstacle = point, mask
         else:
-            obs = self.__obstacle = self.position, self._mask
+            obs = self._obstacle = self.position, self._mask
         return obs
 
     @property
@@ -171,6 +192,7 @@ class Parcel(TransformBox):
 
 
 class MaskedParcel(Parcel):
+    __expendable: bool
 
     def __init__(self, origin, building_type, mc_map=None, mask=None):
         # type: (Point, BuildingType, TerrainMaps, array) -> None
@@ -180,9 +202,11 @@ class MaskedParcel(Parcel):
             Parcel.__init__(self, seed, building_type, mc_map, mask.shape[0], mask.shape[1])
             # for these parcels, relative box is immutable
             self._mask = mask
+            self.__expendable = False
         else:
             seed = origin + Point(MIN_PARCEL_SIZE // 2, MIN_PARCEL_SIZE // 2) if mask is not None else origin
             Parcel.__init__(self, seed, building_type, mc_map)
+            self.__expendable = True
 
     def __valid_extended_point(self, x, z, direction):
         """Can we extend the parcel to the point x, z from a given direction"""
@@ -192,7 +216,9 @@ class MaskedParcel(Parcel):
         return obstacle.is_accessible(source) and obstacle.is_accessible(direction)
 
     def is_expendable(self, direction: Direction) -> bool:
-        if super().is_expendable(direction):
+        if not self.__expendable:
+            return False
+        elif super().is_expendable(direction):
             return True
         else:
             obstacle = ObstacleMap()  # type: terrain.ObstacleMap  # obstacle terrain
@@ -225,13 +251,19 @@ class MaskedParcel(Parcel):
         self._mask = insert(self._mask, index[direction], array(mask_extension), axis=axis[direction])
         ObstacleMap().add_obstacle(*self.obstacle())
 
+    def obstacle(self, margin=0, forget=False):
+        if self.__expendable:
+            return super().obstacle(margin, forget)
+        self._obstacle = self.position, self.mask
+        return self._obstacle
+
     @property
     def generator(self) -> Generator:
-        return self.building_type.generator(self.box, entry_point=self.entry_point)
+        return self.building_type.generator(self.box, entry_point=self.entry_point, mask=self.mask)
 
     def add_mask(self, new_mask):
         assert self._mask.shape == new_mask.shape
-        self._mask = self._mask & new_mask
+        self._mask &= new_mask
 
     def move_center(self, new_seed):
         pass

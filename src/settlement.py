@@ -8,8 +8,8 @@ from typing import List, Dict
 import numpy as np
 from sortedcontainers import SortedList
 
-from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType
-from generation.building_palette import get_biome_palette
+from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
+from generation.building_palette import random_palette
 from generation.generators import place_sign
 from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
 from terrain import TerrainMaps
@@ -104,8 +104,11 @@ class Settlement:
         ObstacleMap().add_obstacle(Point(0, 0), self._road_network.obstacle)
         ObstacleMap().add_obstacle(Point(0, 0), self._maps.fluid_map.as_obstacle_array)
         for parcel in self._parcels:
-            parcel.compute_entry_point()
             ObstacleMap().hide_obstacle(*parcel.obstacle(forget=True), False)
+            if isinstance(parcel, MaskedParcel):
+                trunk_obstacle = ObstacleMap()[parcel.minx: parcel.maxx, parcel.minz: parcel.maxz]
+                parcel.add_mask(trunk_obstacle == 0)
+            parcel.compute_entry_point()
             ObstacleMap().add_obstacle(*parcel.obstacle())
         expendable_parcels = SortedList(self._parcels, lambda _: _.surface)
 

@@ -1,9 +1,18 @@
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Callable
 
+import numpy as np
 from sortedcontainers import SortedList
 
 from parameters import MAX_INT
 from utils import Point, BuildArea, manhattan
+
+
+__all__ = [
+    'connected_component',
+    'Graph',
+    'GridGraph',
+    'point_set_as_array'
+]
 
 
 class Graph:
@@ -140,3 +149,40 @@ def dijkstra(graph: Graph, source: Point or Set[Point], end_condition=(lambda _:
         explored.add(node)
 
     return tree, node
+
+
+def connected_component(
+        graph: Graph,
+        source: Point,
+        are_connected: Callable[[Point, Point], bool],
+        max_size: int = -1
+) -> Set[Point]:
+    component: Set[Point] = set()
+    points_to_explore: Set[Point] = {source}
+
+    while points_to_explore and max_size:
+        new_comp_point = points_to_explore.pop()
+
+        for neighbour in graph.getNeighbours(new_comp_point):
+            if are_connected(new_comp_point, neighbour) and neighbour not in component:
+                points_to_explore.add(neighbour)
+
+        component.add(new_comp_point)
+        max_size -= 1
+
+    return component
+
+
+def point_set_as_array(points: Set[Point]) -> Tuple[Point, np.ndarray]:
+    min_x, max_x = min(_.x for _ in points), max(_.x for _ in points)
+    min_z, max_z = min(_.z for _ in points), max(_.z for _ in points)
+
+    origin = Point(min_x, min_z)
+
+    width = max_x - min_x + 1
+    length = max_z - min_z + 1
+    mask = np.full((width, length), False)
+    for p in points:
+        mask[p.x - min_x, p.z - min_z] = True
+
+    return origin, mask

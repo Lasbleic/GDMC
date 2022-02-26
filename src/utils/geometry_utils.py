@@ -6,10 +6,9 @@ import numpy as np
 from gdpc.interface import requestBuildArea
 from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
-from utils import ndarray
 
 
-class Point(ndarray):
+class Point(np.ndarray):
     """
     Minecraft main coordinates are x, z, while y represents altitude (from 0 to 255)
     I choose to set y as an optional coordinate so that you can work with 2D points by just ignoring the 3rd coord

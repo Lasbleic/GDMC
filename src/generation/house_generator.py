@@ -1,3 +1,6 @@
+import time
+from typing import Union
+
 from gdpc import worldLoader
 
 from generation.generators import *
@@ -7,97 +10,31 @@ from utils import bernouilli, Direction
 global current_struct  # type: Structure
 
 
-class ProcHouseGenerator(Generator):
-    MIN_SIZE = 5
-    AVG_SIZE = 7
-    MAX_SIZE = 11
-    MIN_RATIO = 2/3
+class ProcHouseGenerator(MaskedGenerator):
 
     def generate(self, level, height_map=None, palette=None):
-        try:
-            global current_struct
-            current_struct = Structure(self._box.origin - (1, 1, 1), (self._box.width + 2, self._box.height+10, self._box.length + 2))
-            self._generate_main_building()
-        except ValueError:
+        global current_struct
+        current_struct = Structure(self._box.origin - (1, 1, 1), (self._box.width + 2, self._box.height+10, self._box.length + 2))
+        current_struct = Structure(self._box.origin, (self._box.width, self._box.height+100, self._box.length))
+
+        t0 = time.time()
+        n_iter = 5000
+        main_building: _RoomSymbol = ProcHouseGeneratorBuilder(self.origin, self._mask).build(self._box, n_iter)
+        print(f"Computed {n_iter} foot prints in {(time.time() - t0):0.3}s !")
+
+        if main_building is None:
             print("Parcel ({}, {}) at {} too small to generate a house".format(self.width, self.length, self.mean))
             return
-        self._generate_annex()
-        self._center_building()
-        self._clear_trees(level)
-        Generator.generate(self, level.level, height_map, palette)
-        self._generate_door(level.level, palette)
-        self._generate_stairs(level.level, palette)
+        else:
+            self.children.append(main_building)
+            self._clear_trees(level)
+            Generator.generate(self, level.level, height_map, palette)
+            self._generate_door(level.level, palette)
+            self._generate_stairs(level.level, palette)
 
     def _clear_trees(self, level):
         for gen in filter(lambda g: isinstance(g, _RoomSymbol), self.children):
             gen._clear_trees(level)
-
-    def _generate_main_building(self):
-        MIN_S, MAX_S, MIN_R, MAX_R = self.MIN_SIZE, self.MAX_SIZE, self.MIN_RATIO, 1. / self.MIN_RATIO
-        AVG_S = self.AVG_SIZE
-        w0, h0, l0 = self._box.width, self._box.height, self._box.length
-
-        # First, apply size constraints to the house
-        if w0 < self.MIN_SIZE or l0 < self.MIN_SIZE:
-            raise ValueError()
-        w1, l1 = 0, 0
-        while not (MIN_S <= w1 <= MAX_S and MIN_S <= l1 <= MAX_S and MIN_R <= (w1 / l1) <= MAX_R):
-            # generate main building
-            w1 = random.randint(AVG_S, w0) if w0 > AVG_S else w0
-            l1 = random.randint(AVG_S, l0) if l0 > AVG_S else l0
-        self._layout_width = w1
-        self._layout_length = l1
-        main_box = TransformBox(self._box.origin + (0, 1, 0), (w1, h0, l1))
-        self.children.append(_RoomSymbol(main_box, has_base=True))
-
-    def _generate_annex(self):
-        height = self.children[0].height - 2  # note: -2 makes annexes on average 2 blocks lower than the main build
-        w0, w1, l0, l1 = self.width, self.children[0].width, self.length, self.children[0].length
-        # extension in x
-        try:
-            max_width = w0 - w1  # available width
-            width = random.randint(-max_width, max_width)  # annex width, west or east of main room
-            width = 2 * width if (abs(width) == 1) and max_width >= 2 else width
-            length = random.randint(5, l1 - 2)  # annex length, limited by main room's dimension
-            delta = random.randint(0, l1 - length)  # position relative to main room
-
-            if width:
-                if width > 0:
-                    annex_box = TransformBox(self.children[0].origin + (w1, 0, delta), (width, height, length))
-                else:
-                    annex_box = TransformBox(self.children[0].origin + (0, 0, delta), (-width, height, length))
-                    self.children[0].translate(dx=-width)
-                direction = Direction.of(dx=width)
-                annex_box.expand(-direction, inplace=True)
-                self.children[0][direction] = _RoomSymbol(annex_box, has_base=True)
-                self._layout_width += abs(width) - 1
-
-        except ValueError:
-            # if excepted, should have been raised from randint
-            print('not enough space to build an annex in x')
-
-        # extension in z
-        try:
-            max_length = l0 - l1  # available width
-            length = random.randint(-max_length, max_length)  # annex length, north or south of main room
-            length = 2 * length if (abs(length) == 1) and max_length >= 2 else length
-            width = random.randint(5, w1 - 2)  # annex length, limited by main room's dimension
-            delta = random.randint(0, w1 - width)  # position relative to main room
-
-            if length:
-                if length > 0:
-                    annex_box = TransformBox(self.children[0].origin + (delta, 0, l1), (width, height, length))
-                else:
-                    annex_box = TransformBox(self.children[0].origin + (delta, 0, 0), (width, height, -length))
-                    self.children[0].translate(dz=-length)
-                direction = Direction.of(dz=length)
-                annex_box.expand(-direction, inplace=True)
-                self.children[0][direction] = _RoomSymbol(annex_box, has_base=True)
-                self._layout_length += abs(length) - 1
-
-        except ValueError:
-            # if excepted, should have been raised from randint
-            print('not enough space to build an annex in z')
 
     def _center_building(self):
         dx = int(round((self._box.width - self._layout_width) / 2))
@@ -279,7 +216,7 @@ class _RoomSymbol(CardinalGenerator):
         stair_vec = abs(stair_vec)
         if reversed:
             stair_dir = -stair_dir
-            orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - (wall_vec * 2) + (stair_vec * 4)
+            orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - (wall_vec * 2) + (stair_vec * 3)
             stair_vec = -stair_vec
         else:
             orig_pos = Point(orig_pos.x, orig_pos.z, orig_pos.y) - wall_vec + stair_vec
@@ -483,7 +420,7 @@ class _WallSymbol(Generator):
             door_val = [euclidean(entry, Point(box.minx, box.minz+_)) if is_win[_] or not sum(is_win) else 1000 for _ in range(box.length)]
             # door_z = choice(range(box.length), p=[1. * _ / sum(is_win) for _ in is_win])  # index position
             door_z = argmin([float(_) for _ in door_val])
-            door_box = TransformBox(box.origin + (0, 0, door_z), (1, box.height-1, 1))
+            door_box = TransformBox(box.origin + (0, 0, door_z), (1, 3, 1))
             if door_z > 0 and is_win[door_z - 1]:
                 door_box.expand(Direction.of(dz=-1), inplace=True)
             elif door_z < box.length - 1 and is_win[door_z + 1]:
@@ -505,3 +442,103 @@ class _WallSymbol(Generator):
 class _BaseSymbol(Generator):
     def generate(self, level, height_map=None, palette=None):
         current_struct.fill(self._box, palette['base'], 15)
+
+
+class ProcHouseGeneratorBuilder():
+    MIN_SIZE = 5
+    AVG_SIZE = 7
+    MAX_SIZE = 11
+    MIN_RATIO = 2/3
+
+    def __init__(self, origin: Position, mask: ndarray):
+        self.__origin = origin
+        self.__mask = mask
+
+    def build(self, box: BoundingBox, n_iter: int = 100) -> _RoomSymbol:
+        best_foot_print: _RoomSymbol = _RoomSymbol(TransformBox())
+        best_score: int = 0
+        for _ in range(n_iter):
+            room: _RoomSymbol = self.gen_solution(box)
+            if self.is_feasible(room) and self.score(room) > best_score:
+                best_foot_print = room
+                best_score = self.score(room)
+
+        return best_foot_print
+
+    def gen_solution(self, box: BoundingBox) -> Union[_RoomSymbol, None]:
+        MIN_S, MAX_S, MIN_R, MAX_R = self.MIN_SIZE, self.MAX_SIZE, self.MIN_RATIO, 1. / self.MIN_RATIO
+        AVG_S = self.AVG_SIZE
+
+        # First, apply size constraints to the house
+        if box.width < self.MIN_SIZE or box.length < self.MIN_SIZE:
+            return None
+
+        # Select random feasible rectangle in the box
+        rx = rz = rw = rl = 0  # rx, rz, width and length of the main room
+        while not (MIN_S <= rw <= MAX_S and MIN_S <= rl <= MAX_S and MIN_R <= (rw / rl) <= MAX_R):
+            try:
+                rw = random.randint(AVG_S, box.width) if box.width > AVG_S else box.width
+                rl = random.randint(AVG_S, box.length) if box.length > AVG_S else box.length
+                rx = random.randint(0, box.width - rw)
+                rz = random.randint(0, box.length - rl)
+            except ValueError:
+                continue
+        main_box = TransformBox(box.origin + (rx, 1, rz), (rw, box.height, rl))
+        main_room = _RoomSymbol(main_box, has_base=True)
+
+        try:
+            a1w = random.randint(MIN_S, rw - 2)
+            a1x = rx + random.randint(0, rw - a1w)
+            max_a1l = min(MAX_S, int(a1w * MAX_R))
+            a1z = random.choice([z for z in range(box.length) if z < rz or (rz + rl) < z < min(box.maxz, rz + rl + max_a1l)])
+            if a1z < rz:
+                a1l = rz - a1z + 1
+            else:
+                a1l = a1z - rz - rl
+                a1z = rz + rl - 1
+            a1box = TransformBox(box.origin + (a1x, 1, a1z), (a1w, box.height - 2, a1l))
+            main_room[Direction.of(dz=(a1z - rz))] = _RoomSymbol(a1box, has_base=True)
+
+        except (ValueError, IndexError):
+            pass
+
+        try:
+            a2l = random.randint(MIN_S, rl - 2)
+            a2z = rz + random.randint(0, rl - a2l)
+            max_a2w = min(MAX_S, int(a2l * MAX_R))
+            a2x = random.choice([x for x in range(box.width) if x < rx or (rx + rw) < x < min(box.maxx, rx + rw + max_a2w)])
+            if a2x < rx:
+                a2w = rx - a2x + 1
+            else:
+                a2w = a2x - rx - rl
+                a2x = rx + rw - 1
+            a2box = TransformBox(box.origin + (a2x, 1, a2z), (a2w, box.height - 2, a2l))
+            main_room[Direction.of(dx=(a2x - rx))] = _RoomSymbol(a2box, has_base=True)
+
+        except (ValueError, IndexError):
+            pass
+
+        return main_room
+
+    def is_feasible(self, room: _RoomSymbol) -> bool:
+        """
+        Compares solution to parcel mask
+        :param room:
+        :return:
+        """
+        rooms: List[_RoomSymbol] = [room] + room.children
+        for sub_room in rooms:
+            min_x = sub_room.origin.x - self.__origin.x
+            min_z = sub_room.origin.z - self.__origin.z
+            if not self.__mask[min_x:(min_x + sub_room.width), min_z:(min_z + sub_room.length)].all():
+                return False
+        return True
+
+    @staticmethod
+    def score(room: _RoomSymbol) -> int:
+        """
+        Score of the solution, equals the total surface of the foot print
+        :param room: feasible solution
+        :return: surface of the solution
+        """
+        return sum(r.surface for r in [room] + room.children)

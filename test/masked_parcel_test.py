@@ -15,8 +15,8 @@ if __name__ == '__main__':
     W, L = terrain.width, terrain.length
 
     # create road cycle
-    p1, p2, p3, p4 = Point(int(.1 * W), int(.2 * L)), Point(int(.8 * W), int(.1 * L)), Point(int(.8 * W),
-                                                                                             int(.9 * L)), Point(
+    p1, p2, p3, p4 = Point(int(.1 * W), int(.2 * L)), Point(int(.8 * W), int(.1 * L)), Point(int(.7 * W),
+                                                                                             int(.7 * L)), Point(
         int(.3 * W), int(.9 * L))
     net = terrain.road_network
     p12 = net.create_road(p1, p2)
@@ -31,10 +31,10 @@ if __name__ == '__main__':
 
     road_cycle = cycle_preprocess(net.road_blocks)
     city_block = CityBlock(road_cycle, terrain)
-    for parcel in city_block.parcels(BuildingType.crop):
+    for parcel in city_block.parcels(BuildingType.house):
         skeleton.add_parcel(parcel)
     settlement.define_parcels()  # define parcels around seeds
-    settlement.generate(terrain, True)  # build buildings on parcels
+    settlement.generate()  # build buildings on parcels
     dump()
 
     # Optional erasing of the generated settlement

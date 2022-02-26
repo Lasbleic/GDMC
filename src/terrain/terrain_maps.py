@@ -22,7 +22,6 @@ class TerrainMaps:
         from time import time
         t0 = t1 = time()
         self.height_map = HeightMap(level, area)
-        print(self.height_map.mean())
         print(f'Computed height map in {time() - t1}')
 
         t1 = time()

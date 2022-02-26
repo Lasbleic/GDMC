@@ -353,7 +353,7 @@ class RoadNetwork(metaclass=Singleton):
         for p in self.road_blocks.union(self.special_road_blocks):
             x0, z0 = p.x, p.z
             # build a circular obstacle of designated width around road point
-            margin = self.get_road_width(x0, z0) / 2 - .5
+            margin = self.get_road_width(x0, z0) / 2 + .5
             for x1, z1 in itertools.product(sym_range(x0, margin, self.width), sym_range(z0, margin, self.length)):
                 obs[x1, z1] = True
         return obs

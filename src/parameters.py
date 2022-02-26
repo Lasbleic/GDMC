@@ -20,7 +20,7 @@ BRIDGE_COST = 10
 BRIDGE_UNIT_COST = 4
 
 # buildings dimensions
-MAX_HEIGHT = 10  # 12 -> max 3 floors
+MAX_HEIGHT = 16  # 12 -> max 3 floors
 BUILDING_HEIGHT_SPREAD = 40  # at that distance from the center, buildings' height is a third of max height (1/e ~ .36)
 AVERAGE_PARCEL_SIZE = 12
 MAX_PARCELS_IN_BLOCK = 6
@@ -34,6 +34,7 @@ MIN_DIST_TO_RIVER = 4
 
 # seeding
 SEED_COUNT = 200
+REPLACE_PARCEL_TYPE_EXPLORATION = 15
 
 MAX_INT = 1 << 15
 MAX_FLOAT = float(MAX_INT)
