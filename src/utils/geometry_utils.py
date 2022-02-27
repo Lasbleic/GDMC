@@ -43,6 +43,10 @@ class Point(np.ndarray):
         return self.x, self.y, self.z
 
     @property
+    def xy(self):
+        return self.x, self.z
+
+    @property
     def x(self):
         return self[0]
 

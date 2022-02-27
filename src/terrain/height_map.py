@@ -54,7 +54,7 @@ class HeightMap(PointArray):
     def box_height(self, box, use_relative_coords, include_fluids=False):
         x0 = box.minx if use_relative_coords else box.minx - self.__origin.x
         z0 = box.minz if use_relative_coords else box.minz - self.__origin.z
-        matrix = self._values if include_fluids else self.__ocean_floor
+        matrix = self[:] if include_fluids else self.__ocean_floor[:]
         return matrix[x0: (x0 + box.width), z0:(z0 + box.length)].astype(int)
 
     def steepness(self, x, z=None, norm=True):
@@ -67,10 +67,10 @@ class HeightMap(PointArray):
         # type: (List[Point], List[int]) -> None
         for p, h in zip(points, heights):
             if self.upper_height(p) == self[p]:
-                self.__air_height._values[p.x, p.z] = h
+                self.__air_height[p] = h
             if self.lower_height(p) == self[p]:
-                self.__ocean_floor._values[p.x, p.z] = h
-            self._values[p.x, p.z] = h
+                self.__ocean_floor[p] = h
+            self[p] = h
 
     @staticmethod
     def __calcGoodHeightmap(world_slice):

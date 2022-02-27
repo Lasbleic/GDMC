@@ -66,6 +66,9 @@ class VillageSkeleton:
                 else:
                     block_type = self.__interest.get_optimal_type(city_block.center)
 
+                if block_type == BuildingType.windmill:
+                    block_type = BuildingType.crop
+
                 for new_parcel in city_block.parcels(block_type):
                     self.add_parcel(new_parcel)
 

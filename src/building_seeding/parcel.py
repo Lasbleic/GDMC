@@ -104,17 +104,23 @@ class Parcel(TransformBox):
         :param forget: whether to forget the previously computed mask
         :return:
         """
-        if self._obstacle:
+
+        if self._obstacle is None:
+            if margin > 0 and self.mask.all():
+                point = self.position - Point(margin, margin)
+                mask = np.full((self.width + 2 * margin, self.length + 2 * margin), True)
+            else:
+                point = self.position
+                mask = self._mask[:]
+            mask[0, :] = False
+            mask[:, 0] = False
+            self._obstacle = point, mask
+
+        if forget:
             obs = self._obstacle
-            if forget:
-                self._obstacle = None
-        elif margin > 0 and self.mask.all():
-            point = self.position - Point(margin, margin)
-            mask = np.full((self.width + 2 * margin, self.length + 2 * margin), True)
-            obs = self._obstacle = point, mask
-        else:
-            obs = self._obstacle = self.position, self._mask
-        return obs
+            self._obstacle = None
+            return obs
+        return self._obstacle
 
     @property
     def entry_x(self):
@@ -254,7 +260,10 @@ class MaskedParcel(Parcel):
     def obstacle(self, margin=0, forget=False):
         if self.__expendable:
             return super().obstacle(margin, forget)
-        self._obstacle = self.position, self.mask
+        mask = self._mask[:]
+        mask[0, :] = False
+        mask[:, 0] = False
+        self._obstacle = self.position, mask
         return self._obstacle
 
     @property

@@ -11,7 +11,7 @@ from sortedcontainers import SortedList
 from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
 from generation.building_palette import random_palette
 from generation.generators import place_sign
-from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD
+from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, TERRAFORM_ITERATIONS
 from terrain import TerrainMaps
 from terrain.road_network import RoadNetwork
 from utils import *
@@ -57,7 +57,7 @@ class Settlement:
         if self.districts.n_districts >= 2:
             main_roads = min_spanning_tree(district_centers)
             for p1, p2 in main_roads:
-                self._road_network.create_road(p1, p2)
+                self._road_network.create_road(p1.asPosition, p2.asPosition)
         else:
             self._road_network.create_road(district_centers[0], district_centers[0])
         self.init_road_network()
@@ -151,7 +151,6 @@ class Settlement:
         for p in self._parcels:
             p.compute_entry_point()
             define_parcels_heights(p)
-            # translate all parcels to absolute coordinates
 
     def generate(self):
         self._road_network.generate(self._maps, self.districts)
@@ -197,8 +196,6 @@ class Settlement:
         import cv2
         from numpy import uint8
         base_height = uint8(self._maps.height_map[:])
-        smooth_height = cv2.medianBlur(base_height, 7)
-
         # Compute constructable locations: road net + parcels
         mask = np.zeros(base_height.shape)
 
@@ -215,28 +212,29 @@ class Settlement:
             z0 = max(parcel.minz - 2, 0)
             z1 = min(parcel.maxz + 3, self.limits.length)
             mask[x0:x1, z0:z1] = 1
-        # del x0, x1, z0, z1, parcel, pos
 
         mask[self._maps.fluid_map.water > 0] = 0  # discount water
 
-        for x, z in filter(lambda u: mask[u] and base_height[u] != smooth_height[u],
-                           itertools.product(range(self.limits.width), range(self.limits.length))):
-            xa = x + self.limits.x
-            za = z + self.limits.z
-            ya = base_height[x, z]
-            new_y = smooth_height[x, z]
-            self._maps.height_map.update([Point(x, z)], [new_y])
-            surface_block = self._maps.level.getBlockAt(xa, ya, za)
-            setBlock(Point(xa, za, new_y), surface_block)
+        smooth_height = base_height[:]
+        for _ in range(TERRAFORM_ITERATIONS):
+            smooth_height = cv2.blur(smooth_height, (9, 9))
+
+        u: Position
+        for u in filter(lambda u: mask[u.xy] and base_height[u.xy] != smooth_height[u.xy], building_positions()):
+            ya = base_height[u.x, u.z]
+            new_y = smooth_height[u.x, u.z]
+            self._maps.height_map.update([u], [new_y])
+            surface_block = self._maps.level.getBlockAt(u.abs_x, ya, u.abs_z)
+            setBlock(Point(u.abs_x, u.abs_z, new_y), surface_block)
 
             if ya + 4 > new_y > ya:
-                below_block = self._maps.level.getBlockAt(xa, ya - 1, za)
-                box = TransformBox((xa, ya, za), (1, new_y - ya, 1))
+                below_block = self._maps.level.getBlockAt(u.abs_x, ya - 1, u.abs_z)
+                box = TransformBox((u.abs_x, ya, u.abs_z), (1, new_y - ya, 1))
                 fillBlocks(box, below_block)
 
             elif new_y < ya:
                 # actually an else block
-                box = TransformBox((xa, new_y + 1, za), (1, ya - new_y - 1, 1))
+                box = TransformBox((u.abs_x, new_y + 1, u.abs_z), (1, ya - new_y, 1))
                 fillBlocks(box, BlockAPI.blocks.Air)
 
     def clean_road_network(self):

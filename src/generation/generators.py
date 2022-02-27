@@ -7,8 +7,10 @@ import numpy as np
 from gdpc import direct_interface
 from numpy import percentile
 from numpy.random import choice as npChoice
+from scipy import ndimage
 
 from generation.building_palette import HousePalette
+from generation.structure import AREA_STRUCTURE
 from utils import *
 from utils.nbt_structures import StructureNBT
 
@@ -242,7 +244,7 @@ class CropGenerator(MaskedGenerator):
             print(f"Parcel ({self.width}, {self.length}) at {self.mean} too small to generate a crop")
             # for x, z in product(range(self.width), range(self.length)):
             #     pos = Point(x + self.origin.x, z + self.origin.z, height_map[x, z] + 1)
-            #     setBlock(pos, BlockAPI.blocks.DiamondBlock)
+            #     AREA_STRUCTURE.set(pos, BlockAPI.blocks.DiamondBlock)
             return
         self._clear_trees(level)
         if self._sub_generator_function == self._gen_animal_farm:
@@ -257,7 +259,6 @@ class CropGenerator(MaskedGenerator):
         from terrain.entity_manager import EntityManager
         entities: EntityManager
         self.refine_mask()
-        self.__terraform(height_map)
         if not animal:
             if entities:
                 from terrain.entity_manager import get_most_populated_animal
@@ -269,13 +270,17 @@ class CropGenerator(MaskedGenerator):
         fence_block = BlockAPI.getFence(palette['door'])
         gate_pos, gate_dist, gate_block = None, 0, None
 
+        height_map_max = ndimage.maximum_filter(height_map, size=3)
+
         # place fences
-        for x, y, z in self.surface_pos(height_map):
-            if not self.is_masked(x, z, True):
+        for ax, y, az in self.surface_pos(height_map):
+            x, z = ax - self.origin.x, az - self.origin.z
+            if not self.is_masked(ax, az, True):
                 continue
-            if self.is_lateral(x, z):
-                setBlock(Point(x, z, y + 1), fence_block)
-                new_gate_pos = Point(x, z)
+            if self.is_lateral(ax, az):
+                box = BoundingBox((ax, y + 1, az), (1, height_map_max[x, z] - y + 1, 1))
+                AREA_STRUCTURE.fill(box, fence_block)
+                new_gate_pos = Point(ax, az, y)
                 new_gate_dist = euclidean(new_gate_pos, self._entry_point)
                 if (gate_pos is None or new_gate_dist < gate_dist) and not self.is_corner(new_gate_pos):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
@@ -288,9 +293,7 @@ class CropGenerator(MaskedGenerator):
                     gate_block = BlockAPI.getFence(palette['door'], facing=str(door_dir).lower())
 
         if gate_pos:
-            x, z = gate_pos.x, gate_pos.z
-            y = height_map[x - self.origin.x, z - self.origin.z] + 1
-            setBlock(Point(x, z, y), gate_block)
+            AREA_STRUCTURE.set(gate_pos, gate_block, 2)
             for dir in (door_dir.rotate(), -door_dir.rotate()):  # type: Direction
                 if direct_interface.getBlock(dir.x, dir.y, dir.z).endswith(fence_block):
                     place_torch(dir.x, dir.y + 1, dir.z)
@@ -298,17 +301,17 @@ class CropGenerator(MaskedGenerator):
         # place animals
         animal_count = sum(self._mask.flat) // SURFACE_PER_ANIMAL
         while animal_count > 0:
-            x = random.randint(fence_box.minx, fence_box.maxx - 1)
-            z = random.randint(fence_box.minz, fence_box.maxz - 1)
-            y = height_map[x - self.origin.x, z - self.origin.z] + 1
-            if self.is_masked(x, z, True) and not self.is_lateral(x, z):
+            ax = random.randint(fence_box.minx, fence_box.maxx - 1)
+            az = random.randint(fence_box.minz, fence_box.maxz - 1)
+            y = height_map[ax - self.origin.x, az - self.origin.z] + 1
+            if self.is_masked(ax, az, True) and not self.is_lateral(ax, az):
                 if entities:
-                    entity = entities.get_entity(animal, position=Position(x, z, absolute_coords=True))
+                    entity = entities.get_entity(animal, position=Position(ax, az, absolute_coords=True))
                 else:
                     entity = Entity(animal)
                 if bernouilli(.3):
                     entity["Age"] = random.randint(-25000, -5000)
-                entity.move_to((x, y, z))
+                entity.move_to((ax, y, az))
                 animal_count -= 1
             else:
                 animal_count -= .1
@@ -325,12 +328,12 @@ class CropGenerator(MaskedGenerator):
         # Place crops
         for x, y, z in self.surface_pos(height):
             # farmland
-            setBlock(Point(x, z, y), f"farmland[moisture=7]")
+            AREA_STRUCTURE.set(Point(x, z, y), f"farmland[moisture=7]")
             # crop
             crop_age = crop_age + random.random() - .5
             int_crop_age = pos_bound(int(round(crop_age)), max_age)
             crop_block = f"{crop_type}[age={int_crop_age}]"
-            setBlock(Point(x, z, y+1), crop_block)
+            AREA_STRUCTURE.set(Point(x, z, y+1), crop_block)
 
         dump()
         self._irrigate_field(height, 4)
@@ -340,12 +343,12 @@ class CropGenerator(MaskedGenerator):
         mx, mz = random.randint(0, 1), random.randint(0, 2)
         for x, y, z in self.surface_pos(height_map):
             if (x % 2 == mx and (z + x // 2) % 3 == mz) and bernouilli():
-                setBlock(Point(x, z, y), alpha.Dirt)  # dirt under hay bales
+                AREA_STRUCTURE.set(Point(x, z, y), alpha.Dirt)  # dirt under hay bales
                 b = alpha.HayBlock
                 y += 1
             else:
                 b = alpha.Farmland
-            setBlock(Point(x, z, y), b)
+            AREA_STRUCTURE.set(Point(x, z, y), b)
         place_water_source(self.mean.x, y, self.mean.z)
 
     def _irrigate_field(self, height_map, spread):
@@ -379,33 +382,11 @@ class CropGenerator(MaskedGenerator):
                 y_crop = height_map[neighbour.x - x0, neighbour.z - z0]
                 if y_crop < y_water:  # Prevents overflowing to adjacent positions
                     state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
-                    setBlock(neighbour, state)
-            setBlock(p, alpha.Water)
+                    AREA_STRUCTURE.set(neighbour, state, 5)
+            AREA_STRUCTURE.set(p, alpha.Water, 5)
 
             mask = (height_map == y_water)[max(0, rx-spread):(rx+spread+1), max(0, rz-spread):(rz+spread+1)]
             irrigated[max(0, rx-spread):(rx+spread+1), max(0, rz-spread):(rz+spread+1)][mask] = 0
-
-    def __terraform(self, height_map):
-        road_dir_x, road_dir_z = self.entry_direction.x, self.entry_direction.z
-        if road_dir_x == 1:
-            road_side_height = height_map[-1, :]
-        elif road_dir_x == -1:
-            road_side_height = height_map[0, :]
-        elif road_dir_z == -1:
-            road_side_height = height_map[:, 0]
-        else:
-            road_side_height = height_map[:, -1]
-        ref_height = int(round(road_side_height.mean()))
-        height_mask = (height_map >= ref_height - 1) & (height_map <= ref_height + 1)
-        self.add_mask(height_mask)
-        for x, _, z in self.surface_pos(height_map):
-            h = height_map[x - self.origin.x, z - self.origin.z]
-            if h == (ref_height - 1):
-                setBlock(Point(x, z, ref_height), alpha.Dirt)
-            elif h == (ref_height + 1):
-                setBlock(Point(x, z, h), alpha.Air)
-        height_map[height_mask] = ref_height
-        return height_map
 
     def is_lateral(self, x=None, z=None):
         p = Point(x, z)
@@ -472,7 +453,7 @@ class DoorGenerator(Generator):
     def generate(self, level, height_map=None, palette=None):
         for x, y, z in self._box.positions:
             state = self._resource(x, y, z, palette)
-            setBlock(Point(x, z, y), state)
+            AREA_STRUCTURE.set(Point(x, z, y), state, 100)
         fillBlocks(self._box.translate(self._direction).split(dy=2)[0], alpha.Air, ground_blocks)
 
     def _resource(self, x, y, z, palette):
@@ -525,15 +506,15 @@ class WindmillGenerator(Generator):
 
 def place_street_lamp(x, y, z, material, h=0):
     h = max(1, 3+h)
-    fillBlocks(BoundingBox((x, y + 1, z), (1, h, 1)), BlockAPI.getFence(material))
-    setBlock(Point(x, z, y + h + 1), alpha.RedstoneLamp)
-    setBlock(Point(x, z, y + h + 2), f"{alpha.DaylightDetector}[inverted=true]")
+    AREA_STRUCTURE.fill(BoundingBox((x, y + 1, z), (1, h, 1)), BlockAPI.getFence(material))
+    AREA_STRUCTURE.set(Point(x, z, y + h + 1), alpha.RedstoneLamp)
+    AREA_STRUCTURE.set(Point(x, z, y + h + 2), f"{alpha.DaylightDetector}[inverted=true]")
 
 
 def place_torch_post(x, y, z, block=None):
     if block is None:
         block = random.choice([alpha.OakFence, alpha.CobblestoneWall, alpha.MossyCobblestoneWall, alpha.SpruceFence])
-    setBlock(Point(x, z, y+1), block)
+    AREA_STRUCTURE.set(Point(x, z, y+1), block)
     place_torch(x, y+2, z)
 
 
@@ -543,10 +524,10 @@ def place_water_source(x, y, z, protected_points=None):
         dpos = p + dir.value
         if direct_interface.getBlock(*dpos.coords).split(':')[-1] not in ground_blocks:
             state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
-            setBlock(dpos, state)
+            AREA_STRUCTURE.set(dpos, state, 5)
             if protected_points:
                 protected_points.add((dpos.x, dpos.z))
-    setBlock(p, alpha.Water)
+    AREA_STRUCTURE.set(p, alpha.Water, 5)
 
 
 def sign_rotation_for_direction(p: Point):

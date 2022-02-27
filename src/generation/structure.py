@@ -1,6 +1,6 @@
 from utils import BoundingBox, Position, Point
 from numpy import zeros, int32
-from utils.block_utils import setBlock
+from utils.block_utils import setBlock, BuildArea
 
 
 class Structure(BoundingBox):
@@ -30,3 +30,6 @@ class Structure(BoundingBox):
     @property
     def origin(self) -> Position:
         return Position(self.minx, self.minz, self.miny)
+
+
+AREA_STRUCTURE: Structure = Structure((BuildArea().x, 0, BuildArea().z), (BuildArea().width, 256, BuildArea().length))

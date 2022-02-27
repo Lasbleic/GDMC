@@ -208,7 +208,7 @@ class Districts(PointArray):
                 district_density = density_one_district((center.x, center.z), (sig_x, sig_z))
                 density_matrix = np.minimum(density_matrix, district_density)
 
-        self._values = density_matrix
+        self[:] = density_matrix
 
     @property
     def n_districts(self):
