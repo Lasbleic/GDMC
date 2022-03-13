@@ -15,8 +15,9 @@ class TerrainMaps:
     """
 
     def __init__(self, level: worldLoader.WorldSlice, area: BuildArea):
-        for k, hm in level.heightmaps.items():
-            level.heightmaps[k] = hm[:-1, :-1]
+        if area.width < level.heightmaps["WORLD_SURFACE"].shape[0]:
+            for k, hm in level.heightmaps.items():
+                level.heightmaps[k] = hm[:-1, :-1]
         self.level = level
         self.area: BuildArea = area
         from time import time

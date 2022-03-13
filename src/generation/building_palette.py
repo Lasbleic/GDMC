@@ -88,7 +88,7 @@ jungle_house_palette1 = HousePalette(b.Cobblestone, b.OakPlanks, b.JungleLog, b.
                                      b.WhiteStainedGlassPane, 'gable', b.StoneBrick, 'jungle')
 
 sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothSandstone, b.Sandstone,
-                                   b.BirchFence, 'flat', b.ChiseledSandstone, 'oak')
+                                   b.BirchFence, 'flat', b.ChiseledSandstone, 'oak', roof_alt=b.Sandstone)
 
 red_sand_house_palette1 = HousePalette(b.Cobblestone, b.SprucePlanks, b.SmoothRedSandstone, b.RedSandstone,
                                        b.BirchFence, 'flat', b.ChiseledRedSandstone, 'oak')

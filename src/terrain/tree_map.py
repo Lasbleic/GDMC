@@ -12,10 +12,13 @@ from utils.misc_objects_functions import _in_limits
 
 
 class TreesMap(PointArray):
+    __trees: List[List[Tuple[int, int, int]]]
+    __tree_distance: np.ndarray = None
+
     def __new__(cls, level: worldLoader.WorldSlice, height: HeightMap):
         values, trees = _process(level, height)
         obj = super().__new__(cls, values)
-        obj.__trees: List[List, Tuple[int, int, int]] = trees
+        obj.__trees = trees
         obj.__origin = Point(level.rect[0], level.rect[1])
 
         return obj
@@ -27,13 +30,24 @@ class TreesMap(PointArray):
             setBlock(tree_point, BlockAPI.blocks.Air)
         self.__trees[tree_index] = []
 
+    @property
+    def tree_distance(self) -> np.ndarray:
+        if self.__tree_distance is None:
+            tree_distances = []
+            for tree in self.__trees:
+                if tree:
+                    x, _, z = tree[0]  # base trunk block position
+                    x_dist = X_ARRAY - x
+                    z_dist = Z_ARRAY - z
+                    tree_distances.append(abs(x_dist) + abs(z_dist))  # manhattan dist to the tree
+            self.__tree_distance = np.minimum.reduce(tree_distances)
 
-# @numba.jit()
+        return self.__tree_distance
+
+
 def _detect_trunks(level: worldLoader.WorldSlice, height: HeightMap):
     # detect trunks
-    first_elt = UniTuple(i8, 2)(height.width, height.length)
-    # trunks = nbSet(UniTuple(i8, 2))(first_elt)
-    trunks = {first_elt}
+    trunks = set()
 
     for xz in prange(height.width * height.length):
         x = xz // height.length
@@ -43,7 +57,6 @@ def _detect_trunks(level: worldLoader.WorldSlice, height: HeightMap):
         if _is_trunk(block):
             trunks.add((x, z))
 
-    trunks.remove(first_elt)
     return trunks
 
 
@@ -57,13 +70,12 @@ def _process(level: worldLoader.WorldSlice, height: HeightMap):
     tree_blocks: List[UniTuple(i8, 2)] = []
     marked_blocks: nbSet(UniTuple(i8, 2)) = set()
 
-    tree_index = 1
     trees = [[]]
-    for position in trunks:
-        trees.append([])
-        tree_blocks.append((*position, tree_index))
+    for tree_index, position in enumerate(trunks):
+        tree_index += 1  # Start counter to 1
+        trees.append([])  # instantiate new tree
+        tree_blocks.append((*position, tree_index))  # register trunk
         marked_blocks.add(position)
-        tree_index += 1
 
     # propagate trees through trunks and leaves (and mushrooms)
     while tree_blocks:

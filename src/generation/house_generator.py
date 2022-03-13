@@ -444,7 +444,7 @@ class ProcHouseGeneratorBuilder():
     MAX_SIZE = 11
     MIN_RATIO = 2/3
 
-    def __init__(self, origin: Position, mask: ndarray):
+    def __init__(self, origin: Position, mask: np.ndarray):
         self.__origin = origin
         self.__mask = mask
 

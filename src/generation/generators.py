@@ -91,8 +91,8 @@ class Generator:
         return self._box.surface
 
     @property
-    def mean(self):
-        return Point(self._box.minx + self.width // 2, self._box.minz + self.length // 2)
+    def mean(self) -> Position:
+        return Position(self._box.minx + self.width // 2, self._box.minz + self.length // 2, absolute_coords=True)
 
     def translate(self, dx=0, dy=0, dz=0):
         self._box.translate(dx, dy, dz, True)
@@ -118,7 +118,7 @@ class MaskedGenerator(Generator):
         self._mask = kwargs.get("mask", np.full((box.width, box.length), True))
 
     def _terraform(self, level, height_map):
-        # type: (TerrainMaps, array) -> ndarray
+        # type: (TerrainMaps, array) -> np.ndarray
         mean_y = int(round(height_map.mean()))
         terraform_map = np.zeros(height_map.shape)
         for x, y, z in self.surface_pos(height_map):
@@ -219,7 +219,7 @@ class CropGenerator(MaskedGenerator):
 
     def _pick_animal(self):
         samples = list(self.animal_distribution.keys())
-        probs = array(list(self.animal_distribution.values()))
+        probs = np.array(list(self.animal_distribution.values()))
         probs = probs / sum(probs)
         return npChoice(samples, p=probs)
 
@@ -359,7 +359,7 @@ class CropGenerator(MaskedGenerator):
         """
         x0, y0, z0 = self.origin
         water_sources = set()
-        irrigated: ndarray = self._mask[:].astype(int)
+        irrigated: np.ndarray = self._mask[:].astype(int)
         irrigated[:] = 0
         irrigated[1:-1, 1:-1] = 1  # make border points as irrigated so water won't spawn on them
         irrigated = np.minimum(irrigated, self._mask[:].astype(int))

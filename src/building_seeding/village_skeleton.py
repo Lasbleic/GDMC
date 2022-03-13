@@ -122,7 +122,7 @@ class CityBlock(Bounds):
         net: RoadNetwork = RoadNetwork.INSTANCE
         return net.get_distance(dst_point) > 0
 
-    def __subdivide(self, pos: Position, mask: PointArray, ndiv: int) -> List[Tuple[Position, ndarray]]:
+    def __subdivide(self, pos: Position, mask: PointArray, ndiv: int) -> List[Tuple[Position, np.ndarray]]:
         if ndiv == 1:
             return [(pos, mask)]
 

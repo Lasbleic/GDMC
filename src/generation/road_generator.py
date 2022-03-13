@@ -75,7 +75,7 @@ class RoadGenerator(Generator):
         print("OK")
 
     def __generate_street_lamps(self, terrain, districts):
-        unlit_array: ndarray = np.zeros((self.width, self.length), dtype=np.uint8)
+        unlit_array: np.ndarray = np.zeros((self.width, self.length), dtype=np.uint8)
         network = self.__network
         W, L = self.width, self.length
         for dw in range(2, -1, -1):  # dw in (2, 1, 0):
@@ -150,7 +150,7 @@ class RoadGenerator(Generator):
         Builds necessary bridges and stairs for every new path
         Assumes that it is called before the path is marked as a road in the RoadNetwork
         """
-        smoothing_kernel = array([-2, 3, 6, 7, 6, 3, -2]) / 21
+        smoothing_kernel = np.array([-2, 3, 6, 7, 6, 3, -2]) / 21
         if len(path) < 2:
             return
 
@@ -174,7 +174,7 @@ class RoadGenerator(Generator):
             return
 
         # carves the new path if possible and necessary to avoid steep slopes
-        path_height: ndarray = array([self.__maps.height_map[_] for _ in path]).astype(float)
+        path_height: np.ndarray = np.array([self.__maps.height_map[_] for _ in path]).astype(float)
         if len(path_height) > max(path_height) - min(path_height):
             if len(path_height) <= 7:
                 # path too short to convolve

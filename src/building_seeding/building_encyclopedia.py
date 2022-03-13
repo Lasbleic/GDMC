@@ -71,11 +71,7 @@ BUILDING_ENCYCLOPEDIA = {
         },
 
         "Steepness": {
-            "house": (1, 2),
-            "crop": (0.5, 1),
-            "windmill": (0, 4),
-            "wood_tower": (0, 2.5),
-            "stone_tower": (0, 4)
+            "default": (1, 4)
         },
 
         "RiverDistance": {
@@ -102,13 +98,15 @@ BUILDING_ENCYCLOPEDIA = {
             "stone_tower": (6, 10)
         },
 
-        # (accessibility, sociability, density, altitude, pure_water, sea_water, lava, steepness)
+        "Temperature": {"default": (0.3, 0.8, 1.2)},
+
+        "TreeDistance": {"default": (4, 8, 16)},
+
+        # (accessibility, sociability, density, altitude, pure_water, sea_water, lava, steepness, temperature, trees)
         "Weighting_factors": {
-            "house": (1, 3, 3, 0, 1, 1, 1, 1),
-            "crop": (1, 3, 2, 1, 2, 0, 1, 3),
-            "windmill": (2, 4, 3, 1, 0, 0, 1, 2),
-            "wood_tower": (1, 5, 1, 0, 1.5, 1, 1, 2),
-            "stone_tower": (1, 5, 3, 0, 1, 1.5, 1, 2)
+            "house": (1, 3, 3, 0, 1, 1, 1, 1, 1, 1),
+            "crop": (1, 3, 2, 1, 2, 0, 1, 3, 1, 1),
+            "windmill": (2, 4, 3, 1, 0, 0, 1, 2, 1, 1)
         },
 
         "markov": {

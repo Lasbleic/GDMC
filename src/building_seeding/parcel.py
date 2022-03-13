@@ -97,7 +97,7 @@ class Parcel(TransformBox):
         valid_ratio = (expanded.width <= 3 and expanded.length <= 3) or MIN_RATIO_SIDE <= expanded_ratio
         return no_obstacle and valid_sizes and valid_ratio and flat_extend
 
-    def obstacle(self, margin=0, forget=False) -> Tuple[Position, ndarray]:
+    def obstacle(self, margin=0, forget=False) -> Tuple[Position, np.ndarray]:
         """
         Returns the obstacle associated to the parcel
         :param margin: optional extension of the obstacle mask in every direction
@@ -254,7 +254,7 @@ class MaskedParcel(Parcel):
         mask_extension = [self.__valid_extended_point(x, z, direction) for x, y, z in ext.positions]
 
         super(Parcel, self).expand(direction, inplace=True)
-        self._mask = insert(self._mask, index[direction], array(mask_extension), axis=axis[direction])
+        self._mask = insert(self._mask, index[direction], np.array(mask_extension), axis=axis[direction])
         ObstacleMap().add_obstacle(*self.obstacle())
 
     def obstacle(self, margin=0, forget=False):

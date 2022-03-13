@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 
 from building_seeding.settlement import DistrictCluster, Town
 from terrain import TerrainMaps, ObstacleMap
-from utils import Point, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position, PointArray
+from utils import Point, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position, PointArray, building_positions
 from utils.misc_objects_functions import argmax, argmin, _in_limits, Singleton
 
 
@@ -125,15 +125,20 @@ class Districts(PointArray):
         """
         Builds a dataset to perform cluster analysis in order to find suitable positions to build villages
         """
-        width, length = maps.width, maps.length
-        n_samples = min(1e4, width * length)  # target number of samples
-        self.keep_rate = n_samples / (width * length)  # resulting portion of positions taken into account
-        raw_samples = [[x, z, Districts.suitability(x, z, maps)]
-                       for x, z in itertools.product(range(width), range(length))
-                       if bernouilli(self.keep_rate) and not maps.fluid_map.is_close_to_fluid(x, z)]  # list (x, z, score)
-        threshold_score = np.median([_[-1] for _ in raw_samples])  # median score of the samples
-        raw_samples = list(
-            filter(lambda sample: sample[-1] >= threshold_score, raw_samples))  # keep samples with a decent score
+        from building_seeding.interest.interest import InterestMap
+        from building_seeding import BuildingType
+        house_interest = InterestMap(BuildingType.house, "Flat_scenario", maps, None)
+        score_matrix = house_interest.terrain_interest  # interest matrix
+
+        n_samples: int = min(10000, maps.width * maps.length)  # target number of samples
+        self.keep_rate = n_samples / (maps.width * maps.length)  # resulting portion of positions taken into account
+        sample_pos = random.choices(list(building_positions()), k=n_samples)
+        raw_samples = [[p.x, p.z, score_matrix[p.x, p.z]] for p in sample_pos]  # list (x, z, score)
+
+        # keep only samples with a score higher than the median
+        threshold_score = np.median([_[-1] for _ in raw_samples])
+        raw_samples = list(filter(lambda sample: sample[-1] >= threshold_score, raw_samples))
+
         Xu = np.array(raw_samples)
         X = self.__scaler.fit_transform(Xu)
         X[:, :2] = X[:, :2] * coord_scale

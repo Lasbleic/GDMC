@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from random import randint, sample
-from numpy.random import choice
+import numpy as np
 
 
 class LootTablePool:
@@ -37,12 +37,11 @@ class LootTablePool:
         self.__weights.append(weight)
 
     def sampleInventory(self, containerWidth, containerHeight) -> List[Tuple[int, int, str, int]]:
-        from numpy import array
-        probs = array(self.__weights) / sum(self.__weights)
+        probs = np.array(self.__weights) / sum(self.__weights)
         items = []
         rolls = randint(self.__min_count, self.__max_count)
         for _ in range(rolls):
-            entry = self.__entries[choice(range(len(self.__entries)), p=probs)]
+            entry = self.__entries[np.random.choice(range(len(self.__entries)), p=probs)]
             name = entry[0]
             count = randint(entry[1], entry[2])
             items.append((name, count))

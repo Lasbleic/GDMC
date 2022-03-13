@@ -155,10 +155,7 @@ class Settlement:
     def generate(self):
         self._road_network.generate(self._maps, self.districts)
 
-        # try:
         self.__generate_road_signs()
-        # except Exception:
-        #     print("Road signs were not generated")
 
         for parcel in self._parcels:  # type: Parcel
             def in_bounds():
@@ -220,7 +217,7 @@ class Settlement:
             smooth_height = cv2.blur(smooth_height, (9, 9))
 
         u: Position
-        for u in filter(lambda u: mask[u.xy] and base_height[u.xy] != smooth_height[u.xy], building_positions()):
+        for u in filter(lambda u: mask[u.xz] and base_height[u.xz] != smooth_height[u.xz], building_positions()):
             ya = base_height[u.x, u.z]
             new_y = smooth_height[u.x, u.z]
             self._maps.height_map.update([u], [new_y])

@@ -1,7 +1,8 @@
 from enum import Enum
 from itertools import product
 
-from numpy import zeros, array
+import cv2
+import numpy as np
 
 from gdpc.worldLoader import WorldSlice
 from utils import BuildArea, Point, Position, PointArray
@@ -68,17 +69,21 @@ class Biomes(Enum):
 
 class BiomeMap(PointArray):
 
+    __temperature: np.ndarray = None
+
     def __new__(cls, level: WorldSlice, area: BuildArea):
         # biomes
-        values = zeros((level.chunkRect[2] * 4, level.chunkRect[3] * 4))
+        values = np.zeros((level.chunkRect[2] * 4, level.chunkRect[3] * 4))
         for chunkX, chunkZ in product(range(level.chunkRect[2]), range(level.chunkRect[3])):
             chunkID = chunkX + level.chunkRect[2] * chunkZ
             biomes = level.nbtfile['Chunks'][chunkID]['Level']['Biomes'][:16]
             x0, z0 = chunkX * 4, chunkZ * 4
-            values[x0: (x0+4), z0: (z0+4)] = array(biomes).reshape((4, 4), order='F')
+            values[x0: (x0+4), z0: (z0+4)] = np.array(biomes).reshape((4, 4), order='F')
 
         obj = super().__new__(cls, values)
         obj.__offset = Point(area.x % 16, area.z % 16)
+        obj.awidth = level.rect[2]
+        obj.alength = level.rect[3]
         return obj
 
     def __getitem__(self, item):
@@ -124,9 +129,18 @@ class BiomeMap(PointArray):
 
     def temperature(self, point: Position) -> float:
         # todo: build temperature map maybe ?
-        biome_name = self.getBiome(self[point])
+        biome_name = self.getBiome(self[point.xz])
         biome = Biomes.from_name(biome_name)
         return biome.temperature
+
+    @property
+    def temperature_map(self) -> np.ndarray:
+        mult = 100
+        if self.__temperature is None:
+            init_temperature = np.array([[self.temperature(Position(x, z)) * mult for z in range(self.alength)] for x in range(self.awidth)], dtype=np.uint8)
+            self.__temperature = cv2.blur(init_temperature, (15, 15)) / mult
+
+        return self.__temperature
 
 
 if __name__ == '__main__':

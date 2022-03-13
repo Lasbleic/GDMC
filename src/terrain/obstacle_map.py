@@ -46,7 +46,7 @@ class ObstacleMap(PointArray, metaclass=Singleton):
         return obs
 
     def add_obstacle(self, point, mask=None):
-        # type: (Point, ndarray) -> None
+        # type: (Point, np.ndarray) -> None
         """
         Main function to add an obstacle
         Parameters
@@ -80,7 +80,7 @@ class ObstacleMap(PointArray, metaclass=Singleton):
             mask = np.full((1, 1), True)
         self.__add_obstacle(point, mask, -1)
         if store_obstacle:
-            self.__hidden_obstacles.append((Point(point.x, point.z), array(mask)))
+            self.__hidden_obstacles.append((Point(point.x, point.z), np.array(mask)))
 
     def reveal_obstacles(self):
         """Adds all hidden obstacles"""
