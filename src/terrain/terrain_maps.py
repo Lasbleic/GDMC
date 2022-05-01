@@ -6,7 +6,6 @@ from terrain.fluid_map import FluidMap
 from terrain.height_map import HeightMap
 from terrain.tree_map import TreesMap
 from utils import BuildArea, BoundingBox, Position, dump
-from utils.geometry_utils import building_positions
 
 
 class TerrainMaps:
@@ -89,7 +88,7 @@ class TerrainMaps:
         current_terrain = TerrainMaps.request(self.area.json)
         old_level = self.level
         new_level = current_terrain.level
-        for pos in building_positions():  # type: Position
+        for pos in BuildArea.building_positions():  # type: Position
             min_y = min(self.height_map.lower_height(pos.x, pos.z),
                         current_terrain.height_map.lower_height(pos.x, pos.z))
             max_y = max(self.height_map.upper_height(pos.x, pos.z),

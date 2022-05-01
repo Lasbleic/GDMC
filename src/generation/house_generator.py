@@ -23,7 +23,8 @@ class ProcHouseGenerator(MaskedGenerator):
             self.children.append(main_building)
             self._clear_trees(level)
             Generator.generate(self, level.level, height_map, palette)
-            self._generate_door(level.level, palette)
+            main_room: _RoomSymbol = self.children[0]
+            main_room.generate_door(self.entry_direction, self._entry_point.abs_x, self._entry_point.abs_z, level, palette)
             self._generate_stairs(level.level, palette)
 
     def _clear_trees(self, level):
@@ -34,11 +35,6 @@ class ProcHouseGenerator(MaskedGenerator):
         dx = int(round((self._box.width - self._layout_width) / 2))
         dz = int(round((self._box.length - self._layout_length) / 2))
         self.children[0].translate(dx, 0, dz)
-
-    def _generate_door(self, level, palette):
-        door_x, door_z = self._entry_point.abs_x, self._entry_point.abs_z
-        door_direction = self.entry_direction
-        self.children[0].generate_door(door_direction, door_x, door_z, level, palette)
 
     def _generate_stairs(self, level, palette):
         dump()
@@ -116,7 +112,7 @@ class _RoomSymbol(CardinalGenerator):
             AREA_STRUCTURE.fill(col_box, palette.get_structure_block('y'), 8)
 
     def _create_walls(self, level, palette):
-        for direction in cardinal_directions(False):
+        for direction in Direction.cardinal_directions(False):
             wall_box = self.get_wall_box(direction)
             if self[direction] is not None:
                 if isinstance(self[direction], _RoofSymbol):
@@ -159,7 +155,7 @@ class _RoomSymbol(CardinalGenerator):
             door_x X coordinate of the door on the parcel border
             door_z Z coordinate of the door on the parcel border
         """
-        local_door_dir = Direction.of(dx=door_x-self.mean.x, dz=door_z-self.mean.z)  # direction of the door relative to this room
+        local_door_dir = Direction.of(dx=door_x-self.mean.abs_x, dz=door_z-self.mean.abs_z)  # direction of the door relative to this room
         if self[local_door_dir] is not None and isinstance(self[local_door_dir], _RoomSymbol):
             try:
                 # passes the door to an annex room
@@ -168,6 +164,8 @@ class _RoomSymbol(CardinalGenerator):
                 local_door_dir = local_door_dir.rotate()
                 door_wall_box = self.get_wall_box(local_door_dir)
                 self[door_wall_box].generate_door(local_door_dir, door_x, door_z, level, palette)
+            finally:
+                return
         else:
             # passes the door to the most suited wall of the room (no annex, close to entrance & large enough)
             door_dir = local_door_dir if self.get_wall_box(local_door_dir).surface > 1 else parcel_door_dir
@@ -196,7 +194,7 @@ class _RoomSymbol(CardinalGenerator):
         while border_pts:
             x, z = border_pts.pop()
             if valid_pos(x, y, z):
-                lad_dir = next(filter(lambda dir: (x, y, z) in self.get_wall_box(dir), cardinal_directions(False)))
+                lad_dir = next(filter(lambda dir: (x, y, z) in self.get_wall_box(dir), Direction.cardinal_directions(False)))
                 lad_box = TransformBox((x, self._box.miny, z), (1, self._box.height, 1)).translate(-lad_dir)
                 lad_str = f"ladder[facing={(-lad_dir).name.lower()}]"
                 AREA_STRUCTURE.fill(lad_box, lad_str, 12)
@@ -330,7 +328,7 @@ class _RoofSymbol(CardinalGenerator):
             AREA_STRUCTURE.fill(ridge_box.translate(dy=-1), palette.get_structure_block('z'), 4)
 
     def __gen_gable_cross(self, level, palette):
-        for direction in cardinal_directions():
+        for direction in Direction.cardinal_directions():
             if self[direction] is not None and isinstance(self[direction], _RoofSymbol):
                 neighbour = self[direction]  # type: _RoofSymbol
                 if abs(self._direction) == abs(direction) and abs(neighbour._direction.rotate()) == abs(direction):
@@ -449,7 +447,7 @@ class ProcHouseGeneratorBuilder():
         self.__mask = mask
 
     def build(self, box: BoundingBox, n_iter: int = 100) -> _RoomSymbol:
-        best_foot_print: _RoomSymbol = _RoomSymbol(TransformBox())
+        best_foot_print: _RoomSymbol = None
         best_score: int = 0
         for _ in range(n_iter):
             room: _RoomSymbol = self.gen_solution(box)

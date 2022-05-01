@@ -101,12 +101,11 @@ class Generator:
 
     @property
     def entry_direction(self):
-        door_x, door_z = self._entry_point.abs_x, self._entry_point.abs_z
-        mean_x, mean_z = self._box.minx + self.width // 2, self._box.minz + self.length // 2
+        entry_dir_vec: Point = self._entry_point - self.mean
         try:
-            return Direction.of(dx=door_x - mean_x, dz=door_z - mean_z)
+            return Direction.of(dx=entry_dir_vec.x, dz=entry_dir_vec.z)
         except AssertionError:
-            return list(cardinal_directions())[0]
+            return list(Direction.cardinal_directions())[0]
 
     def absolute_coords(self, x, z):
         return x + self._box.minx, z + self._box.minz
@@ -180,7 +179,7 @@ class MaskedGenerator(Generator):
         else:
             assert x is not None and z is not None
             pos = Point(x, z)
-            return any(not self.is_masked(pos + dir.asPoint, absolute_coords=True) for dir in cardinal_directions())
+            return any(not self.is_masked(pos + dir.asPoint, absolute_coords=True) for dir in Direction.cardinal_directions())
 
     def _clear_trees(self, level):
         x0, z0 = self.origin.x, self.origin.z
@@ -286,7 +285,7 @@ class CropGenerator(MaskedGenerator):
                     gate_pos, gate_dist = new_gate_pos, new_gate_dist
                     door_dir_vec = self._entry_point - self.mean
                     door_dir: Direction = Direction.of(dx=door_dir_vec.x, dz=door_dir_vec.z)
-                    for direction in cardinal_directions(False):
+                    for direction in Direction.cardinal_directions(False):
                         if not self.is_masked(gate_pos + direction.value, absolute_coords=True):
                             door_dir = direction
                             break
@@ -359,7 +358,7 @@ class CropGenerator(MaskedGenerator):
         """
         x0, y0, z0 = self.origin
         water_sources = set()
-        irrigated: np.ndarray = self._mask[:].astype(int)
+        irrigated: np.ndarray = np.copy(self._mask).astype(int)
         irrigated[:] = 0
         irrigated[1:-1, 1:-1] = 1  # make border points as irrigated so water won't spawn on them
         irrigated = np.minimum(irrigated, self._mask[:].astype(int))
@@ -377,7 +376,7 @@ class CropGenerator(MaskedGenerator):
             water_sources.add((ax, az))
 
             p = Point(ax, az, y_water)
-            for dir in cardinal_directions(False):  # type: Direction
+            for dir in Direction.cardinal_directions(False):  # type: Direction
                 neighbour: Point = p + dir.value
                 y_crop = height_map[neighbour.x - x0, neighbour.z - z0]
                 if y_crop < y_water:  # Prevents overflowing to adjacent positions
@@ -435,7 +434,7 @@ class CardinalGenerator(Generator):
                 self.children.insert(0, neighbour)
             neighbour._neighbors[-direction] = self
             if direction == Direction.Top:
-                for direction2 in cardinal_directions(False):
+                for direction2 in Direction.cardinal_directions(False):
                     if self[direction2] is not None and self[direction2][Direction.Top] is not None:
                         neighbour[direction2] = self[direction2][Direction.Top]
         else:
@@ -520,7 +519,7 @@ def place_torch_post(x, y, z, block=None):
 
 def place_water_source(x, y, z, protected_points=None):
     p = Point(x, z, y)
-    for dir in cardinal_directions(False):  # type: Direction
+    for dir in Direction.cardinal_directions(False):  # type: Direction
         dpos = p + dir.value
         if direct_interface.getBlock(*dpos.coords).split(':')[-1] not in ground_blocks:
             state = f"spruce_trapdoor[facing={dir.name.lower()}, half=bottom, open=true]"
@@ -569,5 +568,5 @@ if __name__ == '__main__':
     gen = CropGenerator(TransformBox((0, 0, 0), (1, 1, 1)))
     print(gen.animal_distribution)
     print(gen._pick_animal())
-    for dir in cardinal_directions(False):
+    for dir in Direction.cardinal_directions(False):
         print(dir.name, sign_rotation_for_direction(dir.value))

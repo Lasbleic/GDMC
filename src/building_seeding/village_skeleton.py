@@ -5,6 +5,8 @@ import itertools
 import time
 from typing import List, Set, Dict, Tuple
 
+import numpy as np
+
 from building_seeding.building_pool import BuildingPool, BuildingType
 from building_seeding.district.districts import Districts
 from building_seeding.interest import InterestSeeder
@@ -32,7 +34,7 @@ class VillageSkeleton:
 
     def add_parcel(self, seed: Point or Parcel, building_type: BuildingType = None):
         if isinstance(seed, Point):
-            if building_type.name in ["crop"]:
+            if building_type in [BuildingType.crop, BuildingType.house]:
                 new_parcel = MaskedParcel(seed, building_type, self.maps)
             else:
                 new_parcel = Parcel(seed, building_type, self.maps)

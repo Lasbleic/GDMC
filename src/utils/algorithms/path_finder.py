@@ -8,9 +8,8 @@ from sortedcontainers import SortedList
 
 from parameters import MAX_INT
 from terrain.road_network import road_recording_cost, RoadNetwork
-from utils import Singleton, BuildArea, Point, argmin, euclidean
+from utils import Singleton, BuildArea, Point, argmin, euclidean, Position, Direction
 from .graphs import Graph, Tree, GridGraph, dijkstra
-from .. import Position
 
 
 class PathFinder(metaclass=Singleton):
@@ -18,6 +17,7 @@ class PathFinder(metaclass=Singleton):
     Path finder. Combines Dijkstra for optimal medium step path, and A* to follow this rough path from origin to destination
     """
     ASTAR_TIME_LIMIT = 15
+
     def __init__(self, granularity: int):
         self.__area: BuildArea = BuildArea()
         self.__granularity: int = granularity
@@ -125,9 +125,8 @@ class PathFinder(metaclass=Singleton):
         return tree, node
 
     def __neighbourhood(self, node: Point, step: int) -> Set[Point]:
-        from utils import cardinal_directions
         res = set()
-        for _dir in cardinal_directions():
+        for _dir in Direction.cardinal_directions():
             neigh = node + (_dir * step)
             if 0 <= neigh.x < self.__area.width and 0 <= neigh.z < self.__area.length:
                 res.add(neigh)

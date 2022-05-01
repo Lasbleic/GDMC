@@ -5,7 +5,7 @@ import numpy
 
 from building_seeding import Parcel, MaskedParcel, BuildingType
 from terrain import TerrainMaps
-from utils import Position, building_positions, PointArray
+from utils import Position, BuildArea, PointArray
 from utils.algorithms.graphs import connected_component, GridGraph, point_set_as_array
 
 
@@ -42,7 +42,7 @@ class StructureDetector:
             block = self.terrain.level.getBlockAt(p.abs_x, y + 1, p.abs_z)
             return block.endswith("cave_air")
 
-        structure_points = set(filter(is_cave, building_positions()))
+        structure_points = set(filter(is_cave, BuildArea.building_positions()))
         return self.__connected_components(structure_points, BuildingType.cave)
 
     def __connected_components(self, points_to_explore: Set[Position], btype: BuildingType):

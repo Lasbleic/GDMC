@@ -11,7 +11,7 @@ from sortedcontainers import SortedList
 from building_seeding import Districts, Parcel, VillageSkeleton, BuildingType, MaskedParcel
 from generation.building_palette import random_palette
 from generation.generators import place_sign
-from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, TERRAFORM_ITERATIONS
+from parameters import MAX_HEIGHT, BUILDING_HEIGHT_SPREAD, TERRAFORM_ITERATIONS, AVERAGE_PARCEL_SIZE
 from terrain import TerrainMaps
 from terrain.road_network import RoadNetwork
 from utils import *
@@ -212,12 +212,12 @@ class Settlement:
 
         mask[self._maps.fluid_map.water > 0] = 0  # discount water
 
-        smooth_height = base_height[:]
+        smooth_height = np.copy(base_height)
         for _ in range(TERRAFORM_ITERATIONS):
             smooth_height = cv2.blur(smooth_height, (9, 9))
 
         u: Position
-        for u in filter(lambda u: mask[u.xz] and base_height[u.xz] != smooth_height[u.xz], building_positions()):
+        for u in filter(lambda u: mask[u.xz] and base_height[u.xz] != smooth_height[u.xz], BuildArea.building_positions()):
             ya = base_height[u.x, u.z]
             new_y = smooth_height[u.x, u.z]
             self._maps.height_map.update([u], [new_y])
@@ -258,7 +258,7 @@ class Settlement:
 
         for extremity in filter(lambda node: degree(node) == 1, network.nodes):
             truncated_length = 0
-            while truncated_length < 8 and bool(extremity) and degree(extremity) == 1:
+            while truncated_length < AVERAGE_PARCEL_SIZE / 2 and bool(extremity) and degree(extremity) == 1:
                 unset_road(extremity)
                 extremity = get_neighbour(extremity)
                 truncated_length += 1

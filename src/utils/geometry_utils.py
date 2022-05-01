@@ -8,6 +8,21 @@ from utils.misc_objects_functions import argmax, Singleton
 from utils.pymclevel.box import BoundingBox
 
 
+__all__ = [
+    'absolute_distance',
+    'Bounds',
+    'BuildArea',
+    'Direction',
+    'euclidean',
+    'manhattan',
+    'Point',
+    'Position',
+    'TransformBox',
+    'X_ARRAY',
+    'Z_ARRAY'
+]
+
+
 class Point(np.ndarray):
     """
     Minecraft main coordinates are x, z, while y represents altitude (from 0 to 255)
@@ -102,12 +117,6 @@ class Position(Point):
         """
         return self.z + BuildArea().z
 
-
-def building_positions() -> Iterable[Position]:
-    from itertools import product
-    from utils import Position
-    for x, z in product(range(BuildArea().width), range(BuildArea().length)):
-        yield Position(x, z)
 
 
 def euclidean(p1: Point, p2: Point) -> float:
@@ -210,23 +219,31 @@ class Direction(Enum):
         x, y, z = list(map(int, str_to_coord[dir_str].split(' ')))
         return Direction.of(x, y, z)
 
+    @staticmethod
+    def all_directions(as_points: bool = True):
+        """
 
-def cardinal_directions(as_points: bool = True) -> Iterable[Direction or Point]:
-    directions = [Direction.East, Direction.South, Direction.West, Direction.North]
-    if as_points:
-        directions = list(map(lambda d: d.value, directions))
-    from random import shuffle
-    shuffle(directions)
-    return iter(directions)
+        :rtype: Iterable[Direction]
+        """
+        directions = [_ for _ in Direction]
+        if as_points:
+            directions = list(map(lambda d: d.value, directions))
+        from random import shuffle
+        shuffle(directions)
+        return iter(directions)
 
+    @staticmethod
+    def cardinal_directions(as_points: bool = True):
+        """
 
-def all_directions(as_points: bool = True) -> Iterable[Direction or Point]:
-    directions = [_ for _ in Direction]
-    if as_points:
-        directions = list(map(lambda d: d.value, directions))
-    from random import shuffle
-    shuffle(directions)
-    return iter(directions)
+        :rtype: Iterable[Union[Direction, Point]]
+        """
+        directions = [Direction.East, Direction.South, Direction.West, Direction.North]
+        if as_points:
+            directions = list(map(lambda d: d.value, directions))
+        from random import shuffle
+        shuffle(directions)
+        return iter(directions)
 
 
 class BuildArea(metaclass=Singleton):
@@ -287,6 +304,13 @@ class BuildArea(metaclass=Singleton):
             "xTo": self.x + self.width,
             "zTo": self.z + self.length
         }
+
+    @staticmethod
+    def building_positions() -> Iterable[Position]:
+        from itertools import product
+        from utils import Position
+        for x, z in product(range(BuildArea().width), range(BuildArea().length)):
+            yield Position(x, z)
 
     def __str__(self):
         return f"build area of size {Point(self.width, self.length)} starting in {self.origin}"
@@ -445,6 +469,10 @@ class Bounds:
         return self.minz + self.length
 
 
+X_ARRAY: np.ndarray = np.array([[x for z in range(BuildArea().length)] for x in range(BuildArea().width)])
+Z_ARRAY: np.ndarray = np.array([[z for z in range(BuildArea().length)] for x in range(BuildArea().width)])
+
+
 if __name__ == '__main__':
     print(Direction.East, Direction.East.value, Direction.East.name)
-    print(list(all_directions(False)))
+    print(list(Direction.all_directions(False)))

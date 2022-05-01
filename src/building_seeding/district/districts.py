@@ -11,8 +11,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
 from building_seeding.settlement import DistrictCluster, Town
-from terrain import TerrainMaps, ObstacleMap
-from utils import Point, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position, PointArray, building_positions
+from terrain import TerrainMaps
+from utils import Point, BuildArea, bernouilli, euclidean, X_ARRAY, Z_ARRAY, Position, PointArray
 from utils.misc_objects_functions import argmax, argmin, _in_limits, Singleton
 
 
@@ -132,7 +132,7 @@ class Districts(PointArray):
 
         n_samples: int = min(10000, maps.width * maps.length)  # target number of samples
         self.keep_rate = n_samples / (maps.width * maps.length)  # resulting portion of positions taken into account
-        sample_pos = random.choices(list(building_positions()), k=n_samples)
+        sample_pos = random.choices(list(BuildArea.building_positions()), k=n_samples)
         raw_samples = [[p.x, p.z, score_matrix[p.x, p.z]] for p in sample_pos]  # list (x, z, score)
 
         # keep only samples with a score higher than the median
@@ -162,20 +162,6 @@ class Districts(PointArray):
             plt.show()
 
         return kmeans
-
-    @staticmethod
-    def suitability(x, z, terrain: TerrainMaps):
-        """
-        Score between -1 and 1 representing the suitability of a given coordinate to host a village
-        """
-        pos: Position = Position(x, z)
-        from building_seeding import soft_balance
-        if not ObstacleMap().is_accessible(pos):
-            return -1
-        a = np.exp(-terrain.height_map.steepness(x, z))  # higher steepness = lower suitability
-        b = soft_balance(terrain.biome.temperature(pos), 0.3, 0.8, 1.2)
-        # return (3*a + b) / 4
-        return a
 
     def __build_cluster_map(self, clusters: KMeans, samples: np.ndarray):
         town_indexes = self.town_indexes

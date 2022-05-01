@@ -22,7 +22,7 @@ class ObstacleMap(PointArray, metaclass=Singleton):
         explored_points = set()
         while points_to_explore:
             point = points_to_explore.pop()
-            for dx, dz in map(lambda direction: (direction.x, direction.z), cardinal_directions()):
+            for dx, dz in map(lambda direction: (direction.x, direction.z), Direction.cardinal_directions()):
                 neighbour = point[0] + dx, point[1] + dz
 
                 if neighbour in explored_points:

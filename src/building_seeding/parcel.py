@@ -111,7 +111,7 @@ class Parcel(TransformBox):
                 mask = np.full((self.width + 2 * margin, self.length + 2 * margin), True)
             else:
                 point = self.position
-                mask = self._mask[:]
+                mask = np.copy(self._mask)
             mask[0, :] = False
             mask[:, 0] = False
             self._obstacle = point, mask
@@ -144,9 +144,7 @@ class Parcel(TransformBox):
 
     @property
     def generator(self):
-        gen = self.building_type.new_instance(self.box)  # type: Generator
-        gen._entry_point = self._entry_point
-        return gen
+        return self.building_type.value(self.box, entry_point=self._entry_point, mask=self.mask)
 
     @property
     def height_map(self):
@@ -260,7 +258,7 @@ class MaskedParcel(Parcel):
     def obstacle(self, margin=0, forget=False):
         if self.__expendable:
             return super().obstacle(margin, forget)
-        mask = self._mask[:]
+        mask = np.copy(self._mask)
         mask[0, :] = False
         mask[:, 0] = False
         self._obstacle = self.position, mask
@@ -268,7 +266,7 @@ class MaskedParcel(Parcel):
 
     @property
     def generator(self) -> Generator:
-        return self.building_type.generator(self.box, entry_point=self.entry_point, mask=self.mask)
+        return self.building_type.value(self.box, entry_point=self.entry_point, mask=self.mask)
 
     def add_mask(self, new_mask):
         assert self._mask.shape == new_mask.shape

@@ -4,8 +4,7 @@ import numpy as np
 from sortedcontainers import SortedList
 
 from parameters import MAX_INT
-from utils import Point, BuildArea, manhattan
-
+from utils import Point, BuildArea, manhattan, Direction
 
 __all__ = [
     'connected_component',
@@ -95,9 +94,8 @@ class GridGraph(Graph):
         self.__cost = kwargs.get("cost", manhattan)
 
     def getNeighbours(self, node):
-        from utils import cardinal_directions
         res = set()
-        for _dir in cardinal_directions():
+        for _dir in Direction.cardinal_directions():
             neigh = node + (_dir * self.step)
             if 0 <= neigh.x < self.width and 0 <= neigh.z < self.length:
                 res.add(neigh)

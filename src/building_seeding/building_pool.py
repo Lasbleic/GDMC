@@ -21,13 +21,6 @@ class BuildingType(Enum):
     structure = Generator
     cave = MineGenerator
 
-    def new_instance(self, box) -> Generator:
-        return self.value(box)
-
-    @property
-    def generator(self):
-        return self.value
-
     def __str__(self):
         return "Building type {}".format(self.name)
 

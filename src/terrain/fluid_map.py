@@ -8,8 +8,8 @@ import numpy as np
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 
 from gdpc.worldLoader import WorldSlice
-from utils import Point, cardinal_directions, water_blocks, lava_blocks, \
-    BuildArea, getBlockRelativeAt, PointArray
+from utils import Point, water_blocks, lava_blocks, \
+    BuildArea, getBlockRelativeAt, PointArray, Direction
 import parameters
 from terrain.biomes import BiomeMap
 from utils.algorithms.fast_dijkstra import fast_dijkstra
@@ -109,7 +109,7 @@ class FluidMap(PointArray):
             if distance_map[_x, _z] != 0:
                 return False
             else:
-                for direction in cardinal_directions():
+                for direction in Direction.cardinal_directions():
                     x0, z0 = _x + direction.x, _z + direction.z
                     try:
                         if distance_map[x0, z0] != 0:

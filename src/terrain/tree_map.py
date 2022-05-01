@@ -40,7 +40,10 @@ class TreesMap(PointArray):
                     x_dist = X_ARRAY - x
                     z_dist = Z_ARRAY - z
                     tree_distances.append(abs(x_dist) + abs(z_dist))  # manhattan dist to the tree
-            self.__tree_distance = np.minimum.reduce(tree_distances)
+            if tree_distances:
+                self.__tree_distance = np.minimum.reduce(tree_distances)
+            else:
+                self.__tree_distance = np.full((self.width, self.length), 1000)
 
         return self.__tree_distance
 
